@@ -10,8 +10,8 @@ import type {TodoGroup, TodoItem} from './_types'
 export default class TodoListView extends ItemView {
   private _app: App
   private lastRerender = 0
-  private groupedItems: TodoGroup[] = []
-  private itemsByFile = new Map<string, TodoItem[]>()
+  public groupedItems: TodoGroup[] = []
+  public itemsByFile = new Map<string, TodoItem[]>()
   private searchTerm = ''
 
   constructor(
@@ -67,7 +67,7 @@ export default class TodoListView extends ItemView {
       this.app.workspace.on('active-leaf-change', async () => {
         if (!this.plugin.getSettingValue('showOnlyActiveFile')) return
         await this.refresh()
-      })
+      }),
     )
     this.registerEvent(
       this.app.vault.on('delete', file => this.deleteFile(file.path)),
@@ -132,9 +132,11 @@ export default class TodoListView extends ItemView {
 
   private groupItems() {
     const flattenedItems = Array.from(this.itemsByFile.values()).flat()
-    const viewOnlyOpen = this.plugin.getSettingValue('showOnlyActiveFile');
-    const openFile = this.app.workspace.getActiveFile();
-    const filteredItems = viewOnlyOpen ? flattenedItems.filter(i => i.filePath === openFile.path) : flattenedItems;
+    const viewOnlyOpen = this.plugin.getSettingValue('showOnlyActiveFile')
+    const openFile = this.app.workspace.getActiveFile()
+    const filteredItems = viewOnlyOpen
+      ? flattenedItems.filter(i => i.filePath === openFile.path)
+      : flattenedItems
     const searchedItems = filteredItems.filter(e =>
       e.originalText.toLowerCase().includes(this.searchTerm.toLowerCase()),
     )

@@ -3,6 +3,8 @@ import {Plugin} from 'obsidian'
 import {TODO_VIEW_TYPE} from './constants'
 import {DEFAULT_SETTINGS, TodoSettings, TodoSettingTab} from './settings'
 import TodoListView from './view'
+import type {TodoGroup, TodoItem} from './_types'
+import {toggleTodoItem} from './utils'
 
 export default class TodoPlugin extends Plugin {
   private settings: TodoSettings
@@ -10,6 +12,27 @@ export default class TodoPlugin extends Plugin {
   get view() {
     return this.app.workspace.getLeavesOfType(TODO_VIEW_TYPE)[0]
       ?.view as TodoListView
+  }
+
+  // Add this public method to expose tasks
+  public getTasks(): Map<string, TodoItem[]> {
+    if (!this.view) return new Map()
+    return this.view.itemsByFile // We'll need to make itemsByFile public in TodoListView
+  }
+
+  // Optionally add this for grouped tasks
+  public getGroupedTasks(): TodoGroup[] {
+    if (!this.view) return []
+    return this.view.groupedItems // We'll need to make groupedItems public in TodoListView
+  }
+
+  public toggleTask(item: TodoItem) {
+    if (!item) {
+      console.error('No item')
+      return
+    }
+
+    toggleTodoItem(item, this.app)
   }
 
   async onload() {
