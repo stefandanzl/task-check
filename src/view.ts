@@ -43,9 +43,7 @@ export default class TodoListView extends ItemView {
   }
 
   get visibleTodoTagArray() {
-    return this.todoTagArray.filter(
-      t => !this.plugin.getSettingValue('_hiddenTags').includes(t),
-    )
+    return this.todoTagArray.filter(t => !this.plugin.getSettingValue('_hiddenTags').includes(t))
   }
 
   async onClose() {
@@ -69,9 +67,7 @@ export default class TodoListView extends ItemView {
         await this.refresh()
       }),
     )
-    this.registerEvent(
-      this.app.vault.on('delete', file => this.deleteFile(file.path)),
-    )
+    this.registerEvent(this.app.vault.on('delete', file => this.deleteFile(file.path)))
     this.refresh()
   }
 
@@ -105,8 +101,7 @@ export default class TodoListView extends ItemView {
       _hiddenTags: this.plugin.getSettingValue('_hiddenTags'),
       app: this.app,
       todoGroups: this.groupedItems,
-      updateSetting: (updates: Partial<TodoSettings>) =>
-        this.plugin.updateSettings(updates),
+      updateSetting: (updates: Partial<TodoSettings>) => this.plugin.updateSettings(updates),
       onSearch: (val: string) => {
         this.searchTerm = val
         this.refresh()
@@ -134,12 +129,8 @@ export default class TodoListView extends ItemView {
     const flattenedItems = Array.from(this.itemsByFile.values()).flat()
     const viewOnlyOpen = this.plugin.getSettingValue('showOnlyActiveFile')
     const openFile = this.app.workspace.getActiveFile()
-    const filteredItems = viewOnlyOpen
-      ? flattenedItems.filter(i => i.filePath === openFile.path)
-      : flattenedItems
-    const searchedItems = filteredItems.filter(e =>
-      e.originalText.toLowerCase().includes(this.searchTerm.toLowerCase()),
-    )
+    const filteredItems = viewOnlyOpen ? flattenedItems.filter(i => i.filePath === openFile.path) : flattenedItems
+    const searchedItems = filteredItems.filter(e => e.originalText.toLowerCase().includes(this.searchTerm.toLowerCase()))
     this.groupedItems = groupTodos(
       searchedItems,
       this.plugin.getSettingValue('groupBy'),
@@ -147,6 +138,7 @@ export default class TodoListView extends ItemView {
       this.plugin.getSettingValue('sortDirectionItems'),
       this.plugin.getSettingValue('subGroups'),
       this.plugin.getSettingValue('sortDirectionSubGroups'),
+      this.plugin.getSettingValue('baseTagFirst'),
     )
   }
 

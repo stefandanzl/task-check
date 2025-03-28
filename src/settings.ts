@@ -18,6 +18,7 @@ export interface TodoSettings {
   lookAndFeel: LookAndFeel
   _collapsedSections: string[]
   _hiddenTags: string[]
+  baseTagFirst: boolean
 }
 
 export const DEFAULT_SETTINGS: TodoSettings = {
@@ -35,6 +36,7 @@ export const DEFAULT_SETTINGS: TodoSettings = {
   lookAndFeel: 'classic',
   _collapsedSections: [],
   _hiddenTags: [],
+  baseTagFirst: false,
 }
 
 export class TodoSettingTab extends PluginSettingTab {
@@ -62,9 +64,7 @@ export class TodoSettingTab extends PluginSettingTab {
 
     new Setting(this.containerEl)
       .setName('Tag name')
-      .setDesc(
-        'e.g. "todo" will match #todo. You may add mutliple tags separated by a newline. Leave empty to capture all',
-      )
+      .setDesc('e.g. "todo" will match #todo. You may add mutliple tags separated by a newline. Leave empty to capture all')
       .addTextArea(text =>
         text
           .setPlaceholder('todo')
@@ -76,20 +76,16 @@ export class TodoSettingTab extends PluginSettingTab {
           }),
       )
 
-    new Setting(this.containerEl)
-      .setName('Show Completed?')
-      .addToggle(toggle => {
-        toggle.setValue(this.plugin.getSettingValue('showChecked'))
-        toggle.onChange(async value => {
-          await this.plugin.updateSettings({showChecked: value})
-        })
+    new Setting(this.containerEl).setName('Show Completed?').addToggle(toggle => {
+      toggle.setValue(this.plugin.getSettingValue('showChecked'))
+      toggle.onChange(async value => {
+        await this.plugin.updateSettings({showChecked: value})
       })
+    })
 
     new Setting(this.containerEl)
       .setName('Show All Todos In File?')
-      .setDesc(
-        'Show all items in file if tag is present, or only items attached to the block where the tag is located. Only has an effect if Tag Name is not empty',
-      )
+      .setDesc('Show all items in file if tag is present, or only items attached to the block where the tag is located. Only has an effect if Tag Name is not empty')
       .addToggle(toggle => {
         toggle.setValue(this.plugin.getSettingValue('showAllTodos'))
         toggle.onChange(async value => {
@@ -99,9 +95,7 @@ export class TodoSettingTab extends PluginSettingTab {
 
     new Setting(this.containerEl)
       .setName('Show only in currently active file?')
-      .setDesc(
-        'Show only todos present in currently active file?'
-      )
+      .setDesc('Show only todos present in currently active file?')
       .addToggle(toggle => {
         toggle.setValue(this.plugin.getSettingValue('showOnlyActiveFile'))
         toggle.onChange(async value => {
@@ -146,9 +140,7 @@ export class TodoSettingTab extends PluginSettingTab {
           })
         })
       })
-      .setDesc(
-        'Time sorts are based on last time the file for a particular item was edited',
-      )
+      .setDesc('Time sorts are based on last time the file for a particular item was edited')
 
     new Setting(this.containerEl)
       .setName('Group Sort')
@@ -164,9 +156,17 @@ export class TodoSettingTab extends PluginSettingTab {
           })
         })
       })
-      .setDesc(
-        'Time sorts are based on last time the file for the newest or oldest item in a group was edited',
-      )
+      .setDesc('Time sorts are based on last time the file for the newest or oldest item in a group was edited')
+
+    new Setting(this.containerEl)
+      .setName('Base tag first')
+      .setDesc('Put base tag first when sorting by tags?')
+      .addToggle(toggle => {
+        toggle.setValue(this.plugin.getSettingValue('baseTagFirst'))
+        toggle.onChange(async value => {
+          await this.plugin.updateSettings({baseTagFirst: value})
+        })
+      })
 
     // new Setting(this.containerEl)
     //   .setName("Sub-Group Sort")
@@ -186,16 +186,14 @@ export class TodoSettingTab extends PluginSettingTab {
 
     new Setting(this.containerEl).setName('Styling')
 
-    new Setting(this.containerEl)
-      .setName('Look and Feel')
-      .addDropdown(dropdown => {
-        dropdown.addOption('classic', 'Classic')
-        dropdown.addOption('compact', 'Compact')
-        dropdown.setValue(this.plugin.getSettingValue('lookAndFeel'))
-        dropdown.onChange(async (value: LookAndFeel) => {
-          await this.plugin.updateSettings({lookAndFeel: value})
-        })
+    new Setting(this.containerEl).setName('Look and Feel').addDropdown(dropdown => {
+      dropdown.addOption('classic', 'Classic')
+      dropdown.addOption('compact', 'Compact')
+      dropdown.setValue(this.plugin.getSettingValue('lookAndFeel'))
+      dropdown.onChange(async (value: LookAndFeel) => {
+        await this.plugin.updateSettings({lookAndFeel: value})
       })
+    })
 
     /** ADVANCED */
 
@@ -203,18 +201,14 @@ export class TodoSettingTab extends PluginSettingTab {
 
     new Setting(this.containerEl)
       .setName('Include Files')
-      .setDesc(
-        'Include all files that match this glob pattern. Examples on plugin page/github readme. Leave empty to check all files.',
-      )
+      .setDesc('Include all files that match this glob pattern. Examples on plugin page/github readme. Leave empty to check all files.')
       .setTooltip('**/*')
       .addText(text =>
-        text
-          .setValue(this.plugin.getSettingValue('includeFiles'))
-          .onChange(async value => {
-            await this.plugin.updateSettings({
-              includeFiles: value,
-            })
-          }),
+        text.setValue(this.plugin.getSettingValue('includeFiles')).onChange(async value => {
+          await this.plugin.updateSettings({
+            includeFiles: value,
+          })
+        }),
       )
 
     new Setting(this.containerEl)
@@ -225,8 +219,6 @@ export class TodoSettingTab extends PluginSettingTab {
           await this.plugin.updateSettings({autoRefresh: value})
         })
       })
-      .setDesc(
-        'It\'s recommended to leave this on unless you are expereince performance issues due to a large vault. You can then reload manually using the "Checklist: refresh" command',
-      )
+      .setDesc('It\'s recommended to leave this on unless you are expereince performance issues due to a large vault. You can then reload manually using the "Checklist: refresh" command')
   }
 }

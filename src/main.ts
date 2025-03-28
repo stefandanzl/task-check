@@ -115,6 +115,7 @@ export default class TodoPlugin extends Plugin {
       'sortDirectionGroups',
       'sortDirectionSubGroups',
       'sortDirectionItems',
+      'baseTagFirst',
     ]
     if (onlyRepaintWhenChanges.includes(Object.keys(updates)[0]))
       this.view.rerender()
