@@ -1,9 +1,9 @@
 {
-  "id": "task-check",
-  "name": "Task Check!",
-  "version": "2.2.14",
-  "minAppVersion": "0.14.5",
-  "description": "Combines checklists across pages into users sidebar",
-  "author": "stefandanzl",
-  "isDesktopOnly": false
+	"id": "task-check",
+	"name": "Task Check!",
+	"version": "2.3.0",
+	"minAppVersion": "0.14.5",
+	"description": "Combines checklists across pages into users sidebar",
+	"author": "stefandanzl",
+	"isDesktopOnly": false
 }
