@@ -36,12 +36,7 @@ tasks:
       - git add .
       - git commit -m "task"
       - git push
-  # test:
-  #   cmds:
-  #     - npm test -env-file .env
-  research:
-    cmds:
-      - node tests/exclude/research.js
+
   minify:
     cmds:
       - terser main.js -o main.min.js
@@ -73,7 +68,7 @@ tasks:
 
   release-create:
     cmds:
-      - gh release create {{.VERSION}} --title "{{.VERSION}}" --notes "New release of the webdav plugin for Obsidian." {{.FILES}}
+      - gh release create {{.VERSION}} --title "{{.VERSION}}" --notes "New release of the {{.PLUGIN}} plugin for Obsidian." {{.FILES}}
 
   test:
     cmds:
