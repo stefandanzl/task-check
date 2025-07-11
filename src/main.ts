@@ -76,8 +76,9 @@ export default class TodoPlugin extends Plugin {
     })
 
     this.addCommand({
-      id: 'wrap-text',
+      id: 'text-helper',
       name: 'Task text helper',
+      icon: 'wrap-text',
       callback: () => {
         const view = this.app.workspace.getActiveViewOfType(MarkdownView)
         const editor = view?.editor
