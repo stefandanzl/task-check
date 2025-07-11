@@ -1,4 +1,4 @@
-import {Plugin} from 'obsidian'
+import {MarkdownView, Plugin} from 'obsidian'
 
 import {TODO_VIEW_TYPE} from './constants'
 import {DEFAULT_SETTINGS, TodoSettings, TodoSettingTab} from './settings'
@@ -74,6 +74,36 @@ export default class TodoPlugin extends Plugin {
         this.view.refresh()
       },
     })
+
+    this.addCommand({
+      id: 'wrap-text',
+      name: 'Task text helper',
+      callback: () => {
+        const view = this.app.workspace.getActiveViewOfType(MarkdownView)
+        const editor = view?.editor
+
+        if (!editor) return
+
+        // Insert "#todo/"
+        editor.replaceSelection('#todo/')
+
+        // Set up a one-time keydown listener for Enter
+        const handleEnter = (event: KeyboardEvent) => {
+          if (event.key === 'Enter') {
+            // Remove the listener
+            window.removeEventListener('keydown', handleEnter)
+
+            // Add " - [ ] " after a short delay to ensure the newline is processed
+            setTimeout(() => {
+              editor.replaceSelection('- [ ] ')
+            }, 10)
+          }
+        }
+        // Add the event listener
+        window.addEventListener('keydown', handleEnter)
+      },
+    })
+
     this.registerView(TODO_VIEW_TYPE, leaf => {
       const newView = new TodoListView(leaf, this)
       return newView
