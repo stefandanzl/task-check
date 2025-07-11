@@ -84,13 +84,10 @@ export default class TodoPlugin extends Plugin {
 
         if (!editor) return
 
-        // Insert "#todo/"
-        editor.replaceSelection('#todo/')
+        editor.replaceSelection(`#${this.settings.todoPageName}/`)
 
-        // Set up a one-time keydown listener for Enter
         const handleEnter = (event: KeyboardEvent) => {
           if (event.key === 'Enter') {
-            // Remove the listener
             window.removeEventListener('keydown', handleEnter)
 
             // Add " - [ ] " after a short delay to ensure the newline is processed
