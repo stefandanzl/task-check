@@ -12,10 +12,11 @@
     height: var(--checklist-checkboxSize);
     min-width: var(--checklist-checkboxSize);
     min-height: var(--checklist-checkboxSize);
-    border-radius: 50%;
+    border-radius: var(--checklist-checkboxBorderRadius);
     border: var(--checklist-checkboxBorder);
     padding: 2px;
     position: relative;
+    cursor: pointer;
   }
 
   .checked {
@@ -24,7 +25,13 @@
     height: var(--checklist-checkboxCheckedSize);
     border-radius: 50%;
     position: absolute;
-    top: calc(calc(var(--checklist-checkboxSize) - var(--checklist-checkboxCheckedSize)) / 4);
-    left: calc(calc(var(--checklist-checkboxSize) - var(--checklist-checkboxCheckedSize)) / 4);
+    top: calc(
+      calc(var(--checklist-checkboxSize) - var(--checklist-checkboxCheckedSize)) /
+        4
+    );
+    left: calc(
+      calc(var(--checklist-checkboxSize) - var(--checklist-checkboxCheckedSize)) /
+        4
+    );
   }
 </style>

@@ -2,7 +2,7 @@
 .checklist-plugin-main {
   --checklist-checkboxSize: 18px;
   --checklist-checkboxCheckedSize: 12px;
-  --checklist-checkboxBorder: 2px solid var(--text-muted);
+  --checklist-checkboxBorder: 1px solid var(--text-normal);
   --checklist-checkboxFill: var(--text-muted);
   --checklist-listItemBorderRadius: 8px;
   --checklist-listItemMargin: 0 0 4px;
@@ -39,6 +39,7 @@
   --checklist-groupMargin: 8px;
   --checklist-contentFontSize: var(--editor-font-size);
   --checklist-searchBackground: var(--background-primary);
+  --checklist-checkboxBorderRadius: 22%;
 }
 
 .checklist-plugin-main button {
