@@ -15,7 +15,28 @@ export const navToFile = async (
   const leaf = app.workspace.getLeaf(mod)
   await leaf.openFile(file)
   if (line) {
-    app.workspace.getActiveViewOfType(MarkdownView).editor.setCursor(line)
+    // Wait for editor to be ready
+    await new Promise(resolve => setTimeout(resolve, 100))
+
+    const view = app.workspace.getActiveViewOfType(MarkdownView)
+    if (!view) return
+
+    const editor = view.editor
+    const lineContent = editor.getLine(line)
+    const from = {line, ch: 0}
+    const to = {line, ch: lineContent?.length ?? 0}
+
+    // Center the line in view using Obsidian's scrollIntoView
+    editor.scrollIntoView({from, to}, true)
+
+    // Blink effect by temporarily selecting the line
+    const originalSelection = editor.getSelection()
+    editor.setSelection(from, to)
+
+    // Clear selection after delay
+    setTimeout(() => {
+      editor.setCursor({line, ch: 0})
+    }, 300)
   }
 }
 
