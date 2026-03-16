@@ -35,7 +35,7 @@ export const navToFile = async (
 
     // Clear selection after delay
     setTimeout(() => {
-      editor.setCursor({line, ch: 0})
+      editor.setCursor(to)
     }, 300)
   }
 }
