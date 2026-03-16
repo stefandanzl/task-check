@@ -6,6 +6,7 @@ export type TodoItem = {
   fileName: string
   fileLabel: string
   fileCreatedTs: number
+  fileModifiedTs: number
   mainTag?: string
   subTag?: string
   line: number
@@ -21,8 +22,10 @@ type BaseGroup = {
   id: string
   sortName: string
   className: string
-  oldestItem: number
-  newestItem: number
+  oldestCreatedItem: number
+  newestCreatedItem: number
+  oldestModifiedItem: number
+  newestModifiedItem: number
   groups?: TodoGroup[]
 }
 
@@ -51,7 +54,13 @@ export type TagMeta = {main: string; sub: string}
 export type LinkMeta = {filePath: string; linkName: string}
 
 export type GroupByType = 'page' | 'tag'
-export type SortDirection = 'new->old' | 'old->new' | 'a->z' | 'z->a'
+export type SortDirection =
+  | 'created: new->old'
+  | 'created: old->new'
+  | 'modified: new->old'
+  | 'modified: old->new'
+  | 'a->z'
+  | 'z->a'
 export type LookAndFeel = 'compact' | 'classic'
 
 export type Icon = 'chevron' | 'settings'

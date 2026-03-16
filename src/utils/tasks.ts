@@ -203,6 +203,7 @@ const formTodo = (
     .use(linkPlugin(linkMap))
     .use(tagPlugin)
     .use(highlightPlugin)
+
   return {
     mainTag: tagMeta?.main,
     subTag: tagMeta?.sub,
@@ -211,6 +212,7 @@ const formTodo = (
     fileName: file.file.name,
     fileLabel: getFileLabelFromName(file.file.name),
     fileCreatedTs: file.file.stat.ctime,
+    fileModifiedTs: file.file.stat.mtime,
     rawHTML: md.render(tagStripped),
     line: lineNum,
     spacesIndented,

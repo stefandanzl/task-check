@@ -9,7 +9,7 @@ export const groupTodos = (
   sortItems: SortDirection,
   subGroups: boolean,
   subGroupSort: SortDirection,
-  baseTagFirst: boolean = false, // New parameter with default false
+  baseTagFirst: boolean = false,
 ): TodoGroup[] => {
   const groups: TodoGroup[] = []
   for (const item of items) {
@@ -22,8 +22,10 @@ export const groupTodos = (
         className: '',
         type: groupBy,
         todos: [],
-        oldestItem: Infinity,
-        newestItem: 0,
+        oldestCreatedItem: Infinity,
+        newestCreatedItem: 0,
+        oldestModifiedItem: Infinity,
+        newestModifiedItem: 0,
       }
 
       if (newGroup.type === 'page') {
@@ -33,9 +35,7 @@ export const groupTodos = (
       } else if (newGroup.type === 'tag') {
         newGroup.mainTag = item.mainTag
         newGroup.subTags = item.subTag
-        // Add a special prefix for base tags if baseTagFirst is true
         if (baseTagFirst && !item.subTag) {
-          // Base tags (without subtags) get a special prefix to sort first
           newGroup.sortName = `0_${item.mainTag}`
         } else {
           newGroup.sortName = item.mainTag + (item.subTag ?? '0')
@@ -45,34 +45,30 @@ export const groupTodos = (
       groups.push(newGroup)
       group = newGroup
     }
-    if (group.newestItem < item.fileCreatedTs) group.newestItem = item.fileCreatedTs
-    if (group.oldestItem > item.fileCreatedTs) group.oldestItem = item.fileCreatedTs
+    if (group.newestCreatedItem < item.fileCreatedTs) group.newestCreatedItem = item.fileCreatedTs
+    if (group.oldestCreatedItem > item.fileCreatedTs) group.oldestCreatedItem = item.fileCreatedTs
+    if (group.newestModifiedItem < item.fileModifiedTs) group.newestModifiedItem = item.fileModifiedTs
+    if (group.oldestModifiedItem > item.fileModifiedTs) group.oldestModifiedItem = item.fileModifiedTs
 
     group.todos.push(item)
   }
 
   const nonEmptyGroups = groups.filter(g => g.todos.length > 0)
 
-  // If baseTagFirst is true and we're grouping by tags, we'll do a custom sort
   if (baseTagFirst && groupBy === 'tag') {
-    // First separate base tags from subtags
     const baseTags = nonEmptyGroups.filter(g => !g.id.includes('/'))
     const subTags = nonEmptyGroups.filter(g => g.id.includes('/'))
 
-    // Sort each set separately
-    sortGenericItemsInplace(baseTags, sortGroups, 'sortName', sortGroups === 'new->old' ? 'newestItem' : 'oldestItem')
+    sortGenericItemsInplace(baseTags, sortGroups, 'sortName', 'newestCreatedItem')
+    sortGenericItemsInplace(subTags, sortGroups, 'sortName', 'newestCreatedItem')
 
-    sortGenericItemsInplace(subTags, sortGroups, 'sortName', sortGroups === 'new->old' ? 'newestItem' : 'oldestItem')
-
-    // Combine them with base tags first
     nonEmptyGroups.length = 0
     nonEmptyGroups.push(...baseTags, ...subTags)
   } else {
-    // Normal sorting if baseTagFirst is false
-    sortGenericItemsInplace(nonEmptyGroups, sortGroups, 'sortName', sortGroups === 'new->old' ? 'newestItem' : 'oldestItem')
+    sortGenericItemsInplace(nonEmptyGroups, sortGroups, 'sortName', 'newestCreatedItem')
   }
 
-  if (!subGroups) for (const g of groups) sortGenericItemsInplace(g.todos, sortItems, 'originalText', 'fileCreatedTs')
+  if (!subGroups) for (const g of nonEmptyGroups) sortGenericItemsInplace(g.todos, sortItems, 'originalText', 'fileCreatedTs')
   else
     for (const g of nonEmptyGroups)
       g.groups = groupTodos(
@@ -82,7 +78,7 @@ export const groupTodos = (
         sortItems,
         false,
         null,
-        baseTagFirst, // Pass the baseTagFirst parameter to subgroups
+        baseTagFirst,
       )
 
   return nonEmptyGroups

@@ -85,10 +85,52 @@ export const sortGenericItemsInplace = <
         LOCAL_SORT_OPT,
       ),
     )
-  if (direction === 'new->old')
-    items.sort((a, b) => (b[sortByTimeKey] as any) - (a[sortByTimeKey] as any))
-  if (direction === 'old->new')
-    items.sort((a, b) => (a[sortByTimeKey] as any) - (b[sortByTimeKey] as any))
+  if (direction === 'created: new->old')
+    items.sort((a, b) => {
+      const timeDiff = (b[sortByTimeKey] as any) - (a[sortByTimeKey] as any)
+      if (timeDiff !== 0) return timeDiff
+      return (a[sortByNameKey] as any).localeCompare(
+        b[sortByNameKey],
+        navigator.language,
+        LOCAL_SORT_OPT,
+      )
+    })
+  if (direction === 'created: old->new')
+    items.sort((a, b) => {
+      const timeDiff = (a[sortByTimeKey] as any) - (b[sortByTimeKey] as any)
+      if (timeDiff !== 0) return timeDiff
+      return (a[sortByNameKey] as any).localeCompare(
+        b[sortByNameKey],
+        navigator.language,
+        LOCAL_SORT_OPT,
+      )
+    })
+  if (direction === 'modified: new->old')
+    items.sort((a, b) => {
+      // For TodoItem, use fileModifiedTs; for TodoGroup, use newestModifiedItem
+      const aTime = 'fileModifiedTs' in (a as object) ? (a['fileModifiedTs' as keyof T] as any) : (a['newestModifiedItem' as keyof T] as any)
+      const bTime = 'fileModifiedTs' in (b as object) ? (b['fileModifiedTs' as keyof T] as any) : (b['newestModifiedItem' as keyof T] as any)
+      const timeDiff = bTime - aTime
+      if (timeDiff !== 0) return timeDiff
+      return (a[sortByNameKey] as any).localeCompare(
+        b[sortByNameKey],
+        navigator.language,
+        LOCAL_SORT_OPT,
+      )
+    })
+  if (direction === 'modified: old->new')
+    items.sort((a, b) => {
+      // For TodoItem, use fileModifiedTs; for TodoGroup, use newestModifiedItem
+      const aTime = 'fileModifiedTs' in (a as object) ? (a['fileModifiedTs' as keyof T] as any) : (a['newestModifiedItem' as keyof T] as any)
+      const bTime = 'fileModifiedTs' in (b as object) ? (b['fileModifiedTs' as keyof T] as any) : (b['newestModifiedItem' as keyof T] as any)
+      const timeDiff = aTime - bTime
+      if (timeDiff !== 0) return timeDiff
+      return (a[sortByNameKey] as any).localeCompare(
+        b[sortByNameKey],
+        navigator.language,
+        LOCAL_SORT_OPT,
+      )
+    })
 }
 
 export const ensureMdExtension = (path: string) => {
