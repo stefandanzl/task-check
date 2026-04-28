@@ -52,6 +52,8 @@
     dispatch('dragEnd')
   }
 
+  $: if (!isDragging) isDragOver = false
+
   $: displayLabel = targetPriority === null ? 'Neutral' : `Priority ${targetPriority}`
   $: zoneClass = `${position}-zone ${targetPriority === null ? 'neutral' : targetPriority > 0 ? 'positive' : 'negative'}`
 </script>

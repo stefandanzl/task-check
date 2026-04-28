@@ -2,7 +2,7 @@
   import type { App } from "obsidian"
 
   import type { LookAndFeel, TodoGroup, TodoItem } from "src/_types"
-  import { navToFile, setTodoPriority } from "src/utils"
+  import { navToFile, setTodoPrioritiesBatch } from "src/utils"
   import ChecklistItem from "./ChecklistItem.svelte"
   import Icon from "./Icon.svelte"
   import PriorityDropZone from "./PriorityDropZone.svelte"
@@ -73,7 +73,23 @@
     return null
   }
 
-  function handleDropPosition(e: CustomEvent) {
+  // Returns cascade updates ordered furthest-first so writes don't conflict.
+  function getCascadeUpdates(draggedItem: TodoItem, targetPriority: number): Array<{item: TodoItem, priority: number}> {
+    const direction = targetPriority > 0 ? 1 : -1
+    const updates: Array<{item: TodoItem, priority: number}> = []
+    let check = targetPriority
+    while (true) {
+      const displaced = group.todos.filter(t => t !== draggedItem && (t.priority ?? 0) === check)
+      if (displaced.length === 0) break
+      const next = check + direction
+      for (const t of displaced) updates.push({ item: t, priority: next })
+      check = next
+    }
+    updates.reverse()
+    return updates
+  }
+
+  async function handleDropPosition(e: CustomEvent) {
     const { item: draggedItemRef, dropPosition, targetPriority } = e.detail as {
       item: { id: string }
       dropPosition: 'above' | 'below' | 'into'
@@ -86,11 +102,9 @@
     let newPriority: number | null
 
     if (dropPosition === 'into') {
-      // Only neutral zone accepts 'into' drops; removes the priority tag
       newPriority = null
     } else {
       const targetIndex = sortedKeys.findIndex(k => k === targetPriority)
-      // Use undefined (not null) for "edge of list" so we can distinguish it from the neutral zone key (null)
       const upperPriority = dropPosition === 'above'
         ? (targetIndex > 0 ? sortedKeys[targetIndex - 1] : undefined)
         : targetPriority
@@ -101,13 +115,20 @@
       newPriority = calculateNewPriority(upperPriority, lowerPriority)
     }
 
-    dragState.update(s => ({ ...s, inProgress: false, sourcePriority: null }))
+    dragState.update(s => ({ ...s, inProgress: false, sourcePriority: null, dragGroupId: null }))
 
     const currentPriority = item.priority ?? 0
     const newPriorityVal = newPriority ?? 0
-    if (currentPriority !== newPriorityVal) {
-      setTodoPriority(item, newPriority, priorityTag, app)
+    if (currentPriority === newPriorityVal) return
+
+    const allUpdates: Array<{ item: TodoItem; newPriority: number | null }> = []
+    if (newPriority !== null && newPriority !== 0) {
+      for (const u of getCascadeUpdates(item, newPriority)) {
+        allUpdates.push({ item: u.item, newPriority: u.priority })
+      }
     }
+    allUpdates.push({ item, newPriority })
+    await setTodoPrioritiesBatch(allUpdates, priorityTag, app)
   }
 
   function handleDragStart(e: CustomEvent) {

@@ -135,26 +135,39 @@ export const setTodoPriority = async (
   priorityTag: string,
   app: App,
 ) => {
-  const file = getFileFromPath(app.vault, item.filePath)
-  if (!file) return
-  const currentFileContents = await app.vault.read(file)
-  const currentFileLines = getAllLinesFromFile(currentFileContents)
-  const currentLine = currentFileLines[item.line]
-  if (!currentLine.includes(item.originalText)) return
+  await setTodoPrioritiesBatch([{ item, newPriority }], priorityTag, app)
+}
 
-  const rawText = extractTextFromTodoLine(currentLine)
-  let newText = rawText
-
-  if (newPriority === null) {
-    newText = removePriorityTagFromText(rawText, priorityTag)
-  } else {
-    newText = addPriorityTagToText(rawText, priorityTag, newPriority)
+export const setTodoPrioritiesBatch = async (
+  updates: Array<{ item: TodoItem; newPriority: number | null }>,
+  priorityTag: string,
+  app: App,
+) => {
+  const byFile = new Map<string, typeof updates>()
+  for (const u of updates) {
+    if (!byFile.has(u.item.filePath)) byFile.set(u.item.filePath, [])
+    byFile.get(u.item.filePath)!.push(u)
   }
 
-  currentFileLines[item.line] = currentLine.replace(rawText, newText)
-  app.vault.modify(file, combineFileLines(currentFileLines))
-  item.priority = newPriority ?? undefined
-  item.originalText = newText
+  for (const [, fileUpdates] of byFile) {
+    const file = getFileFromPath(app.vault, fileUpdates[0].item.filePath)
+    if (!file) continue
+    const lines = getAllLinesFromFile(await app.vault.read(file))
+
+    for (const { item, newPriority } of fileUpdates) {
+      const currentLine = lines[item.line]
+      if (!currentLine.includes(item.originalText)) continue
+      const rawText = extractTextFromTodoLine(currentLine)
+      const newText = newPriority === null
+        ? removePriorityTagFromText(rawText, priorityTag)
+        : addPriorityTagToText(rawText, priorityTag, newPriority)
+      lines[item.line] = currentLine.replace(rawText, newText)
+      item.priority = newPriority ?? undefined
+      item.originalText = newText
+    }
+
+    await app.vault.modify(file, combineFileLines(lines))
+  }
 }
 
 const findAllTodosInFile = (file: FileInfo, priorityTag: string): TodoItem[] => {
