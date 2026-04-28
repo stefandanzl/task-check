@@ -143,6 +143,32 @@
   $: groupedTodos = priorityTag ? groupTodosByPriority(group.todos) : new Map()
   $: sortedKeys = groupedTodos ? getSortedPriorityKeys(groupedTodos) : []
   $: isMyDrag = $dragState.inProgress && $dragState.dragGroupId === group.id
+
+  // Check if the source priority level has only one task
+  $: sourceHasSingleTask = (() => {
+    if (!$dragState.inProgress || $dragState.sourcePriority === null) return false
+    const sourceKey = $dragState.sourcePriority === 0 ? null : $dragState.sourcePriority
+    const items = groupedTodos?.get(sourceKey)
+    return items?.length === 1
+  })()
+
+  // Find the index of the source priority in sortedKeys
+  $: sourceIndex = (() => {
+    if (!$dragState.inProgress || $dragState.sourcePriority === null) return -1
+    const sourceKey = $dragState.sourcePriority === 0 ? null : $dragState.sourcePriority
+    return sortedKeys.indexOf(sourceKey)
+  })()
+
+  // Create an array indicating whether each gap should be hidden
+  // Gap i is between sortedKeys[i-1] and sortedKeys[i] (or above sortedKeys[0] if i=0)
+  $: hiddenGaps = (() => {
+    if (!sourceHasSingleTask || sourceIndex === -1) return []
+    const result: boolean[] = []
+    for (let i = 0; i <= sortedKeys.length; i++) {
+      result.push(i === sourceIndex || i === sourceIndex + 1)
+    }
+    return result
+  })()
 </script>
 
 <section class="group {group.className}">
@@ -177,6 +203,7 @@
             position="above"
             targetPriority={key}
             isDragging={isMyDrag}
+            shouldHide={hiddenGaps[i]}
             on:drop={handleDropPosition}
             on:dragStart={handleDragStart}
             on:dragEnd={handleDragEnd}
@@ -197,6 +224,7 @@
               position="below"
               targetPriority={key}
               isDragging={isMyDrag}
+              shouldHide={hiddenGaps[i + 1]}
               on:drop={handleDropPosition}
               on:dragStart={handleDragStart}
               on:dragEnd={handleDragEnd}

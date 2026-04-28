@@ -10,6 +10,7 @@
   export let lookAndFeel: LookAndFeel = 'classic'
   export let app: App | undefined = undefined
   export let isDragging: boolean = false
+  export let shouldHide: boolean = false
 
   const dispatch = createEventDispatcher()
   let isDragOver = false
@@ -115,17 +116,19 @@
     </div>
   {/if}
 {:else}
-  <div
-    class="drop-zone {zoneClass}"
-    class:visible={isDragging}
-    class:hovered={isDragOver}
-    bind:this={dropZoneEl}
-    on:dragover={handleDragOver}
-    on:dragleave={handleDragLeave}
-    on:drop={handleDrop}
-  >
-    <div class="drop-indicator" />
-  </div>
+  {#if !shouldHide}
+    <div
+      class="drop-zone {zoneClass}"
+      class:visible={isDragging}
+      class:hovered={isDragOver}
+      bind:this={dropZoneEl}
+      on:dragover={handleDragOver}
+      on:dragleave={handleDragLeave}
+      on:drop={handleDrop}
+    >
+      <div class="drop-indicator" />
+    </div>
+  {/if}
 {/if}
 
 <style>
