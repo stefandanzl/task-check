@@ -105,8 +105,10 @@
             lookAndFeel={lookAndFeel ?? 'classic'}
             {app}
             draggable={true}
+            
             on:dragstart={forwardDragStart}
             on:dragend={forwardDragEnd}
+            {targetPriority}
           />
         {/each}
       </ul>
@@ -185,7 +187,8 @@
   }
 
   .zone-header {
-    display: flex;
+    /* display: flex; */
+    display: none;
     justify-content: space-between;
     align-items: center;
     padding: 2px 6px;

@@ -10,6 +10,7 @@
   export let lookAndFeel: LookAndFeel
   export let app: App
   export let draggable = false
+  export let targetPriority = null
 
   const dispatch = createEventDispatcher()
   let contentDiv: HTMLDivElement
@@ -61,8 +62,12 @@
   >
     <CheckCircle checked={item.checked} />
   </button>
+  <!-- svelte-ignore a11y-click-events-have-key-events -->
   <div bind:this={contentDiv} on:click={(ev) => handleClick(ev, item)} class="content" />
   <slot />
+  {#if targetPriority}
+  <span class="prio-level">{targetPriority}</span>
+  {/if}
 </li>
 
 <style>
@@ -101,5 +106,9 @@
   }
   .toggle:hover {
     opacity: 0.8;
+  }
+  .prio-level {
+    padding: 1px 6px;
+    font-size: var(--font-smallest);
   }
 </style>
