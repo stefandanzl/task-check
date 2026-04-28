@@ -1,24 +1,132 @@
 <script lang="ts">
   import type { App } from "obsidian"
 
-  import type { LookAndFeel, TodoGroup } from "src/_types"
-  import { navToFile } from "src/utils"
+  import type { LookAndFeel, TodoGroup, TodoItem } from "src/_types"
+  import { navToFile, setTodoPriority } from "src/utils"
   import ChecklistItem from "./ChecklistItem.svelte"
   import Icon from "./Icon.svelte"
+  import PriorityDropZone from "./PriorityDropZone.svelte"
+  import { dragState } from "./dragState"
 
   export let group: TodoGroup
   export let isCollapsed: boolean
   export let lookAndFeel: LookAndFeel
   export let app: App
   export let onToggle: (id: string) => void
+  export let priorityTag: string = ''
 
   function clickTitle(ev: MouseEvent) {
     if (group.type === "page") navToFile(app, group.id, ev)
   }
+
+  function groupTodosByPriority(todos: TodoItem[]): Map<number | null, TodoItem[]> {
+    const grouped = new Map<number | null, TodoItem[]>()
+    for (const todo of todos) {
+      const key = (todo.priority ?? 0) === 0 ? null : todo.priority!
+      if (!grouped.has(key)) grouped.set(key, [])
+      grouped.get(key)!.push(todo)
+    }
+    if (!grouped.has(null)) grouped.set(null, [])
+    return grouped
+  }
+
+  function getSortedPriorityKeys(grouped: Map<number | null, TodoItem[]>): (number | null)[] {
+    return Array.from(grouped.keys()).sort((a, b) => {
+      const av = a ?? 0
+      const bv = b ?? 0
+      if (av > 0 && bv > 0) return bv - av   // both positive: descending
+      if (av < 0 && bv < 0) return bv - av   // both negative: descending (-1 before -2)
+      if (av > 0) return -1                   // positive before neutral/negative
+      if (bv > 0) return 1
+      if (av === 0) return -1                 // neutral before negative
+      if (bv === 0) return 1
+      return 0
+    })
+  }
+
+  // upper/lower are the zone keys on each side of the drop position.
+  // null = neutral zone key, undefined = edge of list (nothing beyond).
+  function calculateNewPriority(upper: number | null | undefined, lower: number | null | undefined): number | null {
+    // Above the topmost zone (nothing above)
+    if (upper === undefined) {
+      if (lower === null || lower === 0) return 1   // above neutral only → lowest positive
+      if (lower > 0) return lower + 1               // above topmost positive → go higher
+      return lower                                  // above first negative (between neutral and it) → duplicate
+    }
+
+    // Below the bottommost zone (nothing below)
+    if (lower === undefined) {
+      if (upper === null || upper === 0) return -1  // below neutral → first negative
+      if (upper > 0) return 1                       // below last positive → lowest positive (between it and neutral)
+      return upper - 1                              // below last negative → go more negative
+    }
+
+    // Both zone keys are present
+    if (upper === null && lower === null) return null  // shouldn't happen
+
+    if (upper === null && lower < 0) return lower     // between neutral and first negative → duplicate first negative
+    if (upper > 0 && lower === null) return 1         // between last positive and neutral → lowest positive
+
+    if (upper > 0 && lower > 0) return lower + 1     // between two positives: fill gap or duplicate
+    if (upper < 0 && lower < 0) return upper - 1     // between two negatives: fill gap or duplicate
+
+    return null
+  }
+
+  function handleDropPosition(e: CustomEvent) {
+    const { item: draggedItemRef, dropPosition, targetPriority } = e.detail as {
+      item: { id: string }
+      dropPosition: 'above' | 'below' | 'into'
+      targetPriority: number | null
+    }
+
+    const item = group.todos.find(i => `${i.filePath}:${i.line}` === draggedItemRef.id)
+    if (!item) return
+
+    let newPriority: number | null
+
+    if (dropPosition === 'into') {
+      // Only neutral zone accepts 'into' drops; removes the priority tag
+      newPriority = null
+    } else {
+      const targetIndex = sortedKeys.findIndex(k => k === targetPriority)
+      // Use undefined (not null) for "edge of list" so we can distinguish it from the neutral zone key (null)
+      const upperPriority = dropPosition === 'above'
+        ? (targetIndex > 0 ? sortedKeys[targetIndex - 1] : undefined)
+        : targetPriority
+      const lowerPriority = dropPosition === 'above'
+        ? targetPriority
+        : (targetIndex < sortedKeys.length - 1 ? sortedKeys[targetIndex + 1] : undefined)
+
+      newPriority = calculateNewPriority(upperPriority, lowerPriority)
+    }
+
+    dragState.update(s => ({ ...s, inProgress: false, sourcePriority: null }))
+
+    const currentPriority = item.priority ?? 0
+    const newPriorityVal = newPriority ?? 0
+    if (currentPriority !== newPriorityVal) {
+      setTodoPriority(item, newPriority, priorityTag, app)
+    }
+  }
+
+  function handleDragStart(e: CustomEvent) {
+    const item = e.detail.item as TodoItem
+    dragState.update(s => ({ ...s, inProgress: true, sourcePriority: item.priority ?? 0, dragGroupId: group.id }))
+  }
+
+  function handleDragEnd() {
+    dragState.update(s => ({ ...s, inProgress: false, sourcePriority: null, dragGroupId: null }))
+  }
+
+  $: groupedTodos = priorityTag ? groupTodosByPriority(group.todos) : new Map()
+  $: sortedKeys = groupedTodos ? getSortedPriorityKeys(groupedTodos) : []
+  $: isMyDrag = $dragState.inProgress && $dragState.dragGroupId === group.id
 </script>
 
 <section class="group {group.className}">
   <header class={`group-header ${group.type}`}>
+    <!-- svelte-ignore a11y-click-events-have-key-events -->
     <div class="title" on:click={clickTitle}>
       {#if group.type === "page"}
         {group.pageName}
@@ -41,11 +149,47 @@
     </button>
   </header>
   {#if !isCollapsed}
-    <ul>
-      {#each group.todos as item}
-        <ChecklistItem {item} {lookAndFeel} {app} />
-      {/each}
-    </ul>
+    {#if priorityTag && groupedTodos}
+      <div class="priority-zones" class:dragging={isMyDrag}>
+        {#each sortedKeys as key, i (key ?? 'neutral')}
+          <PriorityDropZone
+            position="above"
+            targetPriority={key}
+            isDragging={isMyDrag}
+            on:drop={handleDropPosition}
+            on:dragStart={handleDragStart}
+            on:dragEnd={handleDragEnd}
+          />
+          <PriorityDropZone
+            position="into"
+            items={groupedTodos.get(key) ?? []}
+            targetPriority={key}
+            {lookAndFeel}
+            {app}
+            isDragging={isMyDrag}
+            on:drop={handleDropPosition}
+            on:dragStart={handleDragStart}
+            on:dragEnd={handleDragEnd}
+          />
+          {#if i === sortedKeys.length - 1}
+            <PriorityDropZone
+              position="below"
+              targetPriority={key}
+              isDragging={isMyDrag}
+              on:drop={handleDropPosition}
+              on:dragStart={handleDragStart}
+              on:dragEnd={handleDragEnd}
+            />
+          {/if}
+        {/each}
+      </div>
+    {:else}
+      <ul>
+        {#each group.todos as item}
+          <ChecklistItem {item} {lookAndFeel} {app} draggable={true} on:dragstart={handleDragStart} on:dragend={handleDragEnd} />
+        {/each}
+      </ul>
+    {/if}
   {/if}
 </section>
 

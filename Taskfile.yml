@@ -32,7 +32,7 @@ tasks:
 
   reload:
     cmds:
-      - obsidian plugin:reload id=smartsync
+      - obsidian plugin:reload id={{.PLUGIN}}
 
   reload-obsidian:
     cmds:

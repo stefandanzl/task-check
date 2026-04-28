@@ -22,6 +22,29 @@ export const removeTagFromText = (text: string, tag: string) => {
   return text.replace(new RegExp(`\\s?\\#${tag}[^\\s]*`, 'g'), '').trim()
 }
 
+export const parsePriorityTag = (text: string, priorityTagName: string): number | undefined => {
+  if (!text || !priorityTagName) return undefined
+  const priorityRegex = new RegExp(`#${priorityTagName}/(-?\\d+)`)
+  const match = text.match(priorityRegex)
+  if (match) {
+    const value = parseInt(match[1], 10)
+    if (value === 0) return undefined
+    return value
+  }
+  return undefined
+}
+
+export const removePriorityTagFromText = (text: string, priorityTagName: string): string => {
+  if (!text || !priorityTagName) return text
+  return text.replace(new RegExp(`\\s?#${priorityTagName}/-?\\d+`), '').trim()
+}
+
+export const addPriorityTagToText = (text: string, priorityTagName: string, priority: number): string => {
+  if (!text || !priorityTagName) return text
+  const cleanedText = removePriorityTagFromText(text, priorityTagName)
+  return `${cleanedText} #${priorityTagName}/${priority}`
+}
+
 export const getTagMeta = (tag: string): TagMeta => {
   const tagMatch = /^\#([^\/]+)\/?(.*)?$/.exec(tag)
   if (!tagMatch) return {main: null, sub: null}

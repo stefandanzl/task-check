@@ -101,6 +101,7 @@ export default class TodoListView extends ItemView {
       _hiddenTags: this.plugin.getSettingValue('_hiddenTags'),
       app: this.app,
       todoGroups: this.groupedItems,
+      priorityTag: this.plugin.getSettingValue('priorityTag'),
       updateSetting: (updates: Partial<TodoSettings>) => this.plugin.updateSettings(updates),
       onSearch: (val: string) => {
         this.searchTerm = val
@@ -119,6 +120,7 @@ export default class TodoListView extends ItemView {
       this.plugin.getSettingValue('showChecked'),
       this.plugin.getSettingValue('showAllTodos'),
       this.lastRerender,
+      this.plugin.getSettingValue('priorityTag'),
     )
     for (const [file, todos] of todosForUpdatedFiles) {
       this.itemsByFile.set(file.path, todos)
@@ -139,6 +141,7 @@ export default class TodoListView extends ItemView {
       this.plugin.getSettingValue('subGroups'),
       this.plugin.getSettingValue('sortDirectionSubGroups'),
       this.plugin.getSettingValue('baseTagFirst'),
+      this.plugin.getSettingValue('priorityTag'),
     )
   }
 

@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { App } from "obsidian"
+  import { createEventDispatcher } from "svelte"
 
   import type { LookAndFeel, TodoItem } from "src/_types"
   import { navToFile, toggleTodoItem } from "src/utils"
@@ -8,7 +9,9 @@
   export let item: TodoItem
   export let lookAndFeel: LookAndFeel
   export let app: App
+  export let draggable = false
 
+  const dispatch = createEventDispatcher()
   let contentDiv: HTMLDivElement
 
   const toggleItem = async (item: TodoItem) => {
@@ -29,12 +32,26 @@
       navToFile(app, item.filePath, ev, item?.line)
     }
   }
+
+  const handleDragStart = (e: DragEvent) => {
+    const dt = e.dataTransfer
+    if (dt) {
+      dt.setData('text/plain', `${item.filePath}:${item.line}`)
+      dt.effectAllowed = 'move'
+    }
+    dispatch('dragstart', { item })
+  }
+
+  const handleDragEnd = (e: DragEvent) => {
+    dispatch('dragend')
+  }
+
   $: {
     if (contentDiv) contentDiv.innerHTML = item.rawHTML
   }
 </script>
 
-<li class={`${lookAndFeel}`}>
+<li class={`${lookAndFeel}`} draggable={draggable} on:dragstart={handleDragStart} on:dragend={handleDragEnd}>
   <button
     class="toggle"
     on:click={(ev) => {
@@ -45,6 +62,7 @@
     <CheckCircle checked={item.checked} />
   </button>
   <div bind:this={contentDiv} on:click={(ev) => handleClick(ev, item)} class="content" />
+  <slot />
 </li>
 
 <style>

@@ -19,6 +19,7 @@ export interface TodoSettings {
   _collapsedSections: string[]
   _hiddenTags: string[]
   baseTagFirst: boolean
+  priorityTag: string
 }
 
 export const DEFAULT_SETTINGS: TodoSettings = {
@@ -37,6 +38,7 @@ export const DEFAULT_SETTINGS: TodoSettings = {
   _collapsedSections: [],
   _hiddenTags: [],
   baseTagFirst: false,
+  priorityTag: 'prio',
 }
 
 export class TodoSettingTab extends PluginSettingTab {
@@ -169,6 +171,22 @@ export class TodoSettingTab extends PluginSettingTab {
           await this.plugin.updateSettings({baseTagFirst: value})
         })
       })
+
+    /** PRIORITY */
+
+    this.containerEl.createEl('h2', {text: 'Priority'})
+
+    new Setting(this.containerEl)
+      .setName('Priority tag name')
+      .setDesc('Tag name for priority values. Tasks can use #tag/N format (e.g., #prio/2). Leave empty to disable priority sorting.')
+      .addText(text =>
+        text
+          .setPlaceholder('prio')
+          .setValue(this.plugin.getSettingValue('priorityTag'))
+          .onChange(async value => {
+            await this.plugin.updateSettings({priorityTag: value})
+          }),
+      )
 
     /** STYLING */
 

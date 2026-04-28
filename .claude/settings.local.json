@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(task default:*)"
+      "Bash(task default:*)",
+      "Bash(npm run *)"
     ]
   }
 }

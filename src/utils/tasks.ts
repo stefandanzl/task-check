@@ -6,6 +6,7 @@ import {highlightPlugin} from '../plugins/highlight'
 import {linkPlugin} from '../plugins/link'
 import {tagPlugin} from '../plugins/tag'
 import {
+  addPriorityTagToText,
   combineFileLines,
   extractTextFromTodoLine,
   getAllLinesFromFile,
@@ -15,6 +16,8 @@ import {
   getFrontmatterTags,
   getIndentationSpacesFromTodoLine,
   getTagMeta,
+  parsePriorityTag,
+  removePriorityTagFromText,
   retrieveTag,
   lineIsValidTodo,
   mapLinkMeta,
@@ -56,6 +59,7 @@ export const parseTodos = async (
   showChecked: boolean,
   showAllTodos: boolean,
   lastRerender: number,
+  priorityTag: string,
 ): Promise<Map<TFile, TodoItem[]>> => {
   const includePattern = includeFiles.trim()
     ? includeFiles.trim().split('\n')
@@ -100,7 +104,7 @@ export const parseTodos = async (
 
   const todosForUpdatedFiles = new Map<TFile, TodoItem[]>()
   for (const fileInfo of filesWithCache) {
-    let todos = findAllTodosInFile(fileInfo)
+    let todos = findAllTodosInFile(fileInfo, priorityTag)
     if (!showChecked) {
       todos = todos.filter(todo => !todo.checked)
     }
@@ -125,9 +129,37 @@ export const toggleTodoItem = async (item: TodoItem, app: App) => {
   item.checked = !item.checked
 }
 
-const findAllTodosInFile = (file: FileInfo): TodoItem[] => {
+export const setTodoPriority = async (
+  item: TodoItem,
+  newPriority: number | null,
+  priorityTag: string,
+  app: App,
+) => {
+  const file = getFileFromPath(app.vault, item.filePath)
+  if (!file) return
+  const currentFileContents = await app.vault.read(file)
+  const currentFileLines = getAllLinesFromFile(currentFileContents)
+  const currentLine = currentFileLines[item.line]
+  if (!currentLine.includes(item.originalText)) return
+
+  const rawText = extractTextFromTodoLine(currentLine)
+  let newText = rawText
+
+  if (newPriority === null) {
+    newText = removePriorityTagFromText(rawText, priorityTag)
+  } else {
+    newText = addPriorityTagToText(rawText, priorityTag, newPriority)
+  }
+
+  currentFileLines[item.line] = currentLine.replace(rawText, newText)
+  app.vault.modify(file, combineFileLines(currentFileLines))
+  item.priority = newPriority ?? undefined
+  item.originalText = newText
+}
+
+const findAllTodosInFile = (file: FileInfo, priorityTag: string): TodoItem[] => {
   if (!file.parseEntireFile)
-    return file.validTags.flatMap(tag => findAllTodosFromTagBlock(file, tag))
+    return file.validTags.flatMap(tag => findAllTodosFromTagBlock(file, tag, priorityTag))
 
   if (!file.content) return []
   const fileLines = getAllLinesFromFile(file.content)
@@ -147,14 +179,14 @@ const findAllTodosInFile = (file: FileInfo): TodoItem[] => {
     const line = fileLines[i]
     if (line.length === 0) continue
     if (lineIsValidTodo(line)) {
-      todos.push(formTodo(line, file, links, i, tagMeta))
+      todos.push(formTodo(line, file, links, i, tagMeta, priorityTag))
     }
   }
 
   return todos
 }
 
-const findAllTodosFromTagBlock = (file: FileInfo, tag: TagCache) => {
+const findAllTodosFromTagBlock = (file: FileInfo, tag: TagCache, priorityTag: string) => {
   const fileContents = file.content
   const links = []
   if (file.cache?.links) {
@@ -168,7 +200,7 @@ const findAllTodosFromTagBlock = (file: FileInfo, tag: TagCache) => {
   const tagMeta = getTagMeta(tag.tag)
   const tagLine = fileLines[tag.position.start.line]
   if (lineIsValidTodo(tagLine)) {
-    return [formTodo(tagLine, file, links, tag.position.start.line, tagMeta)]
+    return [formTodo(tagLine, file, links, tag.position.start.line, tagMeta, priorityTag)]
   }
 
   const todos: TodoItem[] = []
@@ -177,7 +209,7 @@ const findAllTodosFromTagBlock = (file: FileInfo, tag: TagCache) => {
     if (i === tag.position.start.line + 1 && line.length === 0) continue
     if (line.length === 0) break
     if (lineIsValidTodo(line)) {
-      todos.push(formTodo(line, file, links, i, tagMeta))
+      todos.push(formTodo(line, file, links, i, tagMeta, priorityTag))
     }
   }
 
@@ -190,6 +222,7 @@ const formTodo = (
   links: LinkCache[],
   lineNum: number,
   tagMeta?: TagMeta,
+  priorityTag?: string,
 ): TodoItem => {
   const relevantLinks = links
     .filter(link => link.position.start.line === lineNum)
@@ -198,6 +231,8 @@ const formTodo = (
   const rawText = extractTextFromTodoLine(line)
   const spacesIndented = getIndentationSpacesFromTodoLine(line)
   const tagStripped = removeTagFromText(rawText, tagMeta?.main)
+  const priority = parsePriorityTag(rawText, priorityTag ?? '')
+  const displayText = priorityTag ? removePriorityTagFromText(tagStripped, priorityTag) : tagStripped
   const md = new MD()
     .use(commentPlugin)
     .use(linkPlugin(linkMap))
@@ -213,11 +248,12 @@ const formTodo = (
     fileLabel: getFileLabelFromName(file.file.name),
     fileCreatedTs: file.file.stat.ctime,
     fileModifiedTs: file.file.stat.mtime,
-    rawHTML: md.render(tagStripped),
+    rawHTML: md.render(displayText),
     line: lineNum,
     spacesIndented,
     fileInfo: file,
     originalText: rawText,
+    priority,
   }
 }
 

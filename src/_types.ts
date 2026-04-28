@@ -14,6 +14,7 @@ export type TodoItem = {
   fileInfo: FileInfo
   originalText: string
   rawHTML: string
+  priority?: number
 }
 
 type BaseGroup = {

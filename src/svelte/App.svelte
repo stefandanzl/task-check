@@ -13,6 +13,7 @@
   export let onSearch: (str: string) => void
   export let app: App
   export let todoGroups: TodoGroup[] = []
+  export let priorityTag: string = ''
 
   const visibleTags = todoTags.filter((t) => !_hiddenTags.includes(t))
 
@@ -54,6 +55,7 @@
           {group}
           {app}
           {lookAndFeel}
+          {priorityTag}
           isCollapsed={_collapsedSections.includes(group.id)}
           onToggle={toggleGroup}
         />
