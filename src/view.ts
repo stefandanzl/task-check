@@ -132,7 +132,21 @@ export default class TodoListView extends ItemView {
     const viewOnlyOpen = this.plugin.getSettingValue('showOnlyActiveFile')
     const openFile = this.app.workspace.getActiveFile()
     const filteredItems = viewOnlyOpen ? flattenedItems.filter(i => i.filePath === openFile.path) : flattenedItems
-    const searchedItems = filteredItems.filter(e => e.originalText.toLowerCase().includes(this.searchTerm.toLowerCase()))
+    const searchLower = this.searchTerm.toLowerCase()
+    const searchedItems = filteredItems.filter(e => {
+      // Search in original text
+      if (e.originalText.toLowerCase().includes(searchLower)) return true
+      // Search in main tag
+      if (e.mainTag && e.mainTag.toLowerCase().includes(searchLower)) return true
+      // Search in sub tag
+      if (e.subTag && e.subTag.toLowerCase().includes(searchLower)) return true
+      // Search in combined "main/sub" format
+      if (e.mainTag && e.subTag) {
+        const combined = `#${e.mainTag}/${e.subTag}`.toLowerCase()
+        if (combined.includes(searchLower)) return true
+      }
+      return false
+    })
     this.groupedItems = groupTodos(
       searchedItems,
       this.plugin.getSettingValue('groupBy'),

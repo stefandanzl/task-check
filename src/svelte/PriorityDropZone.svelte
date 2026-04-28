@@ -228,8 +228,8 @@
     margin: 0;
     padding-inline-start: initial !important;
   }
-
+/* 
   .zone-items li {
     margin: 2px 0;
-  }
+  } */
 </style>

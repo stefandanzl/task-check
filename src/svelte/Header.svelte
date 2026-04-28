@@ -9,6 +9,7 @@
   export let onSearch: (str: string) => void
 
   let showPopover = false
+  let settingsButton: HTMLElement
   let search = ""
 </script>
 
@@ -21,17 +22,20 @@
     on:input={() => onSearch(search)}
   />
   <div class="settings-container">
-    <Icon
-      name="settings"
-      style="button"
-      on:click={(ev) => {
-        showPopover = !showPopover
-      }}
-    />
+    <!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
+    <div bind:this={settingsButton} class="settings-button-wrapper" role="button" tabindex="0">
+      <Icon
+        name="settings"
+        style="button"
+        on:click={() => {
+          showPopover = !showPopover
+        }}
+      />
+    </div>
     {#if showPopover}
       <div
-        use:clickOutside
-        on:click_outside={(ev) => {
+        use:clickOutside={{ exclude: settingsButton }}
+        on:click_outside={() => {
           showPopover = false
         }}
         class="popover"
@@ -95,6 +99,12 @@
     display: flex;
     align-items: center;
     position: relative;
+  }
+
+  .settings-button-wrapper {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
   }
 
   .popover {
