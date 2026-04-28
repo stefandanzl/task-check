@@ -1,6 +1,5 @@
 <script lang="ts">
   import Icon from "./Icon.svelte"
-  import { clickOutside } from "./clickOutside.directive"
 
   export let todoTags: string[]
   export let hiddenTags: string[]
@@ -8,134 +7,200 @@
   export let onTagStatusChange: (tag: string, status: boolean) => void
   export let onSearch: (str: string) => void
 
-  let showPopover = false
-  let settingsButton: HTMLElement
+  let showSettings = false
   let search = ""
+  let searchInput: HTMLInputElement
+
+  function clearSearch() {
+    search = ""
+    onSearch("")
+    searchInput?.focus()
+  }
+
+  function toggleTag(tag: string) {
+    onTagStatusChange(tag, hiddenTags.includes(tag))
+  }
 </script>
 
 <div class="container">
-  <input
-    disabled={disableSearch && !search}
-    class="search"
-    placeholder="Search tasks"
-    bind:value={search}
-    on:input={() => onSearch(search)}
-  />
-  <div class="settings-container">
-    <!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
-    <div bind:this={settingsButton} class="settings-button-wrapper" role="button" tabindex="0">
-      <Icon
-        name="settings"
-        style="button"
-        on:click={() => {
-          showPopover = !showPopover
-        }}
+  <div class="header-row">
+    <div class="search-input-wrapper">
+      <input
+        disabled={disableSearch && !search}
+        class="search"
+        placeholder="Search tasks"
+        bind:value={search}
+        bind:this={searchInput}
+        on:input={() => onSearch(search)}
       />
+      {#if search}
+        <!-- svelte-ignore a11y-click-events-have-key-events -->
+        <div class="search-clear-button" on:click={clearSearch} role="button" tabindex="0" aria-label="Clear search">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </div>
+      {/if}
     </div>
-    {#if showPopover}
-      <div
-        use:clickOutside={{ exclude: settingsButton }}
-        on:click_outside={() => {
-          showPopover = false
-        }}
-        class="popover"
-      >
-        <section>
-          <div class="section-title">Show Tags?</div>
-          {#each todoTags as tag}
-            <div class="checkbox-item">
-              <label
-                ><input
-                  type="checkbox"
-                  checked={!hiddenTags.includes(tag)}
-                  on:click|preventDefault={(ev) => onTagStatusChange(tag, hiddenTags.includes(tag))}
-                /><span class="hash">#</span>{tag}</label
-              >
-            </div>
-          {/each}
-          {#if todoTags.length === 0}
-            <div class="empty">No tags specified</div>
-          {/if}
-        </section>
-      </div>
-    {/if}
+    <!-- svelte-ignore a11y-click-events-have-key-events -->
+    <div
+      class="settings-button clickable-icon {showSettings ? 'is-active' : ''}"
+      role="button"
+      tabindex="0"
+      on:click={() => showSettings = !showSettings}
+      aria-label="Search settings"
+    >
+      <Icon name="settings" style="button" />
+    </div>
   </div>
+
+  {#if showSettings}
+    <div class="settings-panel">
+      <div class="settings-title">Show Tags</div>
+      {#each todoTags as tag}
+        <div class="tag-checkbox-item">
+          <label class="task-list-label">
+            <input class="task-list-item-checkbox" type="checkbox" checked={!hiddenTags.includes(tag)} on:change={() => toggleTag(tag)} />
+            <span><span class="hash">#</span>{tag}</span>
+          </label>
+        </div>
+      {/each}
+      {#if todoTags.length === 0}
+        <div class="empty">No tags specified</div>
+      {/if}
+    </div>
+  {/if}
 </div>
 
 <style>
+  input.task-list-item-checkbox:hover {
+    background-color: var(--interactive-hover);
+  }
   .empty {
     color: var(--text-faint);
     text-align: center;
-    margin-top: 32px;
+    margin-top: 16px;
     font-style: italic;
+    font-size: var(--font-ui-small);
   }
 
   .container {
-    height: 32px;
-    margin-bottom: 12px;
     display: flex;
-    flex-direction: row;
-    gap: 12px;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .header-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .search-input-wrapper {
+    flex: 1;
+    position: relative;
+    display: flex;
     align-items: center;
   }
 
   .search {
-    flex: 1;
-    background: var(--checklist-searchBackground);
-    border: none;
-    font-size: var(--checklist-contentFontSize);
-    border-radius: var(--checklist-listItemBorderRadius);
-    padding: 0px 8px;
-    color: var(--checklist-textColor);
-    height: 100%;
+    width: 100%;
+    background: var(--background-modifier-form-field);
+    border: 1px solid var(--background-modifier-border);
+    font-size: var(--font-ui-medium);
+    border-radius: var(--input-radius);
+    padding: 8px 32px 8px 8px;
+    color: var(--text-normal);
+    height: 36px;
+    box-sizing: border-box;
   }
 
   .search:focus {
-    box-shadow: 0 0 0 2px var(--checklist-accentColor);
+    border-color: var(--interactive-accent);
+    box-shadow: 0 0 0 2px var(--background-modifier-border-hover);
   }
 
-  .settings-container {
-    flex-shrink: 1;
-    display: flex;
-    align-items: center;
-    position: relative;
+  .search:disabled {
+    opacity: 0.5;
   }
 
-  .settings-button-wrapper {
+  .search-clear-button {
+    position: absolute;
+    right: 8px;
     display: flex;
     align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--text-faint);
+    padding: 2px;
+    border-radius: 4px;
+  }
+
+  .search-clear-button:hover {
+    color: var(--text-normal);
+    background: var(--background-modifier-hover);
+  }
+
+  .settings-button {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: var(--input-radius);
+    color: var(--text-faint);
+    transition: color 0.15s ease, background-color 0.15s ease;
+  }
+
+  .settings-button:hover {
+    color: var(--text-normal);
+    background: var(--background-modifier-hover);
+  }
+
+  .settings-button.is-active {
+    color: var(--interactive-accent);
+    background: var(--background-modifier-border-hover);
+  }
+
+  .settings-panel {
+    background: var(--background-secondary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 6px;
+    padding: 12px;
+    max-height: 300px;
+    overflow-y: auto;
+  }
+
+  .settings-title {
+    font-weight: 600;
+    margin-bottom: 8px;
+    font-size: var(--font-ui-small);
+    color: var(--text-normal);
+  }
+
+  .tag-checkbox-item {
+    padding: 4px 0;
+  }
+
+  .task-list-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-size: var(--font-ui-small);
+    color: var(--text-normal);
+  }
+
+  .task-list-item-checkbox {
+    margin: 0;
     cursor: pointer;
   }
 
-  .popover {
-    position: absolute;
-    top: 32px;
-    right: 0px;
-    width: 300px;
-    padding: 12px;
-    border-radius: var(--checklist-listItemBorderRadius);
-    background: var(--checklist-searchBackground);
-    box-shadow: 0 2px 4px var(--background-modifier-cover);
-    z-index: 10;
-  }
-
-  .section-title {
-    font-weight: bold;
-    margin-bottom: 8px;
-  }
-
-  section {
-    margin-bottom: 24px;
-  }
-
-  .checkbox-item label {
-    gap: 4px;
-    display: flex;
-    align-items: center;
-    height: 28px;
-  }
-
   .hash {
-    color: var(--checklist-tagBaseColor);
+    color: var(--text-accent);
+    font-weight: 500;
+  }
+
+  .clickable-icon {
+    cursor: pointer;
   }
 </style>
