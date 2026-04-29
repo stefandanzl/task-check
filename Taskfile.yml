@@ -30,6 +30,12 @@ tasks:
     cmds:
       - npm run build
 
+  meta:
+    cmds:
+      # - cmd: tsc -noEmit -skipLibCheck
+      #   ignore_error: true
+      - node esbuild.config.mjs production meta
+
   reload:
     cmds:
       - obsidian plugin:reload id={{.PLUGIN}}
