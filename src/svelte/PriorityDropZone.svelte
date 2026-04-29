@@ -11,6 +11,11 @@
   export let app: App | undefined = undefined
   export let isDragging: boolean = false
   export let shouldHide: boolean = false
+  export let maxTasksPerGroup: number | null = null
+  export let totalItems: number = items.length
+  export let showAllMap: Record<string, boolean> = {}
+  export let onToggleShowAll: (className: string) => void = () => {}
+  export let groupId: string = ''
 
   const dispatch = createEventDispatcher()
   let isDragOver = false
@@ -57,6 +62,10 @@
 
   $: displayLabel = targetPriority === null ? 'Neutral' : `Priority ${targetPriority}`
   $: zoneClass = `${position}-zone ${targetPriority === null ? 'neutral' : targetPriority > 0 ? 'positive' : 'negative'}`
+
+  $: isShowingAll = showAllMap[groupId] || false
+  $: visibleItems = maxTasksPerGroup && !isShowingAll ? items.slice(0, maxTasksPerGroup) : items
+  $: showButton = maxTasksPerGroup && totalItems > maxTasksPerGroup && !isShowingAll
 </script>
 
 {#if position === 'into'}
@@ -78,7 +87,7 @@
           <span class="zone-count">{items.length}</span>
         </div>
         <ul class="zone-items">
-          {#each items as item (item.filePath + ':' + item.line)}
+          {#each visibleItems as item (item.filePath + ':' + item.line)}
             <ChecklistItem
               {item}
               lookAndFeel={lookAndFeel ?? 'classic'}
@@ -89,6 +98,11 @@
             />
           {/each}
         </ul>
+        {#if showButton}
+          <button class="show-all-button" on:click={() => onToggleShowAll(groupId)}>
+            Show all ({totalItems})
+          </button>
+        {/if}
       {:else if isDragging}
         <span class="neutral-label">Drop here to remove priority</span>
       {/if}
@@ -100,19 +114,24 @@
         <span class="zone-count">{items.length}</span>
       </div>
       <ul class="zone-items">
-        {#each items as item (item.filePath + ':' + item.line)}
+        {#each visibleItems as item (item.filePath + ':' + item.line)}
           <ChecklistItem
             {item}
             lookAndFeel={lookAndFeel ?? 'classic'}
             {app}
             draggable={true}
-            
+
             on:dragstart={forwardDragStart}
             on:dragend={forwardDragEnd}
             {targetPriority}
           />
         {/each}
       </ul>
+      {#if showButton}
+        <button class="show-all-button" on:click={() => onToggleShowAll(groupId)}>
+          Show all ({totalItems})
+        </button>
+      {/if}
     </div>
   {/if}
 {:else}
@@ -228,7 +247,27 @@
     margin: 0;
     padding-inline-start: initial !important;
   }
-/* 
+
+  .show-all-button {
+    /* width: calc(100% - 8px); */
+    width: 40%;
+    margin: auto;
+    padding: 6px;
+    background: var(--background-modifier-hover);
+    border: none;
+    border-radius: 4px;
+    color: var(--text-normal);
+    cursor: pointer;
+    font-size: var(--font-ui-small);
+    transition: background 0.15s ease;
+    display: block !important;
+    visibility: visible !important;
+  }
+
+  .show-all-button:hover {
+    background: var(--background-modifier-border-hover);
+  }
+/*
   .zone-items li {
     margin: 2px 0;
   } */

@@ -14,6 +14,22 @@
   export let app: App
   export let onToggle: (id: string) => void
   export let priorityTag: string = ''
+  export let maxTasksPerGroup: number | null = null
+  export let showAllMap: Record<string, boolean> = {}
+  export let onToggleShowAll: (className: string) => void = () => {}
+
+  function toggleShowAll() {
+    onToggleShowAll(group.className)
+  }
+
+  function isGroupShowingAll(): boolean {
+    return showAllMap[group.className] || false
+  }
+
+  function getVisibleItemsForZone(key: number | null): TodoItem[] {
+    const items = groupedTodos.get(key) ?? []
+    return items
+  }
 
   function clickTitle(ev: MouseEvent) {
     if (group.type === "page") navToFile(app, group.id, ev)
@@ -210,7 +226,7 @@
           />
           <PriorityDropZone
             position="into"
-            items={groupedTodos.get(key) ?? []}
+            items={getVisibleItemsForZone(key)}
             targetPriority={key}
             {lookAndFeel}
             {app}
@@ -218,6 +234,11 @@
             on:drop={handleDropPosition}
             on:dragStart={handleDragStart}
             on:dragEnd={handleDragEnd}
+            {maxTasksPerGroup}
+            showAllMap={showAllMap}
+            onToggleShowAll={onToggleShowAll}
+            groupId={group.className}
+            totalItems={(groupedTodos.get(key) ?? []).length}
           />
           {#if i === sortedKeys.length - 1}
             <PriorityDropZone
@@ -234,10 +255,15 @@
       </div>
     {:else}
       <ul>
-        {#each group.todos as item}
-          <ChecklistItem {item} {lookAndFeel} {app} draggable={true} on:dragstart={handleDragStart} on:dragend={handleDragEnd} />
+        {#each group.todos as item, i}
+          <ChecklistItem {item} {lookAndFeel} {app} draggable={true} on:dragstart={handleDragStart} on:dragend={handleDragEnd} hidden={i > maxTasksPerGroup && !isGroupShowingAll()}/>
         {/each}
       </ul>
+      {#if maxTasksPerGroup && group.todos.length > maxTasksPerGroup && !isGroupShowingAll()}
+      <button class="show-more-button" on:click={toggleShowAll}>
+        Show all ({group.todos.length})
+      </button>
+      {/if}
     {/if}
   {/if}
 </section>
@@ -310,5 +336,27 @@
 
   .collapse {
     width: initial;
+  }
+
+  .show-more-container {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .show-more-button {
+    width: 100%;
+    padding: 8px;
+    background: var(--background-modifier-hover);
+    border: none;
+    border-radius: 4px;
+    color: var(--text-normal);
+    cursor: pointer;
+    font-size: var(--font-ui-small);
+    transition: background 0.15s ease;
+  }
+
+  .show-more-button:hover {
+    background: var(--background-modifier-border-hover);
   }
 </style>

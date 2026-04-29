@@ -20,6 +20,7 @@ export interface TodoSettings {
   _hiddenTags: string[]
   baseTagFirst: boolean
   priorityTag: string
+  maxTasksPerGroup: number | null
 }
 
 export const DEFAULT_SETTINGS: TodoSettings = {
@@ -39,6 +40,7 @@ export const DEFAULT_SETTINGS: TodoSettings = {
   _hiddenTags: [],
   baseTagFirst: false,
   priorityTag: 'prio',
+  maxTasksPerGroup: 5,
 }
 
 export class TodoSettingTab extends PluginSettingTab {
@@ -108,6 +110,19 @@ export class TodoSettingTab extends PluginSettingTab {
           await this.plugin.updateSettings({showOnlyActiveFile: value})
         })
       })
+
+    new Setting(this.containerEl)
+      .setName('Max tasks per group')
+      .setDesc('Maximum number of tasks to show per group. Leave empty or 0 to show all tasks.')
+      .addText(text =>
+        text
+          .setPlaceholder('5')
+          .setValue(this.plugin.getSettingValue('maxTasksPerGroup')?.toString() ?? '')
+          .onChange(async value => {
+            const num = value === '' ? null : parseInt(value, 10)
+            await this.plugin.updateSettings({maxTasksPerGroup: isNaN(num ?? NaN) ? null : num ?? null})
+          }),
+      )
 
     /** GROUPING & SORTING */
 

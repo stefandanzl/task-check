@@ -102,6 +102,7 @@ export default class TodoListView extends ItemView {
       app: this.app,
       todoGroups: this.groupedItems,
       priorityTag: this.plugin.getSettingValue('priorityTag'),
+      maxTasksPerGroup: this.plugin.getSettingValue('maxTasksPerGroup'),
       updateSetting: (updates: Partial<TodoSettings>) => this.plugin.updateSettings(updates),
       onSearch: (val: string) => {
         this.searchTerm = val

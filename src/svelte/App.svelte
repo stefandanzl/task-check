@@ -14,6 +14,10 @@
   export let app: App
   export let todoGroups: TodoGroup[] = []
   export let priorityTag: string = ''
+  export let maxTasksPerGroup: number | null = null
+
+  // Track which groups have their "Show all" button clicked
+  let showAllMap: Record<string, boolean> = {}
 
   const visibleTags = todoTags.filter((t) => !_hiddenTags.includes(t))
 
@@ -28,6 +32,10 @@
     const newHiddenTags = _hiddenTags.filter((t) => t !== tag)
     if (!status) newHiddenTags.push(tag)
     updateSetting({ _hiddenTags: newHiddenTags })
+  }
+
+  function handleToggleShowAll(groupClass: string) {
+    showAllMap = { ...showAllMap, [groupClass]: !showAllMap[groupClass] }
   }
 </script>
 
@@ -56,6 +64,9 @@
           {app}
           {lookAndFeel}
           {priorityTag}
+          {maxTasksPerGroup}
+          showAllMap={showAllMap}
+          onToggleShowAll={handleToggleShowAll}
           isCollapsed={_collapsedSections.includes(group.id)}
           onToggle={toggleGroup}
         />
