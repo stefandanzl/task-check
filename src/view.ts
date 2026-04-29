@@ -128,25 +128,67 @@ export default class TodoListView extends ItemView {
     }
   }
 
+  private parseSearchQuery(query: string): string[][] {
+    if (!query.trim()) return []
+
+    const terms: string[][] = []
+    const orGroups = query.split(/\s+OR\s+/i)
+
+    for (const group of orGroups) {
+      const andTerms: string[] = []
+
+      // Extract quoted phrases first
+      const quotedRegex = /"([^"]+)"/g
+      let match
+      let remaining = group
+
+      while ((match = quotedRegex.exec(group)) !== null) {
+        andTerms.push(match[1].toLowerCase())
+        remaining = remaining.replace(match[0], '')
+      }
+
+      // Split remaining by AND or whitespace
+      const remainingTerms = remaining.split(/\s+AND\s+|\s+/i).filter(t => t.trim())
+      for (const term of remainingTerms) {
+        andTerms.push(term.toLowerCase())
+      }
+
+      if (andTerms.length > 0) {
+        terms.push(andTerms)
+      }
+    }
+
+    return terms.length > 0 ? terms : []
+  }
+
+  private itemMatchesSearch(item: TodoItem, searchTerms: string[]): boolean {
+    const lowerText = item.originalText.toLowerCase()
+    const lowerMainTag = item.mainTag?.toLowerCase() ?? ''
+    const lowerSubTag = item.subTag?.toLowerCase() ?? ''
+    const combined = item.mainTag && item.subTag ? `#${item.mainTag}/${item.subTag}`.toLowerCase() : ''
+
+    return searchTerms.every(term =>
+      lowerText.includes(term) ||
+      lowerMainTag.includes(term) ||
+      lowerSubTag.includes(term) ||
+      combined.includes(term)
+    )
+  }
+
   private groupItems() {
     const flattenedItems = Array.from(this.itemsByFile.values()).flat()
     const viewOnlyOpen = this.plugin.getSettingValue('showOnlyActiveFile')
     const openFile = this.app.workspace.getActiveFile()
     const filteredItems = viewOnlyOpen ? flattenedItems.filter(i => i.filePath === openFile.path) : flattenedItems
-    const searchLower = this.searchTerm.toLowerCase()
+
+    const searchQuery = this.parseSearchQuery(this.searchTerm)
     const searchedItems = filteredItems.filter(e => {
-      // Search in original text
-      if (e.originalText.toLowerCase().includes(searchLower)) return true
-      // Search in main tag
-      if (e.mainTag && e.mainTag.toLowerCase().includes(searchLower)) return true
-      // Search in sub tag
-      if (e.subTag && e.subTag.toLowerCase().includes(searchLower)) return true
-      // Search in combined "main/sub" format
-      if (e.mainTag && e.subTag) {
-        const combined = `#${e.mainTag}/${e.subTag}`.toLowerCase()
-        if (combined.includes(searchLower)) return true
-      }
-      return false
+      if (searchQuery.length === 0) return true
+      // OR logic: match ANY group
+      return searchQuery.some(andTerms =>
+        // AND logic within group: match ALL terms
+        this.itemMatchesSearch(e, andTerms)
+      )
     })
     this.groupedItems = groupTodos(
       searchedItems,

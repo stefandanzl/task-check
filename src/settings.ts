@@ -30,7 +30,7 @@ export const DEFAULT_SETTINGS: TodoSettings = {
   showOnlyActiveFile: false,
   autoRefresh: true,
   subGroups: false,
-  groupBy: 'page',
+  groupBy: 'tag',
   sortDirectionItems: 'created: new->old',
   sortDirectionGroups: 'created: new->old',
   sortDirectionSubGroups: 'created: new->old',
@@ -38,7 +38,7 @@ export const DEFAULT_SETTINGS: TodoSettings = {
   lookAndFeel: 'classic',
   _collapsedSections: [],
   _hiddenTags: [],
-  baseTagFirst: false,
+  baseTagFirst: true,
   priorityTag: 'prio',
   maxTasksPerGroup: 5,
 }
@@ -111,26 +111,14 @@ export class TodoSettingTab extends PluginSettingTab {
         })
       })
 
-    new Setting(this.containerEl)
-      .setName('Max tasks per group')
-      .setDesc('Maximum number of tasks to show per group. Leave empty or 0 to show all tasks.')
-      .addText(text =>
-        text
-          .setPlaceholder('5')
-          .setValue(this.plugin.getSettingValue('maxTasksPerGroup')?.toString() ?? '')
-          .onChange(async value => {
-            const num = value === '' ? null : parseInt(value, 10)
-            await this.plugin.updateSettings({maxTasksPerGroup: isNaN(num ?? NaN) ? null : num ?? null})
-          }),
-      )
 
     /** GROUPING & SORTING */
 
     this.containerEl.createEl('h2', {text: 'Grouping & Sorting'})
 
     new Setting(this.containerEl).setName('Group By').addDropdown(dropdown => {
-      dropdown.addOption('page', 'Page')
       dropdown.addOption('tag', 'Tag')
+      dropdown.addOption('page', 'Page')
       dropdown.setValue(this.plugin.getSettingValue('groupBy'))
       dropdown.onChange(async (value: GroupByType) => {
         await this.plugin.updateSettings({groupBy: value})
@@ -140,10 +128,10 @@ export class TodoSettingTab extends PluginSettingTab {
     new Setting(this.containerEl)
       .setName('Item Sort')
       .addDropdown(dropdown => {
-        dropdown.addOption('a->z', 'A -> Z')
-        dropdown.addOption('z->a', 'Z -> A')
         dropdown.addOption('created: new->old', 'Created: New -> Old')
         dropdown.addOption('created: old->new', 'Created: Old -> New')
+        dropdown.addOption('a->z', 'A -> Z')
+        dropdown.addOption('z->a', 'Z -> A')
         dropdown.addOption('modified: new->old', 'Modified: New -> Old')
         dropdown.addOption('modified: old->new', 'Modified: Old -> New')
         dropdown.setValue(this.plugin.getSettingValue('sortDirectionItems'))
@@ -160,10 +148,10 @@ export class TodoSettingTab extends PluginSettingTab {
     new Setting(this.containerEl)
       .setName('Group Sort')
       .addDropdown(dropdown => {
-        dropdown.addOption('a->z', 'A -> Z')
-        dropdown.addOption('z->a', 'Z -> A')
         dropdown.addOption('created: new->old', 'Created: New -> Old')
         dropdown.addOption('created: old->new', 'Created: Old -> New')
+        dropdown.addOption('a->z', 'A -> Z')
+        dropdown.addOption('z->a', 'Z -> A')
         dropdown.addOption('modified: new->old', 'Modified: New -> Old')
         dropdown.addOption('modified: old->new', 'Modified: Old -> New')
         dropdown.setValue(this.plugin.getSettingValue('sortDirectionGroups'))
@@ -186,6 +174,19 @@ export class TodoSettingTab extends PluginSettingTab {
           await this.plugin.updateSettings({baseTagFirst: value})
         })
       })
+
+    new Setting(this.containerEl)
+      .setName('Max tasks per group')
+      .setDesc('Maximum number of tasks to show per group before having to expand with button. Leave empty or 0 to show all tasks.')
+      .addText(text =>
+        text
+          .setPlaceholder('5')
+          .setValue(this.plugin.getSettingValue('maxTasksPerGroup')?.toString() ?? '')
+          .onChange(async value => {
+            const num = value === '' ? null : parseInt(value, 10)
+            await this.plugin.updateSettings({maxTasksPerGroup: isNaN(num ?? NaN) ? null : num ?? null})
+          }),
+      )
 
     /** PRIORITY */
 
