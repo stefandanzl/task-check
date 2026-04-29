@@ -22,14 +22,7 @@
     onToggleShowAll(group.className)
   }
 
-  function isGroupShowingAll(): boolean {
-    return showAllMap[group.className] || false
-  }
-
-  function getVisibleItemsForZone(key: number | null): TodoItem[] {
-    const items = groupedTodos.get(key) ?? []
-    return items
-  }
+  $: isGroupShowingAll = showAllMap[group.className] || false
 
   function clickTitle(ev: MouseEvent) {
     if (group.type === "page") navToFile(app, group.id, ev)
@@ -58,6 +51,43 @@
       if (bv === 0) return 1
       return 0
     })
+  }
+
+  // Distributes maxTasksPerGroup across all priority zones, preferring higher priorities
+  // Returns a Map of zone key -> visible items for that zone
+  function getVisibleItemsPerZone(
+    grouped: Map<number | null, TodoItem[]>,
+    keys: (number | null)[],
+    maxTasks: number | null,
+    showingAll: boolean
+  ): Map<number | null, TodoItem[]> {
+    const result = new Map<number | null, TodoItem[]>()
+
+    if (!grouped || grouped.size === 0) {
+      return result
+    }
+
+    if (!maxTasks || showingAll) {
+      for (const [key, items] of grouped.entries()) {
+        result.set(key, items)
+      }
+      return result
+    }
+
+    let remaining = maxTasks
+    for (const key of keys) {
+      const items = grouped.get(key) ?? []
+      if (remaining <= 0) {
+        result.set(key, [])
+      } else if (items.length <= remaining) {
+        result.set(key, items)
+        remaining -= items.length
+      } else {
+        result.set(key, items.slice(0, remaining))
+        remaining = 0
+      }
+    }
+    return result
   }
 
   // upper/lower are the zone keys on each side of the drop position.
@@ -158,6 +188,7 @@
 
   $: groupedTodos = priorityTag ? groupTodosByPriority(group.todos) : new Map()
   $: sortedKeys = groupedTodos ? getSortedPriorityKeys(groupedTodos) : []
+  $: visibleItemsPerZone = getVisibleItemsPerZone(groupedTodos, sortedKeys, maxTasksPerGroup, isGroupShowingAll)
   $: isMyDrag = $dragState.inProgress && $dragState.dragGroupId === group.id
 
   // Check if the source priority level has only one task
@@ -226,7 +257,7 @@
           />
           <PriorityDropZone
             position="into"
-            items={getVisibleItemsForZone(key)}
+            items={visibleItemsPerZone.get(key) ?? []}
             targetPriority={key}
             {lookAndFeel}
             {app}
@@ -234,11 +265,6 @@
             on:drop={handleDropPosition}
             on:dragStart={handleDragStart}
             on:dragEnd={handleDragEnd}
-            {maxTasksPerGroup}
-            showAllMap={showAllMap}
-            onToggleShowAll={onToggleShowAll}
-            groupId={group.className}
-            totalItems={(groupedTodos.get(key) ?? []).length}
           />
           {#if i === sortedKeys.length - 1}
             <PriorityDropZone
@@ -253,15 +279,28 @@
           {/if}
         {/each}
       </div>
+      {#if maxTasksPerGroup && group.todos.length > maxTasksPerGroup && !isGroupShowingAll}
+        <button class="show-more-button" on:click={toggleShowAll}>
+          Show all ({group.todos.length})
+        </button>
+      {:else if maxTasksPerGroup && group.todos.length > maxTasksPerGroup && isGroupShowingAll}
+        <button class="show-more-button" on:click={toggleShowAll}>
+          Hide some
+        </button>
+      {/if}
     {:else}
       <ul>
         {#each group.todos as item, i}
-          <ChecklistItem {item} {lookAndFeel} {app} draggable={true} on:dragstart={handleDragStart} on:dragend={handleDragEnd} hidden={i > maxTasksPerGroup && !isGroupShowingAll()}/>
+          <ChecklistItem {item} {lookAndFeel} {app} draggable={true} on:dragstart={handleDragStart} on:dragend={handleDragEnd} />
         {/each}
       </ul>
-      {#if maxTasksPerGroup && group.todos.length > maxTasksPerGroup && !isGroupShowingAll()}
+      {#if maxTasksPerGroup && group.todos.length > maxTasksPerGroup && !isGroupShowingAll}
       <button class="show-more-button" on:click={toggleShowAll}>
         Show all ({group.todos.length})
+      </button>
+      {:else if maxTasksPerGroup && group.todos.length > maxTasksPerGroup && isGroupShowingAll}
+        <button class="show-more-button" on:click={toggleShowAll}>
+        Collapse ({group.todos.length})
       </button>
       {/if}
     {/if}

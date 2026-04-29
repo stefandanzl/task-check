@@ -22,7 +22,7 @@
   }
 </script>
 
-<div class="container">
+<div class="task-search-settings">
   <div class="header-row">
     <div class="search-input-wrapper">
       <input
@@ -82,10 +82,12 @@
     font-size: var(--font-ui-small);
   }
 
-  .container {
+  .task-search-settings {
     display: flex;
     flex-direction: column;
     gap: 8px;
+    margin-bottom: 5px;
+
   }
 
   .header-row {

@@ -11,7 +11,6 @@
   export let app: App
   export let draggable = false
   export let targetPriority = null
-  export let hidden = false
 
   const dispatch = createEventDispatcher()
   let contentDiv: HTMLDivElement
