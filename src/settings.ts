@@ -21,6 +21,7 @@ export interface TodoSettings {
   baseTagFirst: boolean
   priorityTag: string
   maxTasksPerGroup: number | null
+  enableLimit: boolean
 }
 
 export const DEFAULT_SETTINGS: TodoSettings = {
@@ -41,6 +42,7 @@ export const DEFAULT_SETTINGS: TodoSettings = {
   baseTagFirst: true,
   priorityTag: 'prio',
   maxTasksPerGroup: 5,
+  enableLimit: true,
 }
 
 export class TodoSettingTab extends PluginSettingTab {
@@ -187,6 +189,16 @@ export class TodoSettingTab extends PluginSettingTab {
             await this.plugin.updateSettings({maxTasksPerGroup: isNaN(num ?? NaN) ? null : num ?? null})
           }),
       )
+
+    new Setting(this.containerEl)
+      .setName('Enable task limit')
+      .setDesc('Toggle the task limit feature on or off.')
+      .addToggle(toggle => {
+        toggle.setValue(this.plugin.getSettingValue('enableLimit'))
+        toggle.onChange(async value => {
+          await this.plugin.updateSettings({enableLimit: value})
+        })
+      })
 
     /** PRIORITY */
 

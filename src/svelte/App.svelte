@@ -11,10 +11,12 @@
   export let _hiddenTags: string[]
   export let updateSetting: (updates: Partial<TodoSettings>) => Promise<void>
   export let onSearch: (str: string) => void
+  export let onCopyTasks: () => string = () => ''
   export let app: App
   export let todoGroups: TodoGroup[] = []
   export let priorityTag: string = ''
   export let maxTasksPerGroup: number | null = null
+  export let enableLimit: boolean = true
 
   // Track which groups have their "Show all" button clicked
   let showAllMap: Record<string, boolean> = {}
@@ -46,6 +48,9 @@
       hiddenTags={_hiddenTags}
       onTagStatusChange={updateTagStatus}
       {onSearch}
+      {onCopyTasks}
+      {enableLimit}
+      {updateSetting}
     />
     {#if todoGroups.length === 0}
       <div class="empty">
@@ -65,6 +70,7 @@
           {lookAndFeel}
           {priorityTag}
           {maxTasksPerGroup}
+          {enableLimit}
           showAllMap={showAllMap}
           onToggleShowAll={handleToggleShowAll}
           isCollapsed={_collapsedSections.includes(group.id)}

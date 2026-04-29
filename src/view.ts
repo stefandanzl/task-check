@@ -103,12 +103,43 @@ export default class TodoListView extends ItemView {
       todoGroups: this.groupedItems,
       priorityTag: this.plugin.getSettingValue('priorityTag'),
       maxTasksPerGroup: this.plugin.getSettingValue('maxTasksPerGroup'),
+      enableLimit: this.plugin.getSettingValue('enableLimit'),
+      groupBy: this.plugin.getSettingValue('groupBy'),
       updateSetting: (updates: Partial<TodoSettings>) => this.plugin.updateSettings(updates),
       onSearch: (val: string) => {
         this.searchTerm = val
         this.refresh()
       },
+      onCopyTasks: this.handleCopyTasks.bind(this),
     }
+  }
+
+  private handleCopyTasks(): string {
+    const lines: string[] = []
+
+    for (const group of this.groupedItems) {
+      // Add group title if grouping by page
+      if (this.plugin.getSettingValue('groupBy') === 'page' && (group as any).pageName) {
+        lines.push((group as any).pageName)
+      } else if (this.plugin.getSettingValue('groupBy') === 'tag' && (group as any).mainTag) {
+        const mainTag = (group as any).mainTag
+        const subTags = (group as any).subTags ?? ""
+        const header = subTags ? `${mainTag}/${subTags}` : mainTag
+        lines.push(header)
+      }
+
+      // Add all tasks in this group
+      for (const todo of group.todos) {
+        // Remove hashtag symbols from task text
+        const cleanText = todo.originalText.replace(/^#\s*/, '')
+        lines.push(`- [${todo.checked ? 'x' : ' '}] ${cleanText}`)
+      }
+
+      // Add empty line between groups
+      lines.push('')
+    }
+
+    return lines.join('\n')
   }
 
   private async calculateAllItems() {
@@ -140,7 +171,7 @@ export default class TodoListView extends ItemView {
 
       // Extract quoted phrases first
       const quotedRegex = /"([^"]+)"/g
-      let match
+      let match: RegExpExecArray | null
       let remaining = group
 
       while ((match = quotedRegex.exec(group)) !== null) {

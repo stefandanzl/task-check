@@ -15,6 +15,7 @@
   export let onToggle: (id: string) => void
   export let priorityTag: string = ''
   export let maxTasksPerGroup: number | null = null
+  export let enableLimit: boolean = true
   export let showAllMap: Record<string, boolean> = {}
   export let onToggleShowAll: (className: string) => void = () => {}
 
@@ -59,7 +60,8 @@
     grouped: Map<number | null, TodoItem[]>,
     keys: (number | null)[],
     maxTasks: number | null,
-    showingAll: boolean
+    showingAll: boolean,
+    limitEnabled: boolean
   ): Map<number | null, TodoItem[]> {
     const result = new Map<number | null, TodoItem[]>()
 
@@ -67,7 +69,7 @@
       return result
     }
 
-    if (!maxTasks || showingAll) {
+    if (!maxTasks || !limitEnabled || showingAll) {
       for (const [key, items] of grouped.entries()) {
         result.set(key, items)
       }
@@ -188,7 +190,7 @@
 
   $: groupedTodos = priorityTag ? groupTodosByPriority(group.todos) : new Map()
   $: sortedKeys = groupedTodos ? getSortedPriorityKeys(groupedTodos) : []
-  $: visibleItemsPerZone = getVisibleItemsPerZone(groupedTodos, sortedKeys, maxTasksPerGroup, isGroupShowingAll)
+  $: visibleItemsPerZone = getVisibleItemsPerZone(groupedTodos, sortedKeys, maxTasksPerGroup, isGroupShowingAll, enableLimit)
   $: isMyDrag = $dragState.inProgress && $dragState.dragGroupId === group.id
 
   // Check if the source priority level has only one task
@@ -280,11 +282,11 @@
           {/if}
         {/each}
       </div>
-      {#if maxTasksPerGroup && group.todos.length > maxTasksPerGroup && !isGroupShowingAll}
+      {#if maxTasksPerGroup && enableLimit && group.todos.length > maxTasksPerGroup && !isGroupShowingAll}
         <button class="show-more-button" on:click={toggleShowAll}>
           Show all ({group.todos.length})
         </button>
-      {:else if maxTasksPerGroup && group.todos.length > maxTasksPerGroup && isGroupShowingAll}
+      {:else if maxTasksPerGroup && enableLimit && group.todos.length > maxTasksPerGroup && isGroupShowingAll}
         <button class="show-more-button" on:click={toggleShowAll}>
           Hide some
         </button>
@@ -295,11 +297,11 @@
           <ChecklistItem {item} {lookAndFeel} {app} draggable={true} on:dragstart={handleDragStart} on:dragend={handleDragEnd} />
         {/each}
       </ul>
-      {#if maxTasksPerGroup && group.todos.length > maxTasksPerGroup && !isGroupShowingAll}
+      {#if maxTasksPerGroup && enableLimit && group.todos.length > maxTasksPerGroup && !isGroupShowingAll}
       <button class="show-more-button" on:click={toggleShowAll}>
         Show all ({group.todos.length})
       </button>
-      {:else if maxTasksPerGroup && group.todos.length > maxTasksPerGroup && isGroupShowingAll}
+      {:else if maxTasksPerGroup && enableLimit && group.todos.length > maxTasksPerGroup && isGroupShowingAll}
         <button class="show-more-button" on:click={toggleShowAll}>
         Collapse ({group.todos.length})
       </button>
