@@ -1,10 +1,9 @@
-import MD from 'markdown-it'
+import { marked } from 'marked'
 import minimatch from 'minimatch'
 
-import {commentPlugin} from '../plugins/comment'
-import {highlightPlugin} from '../plugins/highlight'
-import {linkPlugin} from '../plugins/link'
-import {tagPlugin} from '../plugins/tag'
+// Configure marked to be synchronous
+marked.use({ async: false })
+
 import {
   addPriorityTagToText,
   combineFileLines,
@@ -229,6 +228,41 @@ const findAllTodosFromTagBlock = (file: FileInfo, tag: TagCache, priorityTag: st
   return todos
 }
 
+const escapeHtml = (text: string): string => {
+  return String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
+const preprocessMarkdown = (text: string, linkMap: Map<string, {filePath: string, linkName: string}>): string => {
+  // Apply custom regex replacements in order
+  let processed = text
+
+  // %%comment%% → HTML comment
+  processed = processed.replace(/%%([^%]+)%%/g, (_, content) => `<!--${escapeHtml(content)}-->`)
+
+  // [[link|label]] → internal link
+  processed = processed.replace(/\[\[([^\]]+)\]\]/g, (_, content) => {
+    const [link, label] = content.trim().split('|')
+    const linkItem = linkMap.get(link)
+    const displayText = label || linkItem?.linkName || link
+    if (!linkItem) return `[[${content}]]`
+    return `<a data-href="${escapeHtml(link)}" data-type="link" data-filepath="${escapeHtml(linkItem.filePath)}" class="internal-link">${escapeHtml(displayText)}</a>`
+  })
+
+  // ==highlight== → <mark>
+  processed = processed.replace(/==([^=]+)==/g, (_, content) => `<mark>${escapeHtml(content)}</mark>`)
+
+  // #tag → tag link
+  processed = processed.replace(/#\S+/g, (tag) => `<a href="${escapeHtml(tag)}" data-type="link" class="tag" target="_blank" rel="noopener">${escapeHtml(tag)}</a>`)
+
+  // Finally, render any remaining markdown with marked
+  return marked(processed) as string
+}
+
 const formTodo = (
   line: string,
   file: FileInfo,
@@ -246,11 +280,6 @@ const formTodo = (
   const tagStripped = removeTagFromText(rawText, tagMeta?.main)
   const priority = parsePriorityTag(rawText, priorityTag ?? '')
   const displayText = priorityTag ? removePriorityTagFromText(tagStripped, priorityTag) : tagStripped
-  const md = new MD()
-    .use(commentPlugin)
-    .use(linkPlugin(linkMap))
-    .use(tagPlugin)
-    .use(highlightPlugin)
 
   return {
     mainTag: tagMeta?.main,
@@ -261,7 +290,7 @@ const formTodo = (
     fileLabel: getFileLabelFromName(file.file.name),
     fileCreatedTs: file.file.stat.ctime,
     fileModifiedTs: file.file.stat.mtime,
-    rawHTML: md.render(displayText),
+      rawHTML: preprocessMarkdown(displayText, linkMap),
     line: lineNum,
     spacesIndented,
     fileInfo: file,
