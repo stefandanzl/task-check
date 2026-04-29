@@ -2,7 +2,7 @@ import {CachedMetadata, parseFrontMatterTags, TFile, Vault} from 'obsidian'
 
 import {LOCAL_SORT_OPT} from '../constants'
 
-import type {SortDirection, TagMeta, LinkMeta, KeysOfType} from 'src/_types'
+import type {SortDirection, TagMeta, KeysOfType} from 'src/_types'
 export const isMacOS = () => window.navigator.userAgent.includes('Macintosh')
 export const classifyString = (str: string) => {
   const sanitzedGroupName = (str ?? '').replace(/[^A-Za-z0-9]/g, '')
@@ -54,12 +54,6 @@ export const getTagMeta = (tag: string): TagMeta => {
 
 export const retrieveTag = (tagMeta: TagMeta): string => {
   return tagMeta.main ? tagMeta.main : tagMeta.sub ? tagMeta.sub : ''
-}
-
-export const mapLinkMeta = (linkMeta: LinkMeta[]) => {
-  const map = new Map<string, LinkMeta>()
-  for (const link of linkMeta) map.set(link.filePath, link)
-  return map
 }
 
 export const setLineTo = (line: string, setTo: boolean) =>

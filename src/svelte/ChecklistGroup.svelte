@@ -219,7 +219,8 @@
 </script>
 
 <section class="group {group.className}">
-  <header class={`group-header ${group.type}`}>
+  <!-- svelte-ignore a11y-click-events-have-key-events -->
+  <header class={`group-header ${group.type}`} on:click={() => onToggle(group.id)} title="Toggle Group">
     <!-- svelte-ignore a11y-click-events-have-key-events -->
     <div class="title" on:click={clickTitle}>
       {#if group.type === "page"}
@@ -238,7 +239,7 @@
     </div>
     <div class="space" />
     <div class="count">{group.todos.length}</div>
-    <button class="collapse" on:click={() => onToggle(group.id)} title="Toggle Group">
+    <button class="collapse"  >
       <Icon name="chevron" direction={isCollapsed ? "left" : "down"} />
     </button>
   </header>
@@ -326,6 +327,7 @@
     display: flex;
     gap: var(--checklist-headerGap);
     align-items: center;
+    cursor: pointer;
   }
 
   .space {
@@ -370,6 +372,7 @@
   }
 
   .group {
+    border-bottom: 2px solid var(--background-modifier-border);
     margin-bottom: var(--checklist-groupMargin);
   }
 
@@ -386,8 +389,6 @@
   .show-more-button {
     width: 100%;
     padding: 8px;
-    background: var(--background-modifier-hover);
-    border: none;
     border-radius: 4px;
     color: var(--text-normal);
     cursor: pointer;

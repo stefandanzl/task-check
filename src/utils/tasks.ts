@@ -19,7 +19,6 @@ import {
   removePriorityTagFromText,
   retrieveTag,
   lineIsValidTodo,
-  mapLinkMeta,
   removeTagFromText,
   setLineTo,
   todoLineIsChecked,
@@ -27,7 +26,6 @@ import {
 
 import type {
   App,
-  LinkCache,
   MetadataCache,
   TagCache,
   TFile,
@@ -59,6 +57,7 @@ export const parseTodos = async (
   showAllTodos: boolean,
   lastRerender: number,
   priorityTag: string,
+  app: App,
 ): Promise<Map<TFile, TodoItem[]>> => {
   const includePattern = includeFiles.trim()
     ? includeFiles.trim().split('\n')
@@ -103,7 +102,7 @@ export const parseTodos = async (
 
   const todosForUpdatedFiles = new Map<TFile, TodoItem[]>()
   for (const fileInfo of filesWithCache) {
-    let todos = findAllTodosInFile(fileInfo, priorityTag)
+    let todos = findAllTodosInFile(fileInfo, priorityTag, app)
     if (!showChecked) {
       todos = todos.filter(todo => !todo.checked)
     }
@@ -169,19 +168,12 @@ export const setTodoPrioritiesBatch = async (
   }
 }
 
-const findAllTodosInFile = (file: FileInfo, priorityTag: string): TodoItem[] => {
+const findAllTodosInFile = (file: FileInfo, priorityTag: string, app?: App): TodoItem[] => {
   if (!file.parseEntireFile)
-    return file.validTags.flatMap(tag => findAllTodosFromTagBlock(file, tag, priorityTag))
+    return file.validTags.flatMap(tag => findAllTodosFromTagBlock(file, tag, priorityTag, app))
 
   if (!file.content) return []
   const fileLines = getAllLinesFromFile(file.content)
-  const links = []
-  if (file.cache?.links) {
-    links.push(...file.cache.links)
-  }
-  if (file.cache?.embeds) {
-    links.push(...file.cache.embeds)
-  }
   const tagMeta = file.frontmatterTag
     ? getTagMeta(file.frontmatterTag)
     : undefined
@@ -191,28 +183,20 @@ const findAllTodosInFile = (file: FileInfo, priorityTag: string): TodoItem[] => 
     const line = fileLines[i]
     if (line.length === 0) continue
     if (lineIsValidTodo(line)) {
-      todos.push(formTodo(line, file, links, i, tagMeta, priorityTag))
+      todos.push(formTodo(line, file, i, tagMeta, priorityTag, app))
     }
   }
 
   return todos
 }
 
-const findAllTodosFromTagBlock = (file: FileInfo, tag: TagCache, priorityTag: string) => {
-  const fileContents = file.content
-  const links = []
-  if (file.cache?.links) {
-    links.push(...file.cache.links)
-  }
-  if (file.cache?.embeds) {
-    links.push(...file.cache.embeds)
-  }
-  if (!fileContents) return []
-  const fileLines = getAllLinesFromFile(fileContents)
+const findAllTodosFromTagBlock = (file: FileInfo, tag: TagCache, priorityTag: string, app?: App) => {
+  if (!file.content) return []
+  const fileLines = getAllLinesFromFile(file.content)
   const tagMeta = getTagMeta(tag.tag)
   const tagLine = fileLines[tag.position.start.line]
   if (lineIsValidTodo(tagLine)) {
-    return [formTodo(tagLine, file, links, tag.position.start.line, tagMeta, priorityTag)]
+    return [formTodo(tagLine, file, tag.position.start.line, tagMeta, priorityTag, app)]
   }
 
   const todos: TodoItem[] = []
@@ -221,7 +205,7 @@ const findAllTodosFromTagBlock = (file: FileInfo, tag: TagCache, priorityTag: st
     if (i === tag.position.start.line + 1 && line.length === 0) continue
     if (line.length === 0) break
     if (lineIsValidTodo(line)) {
-      todos.push(formTodo(line, file, links, i, tagMeta, priorityTag))
+      todos.push(formTodo(line, file, i, tagMeta, priorityTag, app))
     }
   }
 
@@ -237,7 +221,7 @@ const escapeHtml = (text: string): string => {
     .replace(/'/g, '&#39;')
 }
 
-const preprocessMarkdown = (text: string, linkMap: Map<string, {filePath: string, linkName: string}>): string => {
+const preprocessMarkdown = (text: string, metadataCache: MetadataCache, sourcePath: string): string => {
   // Apply custom regex replacements in order
   let processed = text
 
@@ -247,14 +231,14 @@ const preprocessMarkdown = (text: string, linkMap: Map<string, {filePath: string
   // [[link|label]] → internal link
   processed = processed.replace(/\[\[([^\]]+)\]\]/g, (_, content) => {
     const [link, label] = content.trim().split('|')
-    const linkItem = linkMap.get(link)
-    const displayText = label || linkItem?.linkName || link
-    if (!linkItem) return `[[${content}]]`
-    return `<a data-href="${escapeHtml(link)}" data-type="link" data-filepath="${escapeHtml(linkItem.filePath)}" class="internal-link">${escapeHtml(displayText)}</a>`
+    const targetFile = metadataCache.getFirstLinkpathDest(link, sourcePath)
+    if (!targetFile) return `[[${content}]]`
+    const displayText = label || link
+    return `<a data-href="${escapeHtml(link)}" data-type="link" data-filepath="${escapeHtml(targetFile.path)}" class="internal-link">${escapeHtml(displayText)}</a>`
   })
 
-  // ==highlight== → <mark>
-  processed = processed.replace(/==([^=]+)==/g, (_, content) => `<mark>${escapeHtml(content)}</mark>`)
+  // ==highlight== → Obsidian-style highlight span
+  processed = processed.replace(/==([^=]+)==/g, (_, content) => `<span class="cm-highlight">${escapeHtml(content)}</span>`)
 
   // #tag → tag link
   processed = processed.replace(/#\S+/g, (tag) => `<a href="${escapeHtml(tag)}" data-type="link" class="tag" target="_blank" rel="noopener">${escapeHtml(tag)}</a>`)
@@ -266,20 +250,17 @@ const preprocessMarkdown = (text: string, linkMap: Map<string, {filePath: string
 const formTodo = (
   line: string,
   file: FileInfo,
-  links: LinkCache[],
   lineNum: number,
   tagMeta?: TagMeta,
   priorityTag?: string,
+  app?: App,
 ): TodoItem => {
-  const relevantLinks = links
-    .filter(link => link.position.start.line === lineNum)
-    .map(link => ({filePath: link.link, linkName: link.displayText}))
-  const linkMap = mapLinkMeta(relevantLinks)
   const rawText = extractTextFromTodoLine(line)
   const spacesIndented = getIndentationSpacesFromTodoLine(line)
   const tagStripped = removeTagFromText(rawText, tagMeta?.main)
   const priority = parsePriorityTag(rawText, priorityTag ?? '')
   const displayText = priorityTag ? removePriorityTagFromText(tagStripped, priorityTag) : tagStripped
+  const rawHTML = app ? preprocessMarkdown(displayText, app.metadataCache, file.file.path) : displayText
 
   return {
     mainTag: tagMeta?.main,
@@ -290,7 +271,7 @@ const formTodo = (
     fileLabel: getFileLabelFromName(file.file.name),
     fileCreatedTs: file.file.stat.ctime,
     fileModifiedTs: file.file.stat.mtime,
-      rawHTML: preprocessMarkdown(displayText, linkMap),
+    rawHTML,
     line: lineNum,
     spacesIndented,
     fileInfo: file,

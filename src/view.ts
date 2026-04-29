@@ -122,6 +122,7 @@ export default class TodoListView extends ItemView {
       this.plugin.getSettingValue('showAllTodos'),
       this.lastRerender,
       this.plugin.getSettingValue('priorityTag'),
+      this.app,
     )
     for (const [file, todos] of todosForUpdatedFiles) {
       this.itemsByFile.set(file.path, todos)
