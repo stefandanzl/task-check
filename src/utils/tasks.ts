@@ -240,11 +240,43 @@ const preprocessMarkdown = (text: string, metadataCache: MetadataCache, sourcePa
   // ==highlight== → Obsidian-style highlight span
   processed = processed.replace(/==([^=]+)==/g, (_, content) => `<span class="cm-highlight">${escapeHtml(content)}</span>`)
 
-  // #tag → tag link
-  processed = processed.replace(/#\S+/g, (tag) => `<a href="${escapeHtml(tag)}" data-type="link" class="tag" target="_blank" rel="noopener">${escapeHtml(tag)}</a>`)
+  // #tag → Obsidian hashtag spans (requires space before to avoid false matches)
+  processed = processed.replace(/(\s)#(\S+)/g, (_, space, tag) => {
+    const parts = tag.split('/')
+    const main = parts[0] || ''
+    const stringer = parts.join('')
+    const sub = parts.slice(1).join('/') || ''
+    const escapedTag = sub ? main + '/' + sub : main
+    return `${space}<span class="cm-formatting cm-formatting-hashtag cm-hashtag cm-hashtag-begin cm-meta cm-tag-${stringer}" spellcheck="false">#</span><span class="cm-hashtag cm-hashtag-end cm-meta cm-tag-${stringer}" spellcheck="false">${escapeHtml(escapedTag)}</span>`
+  })
 
   // Finally, render any remaining markdown with marked
-  return marked(processed) as string
+  const markedHTML = marked(processed) as string
+
+  // Post-process to match Obsidian's native rendering
+  return postprocessHTML(markedHTML)
+}
+
+// Post-process HTML to match Obsidian's native rendering
+const postprocessHTML = (html: string): string => {
+  let processed = html
+
+  // <code> → Obsidian inline code span
+  processed = processed.replace(/<code>(.*?)<\/code>/g, (_, content) =>
+    `<span class="cm-inline-code cm-list-1" spellcheck="false">${content}</span>`
+  )
+
+  // <strong> → Obsidian bold span
+  processed = processed.replace(/<strong>(.*?)<\/strong>/g, (_, content) =>
+    `<span class="cm-list-1 cm-strong">${content}</span>`
+  )
+
+  // <em> → Obsidian emphasis span
+  processed = processed.replace(/<em>(.*?)<\/em>/g, (_, content) =>
+    `<span class="cm-list-1 cm-em">${content}</span>`
+  )
+
+  return processed
 }
 
 const formTodo = (

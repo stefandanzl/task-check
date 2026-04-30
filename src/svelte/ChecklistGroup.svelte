@@ -112,7 +112,7 @@
     // Both zone keys are present
     if (upper === null && lower === null) return null  // shouldn't happen
 
-    if (upper === null && lower < 0) return lower     // between neutral and first negative → duplicate first negative
+    if (upper === null && lower < 0) return -1     // between neutral and first negative → duplicate first negative
     if (upper > 0 && lower === null) return 1         // between last positive and neutral → lowest positive
 
     if (upper > 0 && lower > 0) return lower + 1     // between two positives: fill gap or duplicate

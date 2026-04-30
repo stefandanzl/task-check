@@ -85,7 +85,9 @@ export default class TodoPlugin extends Plugin {
 
         if (!editor) return
 
-        editor.replaceSelection(`#${this.settings.todoPageName}/`)
+        // Get the first tag only
+        const firstTag = this.settings.todoPageName.split('\n')[0].trim()
+        editor.replaceSelection(`#${firstTag}/`)
 
         const handleEnter = (event: KeyboardEvent) => {
           if (event.key === 'Enter') {
