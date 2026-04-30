@@ -226,8 +226,12 @@ const preprocessMarkdown = (text: string, metadataCache: MetadataCache, sourcePa
   let processed = text
 
   // %%comment%% → HTML comment
-  processed = processed.replace(/%%([^%]+)%%/g, (_, content) => `<!--${escapeHtml(content)}-->`)
-
+  processed = processed.replace(/%%([^%]+)%%/g, (_, content) => 
+    `<span class="cm-comment cm-comment-start cm-formatting">%%</span>` +
+    `<span class="cm-comment">${escapeHtml(content)}</span>` + 
+    `<span class="cm-comment cm-comment-end cm-formatting">%%</span>`
+  )
+    
   // [[link|label]] → internal link
   processed = processed.replace(/\[\[([^\]]+)\]\]/g, (_, content) => {
     const [link, label] = content.trim().split('|')
