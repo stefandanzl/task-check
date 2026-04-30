@@ -110,5 +110,6 @@
   .prio-level {
     padding: 1px 6px;
     font-size: var(--font-smallest);
+    color: var(--color-accent);
   }
 </style>

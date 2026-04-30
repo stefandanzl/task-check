@@ -16,8 +16,8 @@
   let isDragOver = false
   let dropZoneEl: HTMLDivElement
 
-  // 'into' is only droppable for the neutral zone (removes priority tag)
-  $: isDroppable = position !== 'into' || targetPriority === null
+  // 'into' is droppable for all zones to set priority to that zone's value
+  $: isDroppable = true
 
   function handleDragOver(e: DragEvent) {
     if (!isDroppable || !isDragging) return
@@ -28,8 +28,9 @@
 
   function handleDragLeave(e: DragEvent) {
     if (!dropZoneEl) return
-    const rect = dropZoneEl.getBoundingClientRect()
-    if (e.clientX < rect.left || e.clientX >= rect.right || e.clientY < rect.top || e.clientY >= rect.bottom) {
+    // Check if we're actually leaving this element (not entering a child)
+    const relatedTarget = e.relatedTarget as Node
+    if (!relatedTarget || !dropZoneEl.contains(relatedTarget)) {
       isDragOver = false
     }
   }
@@ -93,27 +94,48 @@
         <span class="neutral-label">Drop here to remove priority</span>
       {/if}
     </div>
-  {:else if items.length > 0 && app}
-    <div class="priority-content {zoneClass}">
-      <div class="zone-header">
-        <span class="zone-label">{displayLabel}</span>
-        <span class="zone-count">{items.length}</span>
-      </div>
-      <ul class="zone-items">
-        {#each items as item (item.filePath + ':' + item.line)}
-          <ChecklistItem
-            {item}
-            lookAndFeel={lookAndFeel ?? 'classic'}
-            {app}
-            draggable={true}
+  {:else}
+    {#if items.length > 0 && app}
+      <div
+        class="priority-content {zoneClass}"
+        class:hovered={isDragOver}
+        bind:this={dropZoneEl}
+        on:dragover={handleDragOver}
+        on:dragleave={handleDragLeave}
+        on:drop={handleDrop}
+      >
+        <div class="zone-header">
+          <span class="zone-label">{displayLabel}</span>
+          <span class="zone-count">{items.length}</span>
+        </div>
+        <ul class="zone-items">
+          {#each items as item (item.filePath + ':' + item.line)}
+            <ChecklistItem
+              {item}
+              lookAndFeel={lookAndFeel ?? 'classic'}
+              {app}
+              draggable={true}
 
-            on:dragstart={forwardDragStart}
-            on:dragend={forwardDragEnd}
-            {targetPriority}
-          />
-        {/each}
-      </ul>
-    </div>
+              on:dragstart={forwardDragStart}
+              on:dragend={forwardDragEnd}
+              {targetPriority}
+            />
+          {/each}
+        </ul>
+      </div>
+    {:else if isDragging}
+      <div
+        class="priority-drop-zone {zoneClass}"
+        class:visible={isDragging}
+        class:hovered={isDragOver}
+        bind:this={dropZoneEl}
+        on:dragover={handleDragOver}
+        on:dragleave={handleDragLeave}
+        on:drop={handleDrop}
+      >
+        <span class="priority-drop-label">Drop to set {displayLabel}</span>
+      </div>
+    {/if}
   {/if}
 {:else}
   {#if !shouldHide}
@@ -186,7 +208,46 @@
   }
 
   .priority-content {
-    margin: 4px 0;
+    /* margin: 4px 0; */
+    border-radius: 4px;
+    border: 1px dashed transparent;
+    transition: border-color 0.1s, background-color 0.1s;
+  }
+
+  .priority-content.hovered {
+    border-color: var(--interactive-accent);
+    background: var(--background-modifier-border-hover);
+  }
+
+  .priority-drop-zone {
+    min-height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    border: 1px dashed transparent;
+    transition: border-color 0.1s, background-color 0.1s;
+  }
+
+  .priority-drop-zone.visible {
+    border-color: var(--text-faint);
+    background: var(--background-modifier-hover);
+  }
+
+  .priority-drop-zone.hovered {
+    border-color: var(--interactive-accent);
+    background: var(--background-modifier-border-hover);
+  }
+
+  .priority-drop-label {
+    font-size: var(--font-smallest);
+    font-style: italic;
+    color: var(--text-muted);
+    pointer-events: none;
+  }
+
+  .priority-drop-zone.hovered .priority-drop-label {
+    color: var(--interactive-accent);
   }
 
   .zone-header {

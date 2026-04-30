@@ -150,7 +150,7 @@
     let newPriority: number | null
 
     if (dropPosition === 'into') {
-      newPriority = null
+      newPriority = targetPriority
     } else {
       const targetIndex = sortedKeys.findIndex(k => k === targetPriority)
       const upperPriority = dropPosition === 'above'
@@ -170,7 +170,8 @@
     if (currentPriority === newPriorityVal) return
 
     const allUpdates: Array<{ item: TodoItem; newPriority: number | null }> = []
-    if (newPriority !== null && newPriority !== 0) {
+    // Only cascade for above/below drops, not for 'into' drops (allow duplicates)
+    if (dropPosition !== 'into' && newPriority !== null && newPriority !== 0) {
       for (const u of getCascadeUpdates(item, newPriority)) {
         allUpdates.push({ item: u.item, newPriority: u.priority })
       }
