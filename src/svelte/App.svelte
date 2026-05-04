@@ -52,6 +52,8 @@
       {enableLimit}
       {updateSetting}
       {registerSearchInput}
+      {todoGroups}
+      _collapsedSections={_collapsedSections}
     />
     {#if todoGroups.length === 0}
       <div class="empty">
