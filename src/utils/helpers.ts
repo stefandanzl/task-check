@@ -2,7 +2,7 @@ import {CachedMetadata, parseFrontMatterTags, TFile, Vault} from 'obsidian'
 
 import {LOCAL_SORT_OPT} from '../constants'
 
-import type {SortDirection, TagMeta, KeysOfType} from 'src/_types'
+import type {SortDirection, TagMeta, KeysOfType, TodoItem, TodoGroup} from 'src/_types'
 export const isMacOS = () => window.navigator.userAgent.includes('Macintosh')
 export const classifyString = (str: string) => {
   const sanitzedGroupName = (str ?? '').replace(/[^A-Za-z0-9]/g, '')
@@ -77,7 +77,7 @@ export const getFileLabelFromName = (filename: string) =>
   /^(.+)\.md$/.exec(filename)?.[1]
 
 export const sortGenericItemsInplace = <
-  T,
+  T extends TodoItem | TodoGroup,
   NK extends KeysOfType<T, string>,
   TK extends KeysOfType<T, number>,
 >(
@@ -86,69 +86,51 @@ export const sortGenericItemsInplace = <
   sortByNameKey: NK,
   sortByTimeKey: TK,
 ) => {
-  if (direction === 'a->z')
-    items.sort((a, b) =>
-      (a[sortByNameKey] as any).localeCompare(
-        b[sortByNameKey],
-        navigator.language,
-        LOCAL_SORT_OPT,
-      ),
-    )
-  if (direction === 'z->a')
-    items.sort((a, b) =>
-      (b[sortByNameKey] as any).localeCompare(
-        a[sortByNameKey],
-        navigator.language,
-        LOCAL_SORT_OPT,
-      ),
-    )
-  if (direction === 'created: new->old')
-    items.sort((a, b) => {
-      const timeDiff = (b[sortByTimeKey] as any) - (a[sortByTimeKey] as any)
-      if (timeDiff !== 0) return timeDiff
-      return (a[sortByNameKey] as any).localeCompare(
-        b[sortByNameKey],
-        navigator.language,
-        LOCAL_SORT_OPT,
-      )
-    })
-  if (direction === 'created: old->new')
-    items.sort((a, b) => {
-      const timeDiff = (a[sortByTimeKey] as any) - (b[sortByTimeKey] as any)
-      if (timeDiff !== 0) return timeDiff
-      return (a[sortByNameKey] as any).localeCompare(
-        b[sortByNameKey],
-        navigator.language,
-        LOCAL_SORT_OPT,
-      )
-    })
-  if (direction === 'modified: new->old')
-    items.sort((a, b) => {
-      // For TodoItem, use fileModifiedTs; for TodoGroup, use newestModifiedItem
-      const aTime = 'fileModifiedTs' in (a as object) ? (a['fileModifiedTs' as keyof T] as any) : (a['newestModifiedItem' as keyof T] as any)
-      const bTime = 'fileModifiedTs' in (b as object) ? (b['fileModifiedTs' as keyof T] as any) : (b['newestModifiedItem' as keyof T] as any)
-      const timeDiff = bTime - aTime
-      if (timeDiff !== 0) return timeDiff
-      return (a[sortByNameKey] as any).localeCompare(
-        b[sortByNameKey],
-        navigator.language,
-        LOCAL_SORT_OPT,
-      )
-    })
-  if (direction === 'modified: old->new')
-    items.sort((a, b) => {
-      // For TodoItem, use fileModifiedTs; for TodoGroup, use newestModifiedItem
-      const aTime = 'fileModifiedTs' in (a as object) ? (a['fileModifiedTs' as keyof T] as any) : (a['newestModifiedItem' as keyof T] as any)
-      const bTime = 'fileModifiedTs' in (b as object) ? (b['fileModifiedTs' as keyof T] as any) : (b['newestModifiedItem' as keyof T] as any)
-      const timeDiff = aTime - bTime
-      if (timeDiff !== 0) return timeDiff
-      return (a[sortByNameKey] as any).localeCompare(
-        b[sortByNameKey],
-        navigator.language,
-        LOCAL_SORT_OPT,
-      )
-    })
-}
+  const getLine = (item: T): number => {
+    if ('line' in item) {
+      return (item as TodoItem).line;
+    }
+    return (item as TodoGroup).todos?.[0]?.line ?? 0;
+  };
+
+  items.sort((a, b) => {
+    if (direction === 'a->z') 
+      return (a[sortByNameKey] as any).localeCompare(b[sortByNameKey], navigator.language, LOCAL_SORT_OPT);
+    if (direction === 'z->a') 
+      return (b[sortByNameKey] as any).localeCompare(a[sortByNameKey], navigator.language, LOCAL_SORT_OPT);
+
+    let timeDiff = 0;
+    const isNewToOld = direction.includes('new->old');
+
+    if (direction.startsWith('created')) {
+      timeDiff = isNewToOld 
+        ? (b[sortByTimeKey] as any) - (a[sortByTimeKey] as any)
+        : (a[sortByTimeKey] as any) - (b[sortByTimeKey] as any);
+    } else if (direction.startsWith('modified')) {
+      const aTime = 'fileModifiedTs' in a ? (a as any).fileModifiedTs : (a as any).newestModifiedItem;
+      const bTime = 'fileModifiedTs' in b ? (b as any).fileModifiedTs : (b as any).newestModifiedItem;
+      timeDiff = isNewToOld ? bTime - aTime : aTime - bTime;
+    }
+
+    if (timeDiff !== 0) return timeDiff;
+
+    // Tie breakers needed for Groups or Todos in same file
+    const lineA = getLine(a);
+    const lineB = getLine(b);
+
+    // For tasks within same Group and in same file we want to keep the original order 
+    // from file in any case because it looks better when writing down multiple points 
+    // that depend on each other for context and order
+    if ('line' in a && 'line' in b) {
+      return lineA - lineB;
+    }
+
+    // For Groups it should depend on sorting direction
+    return isNewToOld 
+    ? lineB - lineA  // Higher line number first
+    : lineA - lineB // Lower line number first
+  });
+};
 
 export const ensureMdExtension = (path: string) => {
   if (!/\.md$/.test(path)) return `${path}.md`

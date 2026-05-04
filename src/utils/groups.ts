@@ -72,7 +72,7 @@ export const groupTodos = (
   if (!subGroups) {
     for (const g of nonEmptyGroups) {
       if (priorityTag) {
-        sortTodosByPriority(g.todos)
+        sortTodosByPriority(g.todos, sortItems)
       } else {
         sortGenericItemsInplace(g.todos, sortItems, 'originalText', 'fileCreatedTs')
       }
@@ -94,40 +94,31 @@ export const groupTodos = (
   return nonEmptyGroups
 }
 
-const sortTodosByPriority = (todos: TodoItem[]) => {
-  todos.sort((a, b) => {
-    const aPrio = a.priority ?? 0
-    const bPrio = b.priority ?? 0
+const sortTodosByPriority = (todos: TodoItem[], sortItems: SortDirection) => {
+  // Bucket per exakter Prio-Zahl
+  const buckets = new Map<number, TodoItem[]>()
+  for (const todo of todos) {
+    const key = todo.priority ?? 0
+    if (!buckets.has(key)) buckets.set(key, [])
+    buckets.get(key)!.push(todo)
+  }
 
-    // Both neutral - maintain original order (file order, newest first)
-    if (aPrio === 0 && bPrio === 0) {
-      return b.fileCreatedTs - a.fileCreatedTs || b.line - a.line
-    }
-
-    // a is positive, b is neutral or negative - a comes first
-    if (aPrio > 0 && bPrio <= 0) return -1
-
-    // b is positive, a is neutral or negative - b comes first
-    if (bPrio > 0 && aPrio <= 0) return 1
-
-    // Both positive - higher priority first (descending: 3, 2, 1)
-    if (aPrio > 0 && bPrio > 0) {
-      if (aPrio !== bPrio) return bPrio - aPrio
-      return b.fileCreatedTs - a.fileCreatedTs || b.line - a.line
-    }
-
-    // Both negative - higher priority first (descending: -1, -2, -3)
-    if (aPrio < 0 && bPrio < 0) {
-      if (aPrio !== bPrio) return bPrio - aPrio
-      return b.fileCreatedTs - a.fileCreatedTs || b.line - a.line
-    }
-
-    // a is neutral, b is negative - a comes first
-    if (aPrio === 0 && bPrio < 0) return -1
-
-    // b is neutral, a is negative - b comes first
-    if (bPrio === 0 && aPrio < 0) return 1
-
+  // Bucket-Reihenfolge: positiv desc, neutral, negativ desc (3, 2, 1, 0, -1, -2, -3)
+  const orderedKeys = Array.from(buckets.keys()).sort((a, b) => {
+    if (a > 0 && b > 0) return b - a
+    if (a < 0 && b < 0) return b - a
+    if (a > 0) return -1
+    if (b > 0) return 1
+    if (a === 0) return -1
+    if (b === 0) return 1
     return 0
   })
+
+  // Innerhalb jedes Buckets: user's sortItems-Setting respektieren, line ↑ als Tiebreaker
+  for (const items of buckets.values()) {
+    sortGenericItemsInplace(items, sortItems, 'originalText', 'fileCreatedTs')
+  }
+
+  todos.length = 0
+  for (const key of orderedKeys) todos.push(...buckets.get(key)!)
 }
