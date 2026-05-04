@@ -13,6 +13,7 @@ export default class TodoListView extends ItemView {
   public groupedItems: TodoGroup[] = []
   public itemsByFile = new Map<string, TodoItem[]>()
   private searchTerm = ''
+  private searchInputRef: HTMLInputElement | null = null
 
   constructor(
     leaf: WorkspaceLeaf,
@@ -86,6 +87,39 @@ export default class TodoListView extends ItemView {
     this.renderView()
   }
 
+  async focusSearchInput(searchQuery?: string): Promise<void> {
+    const workspace = this.app.workspace
+    let leaf = workspace.getLeavesOfType(TODO_VIEW_TYPE)[0]
+
+    if (!leaf) {
+      await workspace.getRightLeaf(false).setViewState({
+        type: TODO_VIEW_TYPE,
+        active: true,
+      })
+      leaf = workspace.getLeavesOfType(TODO_VIEW_TYPE)[0]
+      workspace.revealLeaf(leaf)
+      workspace.setActiveLeaf(leaf, {focus: true})
+    } else {
+      workspace.revealLeaf(leaf)
+      workspace.setActiveLeaf(leaf, {focus: true})
+    }
+
+    // Wait for render then focus
+    setTimeout(() => {
+      this.searchInputRef?.focus()
+      if (searchQuery !== undefined) {
+        // Set the search query via input value and trigger search
+        const inputEvent = new Event('input', { bubbles: true })
+        this.searchInputRef.value = searchQuery
+        this.searchInputRef.dispatchEvent(inputEvent)
+        requestAnimationFrame(() => {
+        //@ts-ignore
+        this.searchInputRef?.focus({focusVisible: true})
+        })
+      }
+    }, 100)
+  }
+
   private deleteFile(path: string) {
     this.itemsByFile.delete(path)
     this.groupItems()
@@ -111,6 +145,9 @@ export default class TodoListView extends ItemView {
         this.refresh()
       },
       onCopyTasks: this.handleCopyTasks.bind(this),
+      registerSearchInput: (input: HTMLInputElement) => {
+        this.searchInputRef = input
+      },
     }
   }
 

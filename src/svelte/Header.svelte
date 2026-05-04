@@ -5,16 +5,22 @@
 
   export let todoTags: string[]
   export let hiddenTags: string[]
-  export let disableSearch: boolean
   export let onTagStatusChange: (tag: string, status: boolean) => void
   export let onSearch: (str: string) => void
   export let onCopyTasks: () => string = () => ''
   export let enableLimit: boolean = true
   export let updateSetting: (updates: Partial<TodoSettings>) => Promise<void>
+  export let registerSearchInput: (input: HTMLInputElement) => void = () => {}
 
   let showSettings = false
   let search = ""
   let searchInput: HTMLInputElement
+  let inputRegistered = false
+
+  $: if (searchInput && !inputRegistered) {
+    registerSearchInput(searchInput)
+    inputRegistered = true
+  }
 
   function clearSearch() {
     search = ""
@@ -41,12 +47,20 @@
   <div class="header-row">
     <div class="search-input-wrapper">
       <input
-        disabled={disableSearch && !search}
-        class="search"
-        placeholder="Search tasks"
+        class="task-search"
+        type="search"
+        spellcheck="false"
+        enterkeyhint="search"
+        placeholder="Search..."
         bind:value={search}
         bind:this={searchInput}
         on:input={() => onSearch(search)}
+        on:keydown={(e) => {
+          if (e.key === 'Escape') {
+            search = ""
+            onSearch("")
+          }
+        }}
       />
       {#if search}
         <!-- svelte-ignore a11y-click-events-have-key-events -->
@@ -86,7 +100,7 @@
       <div class="settings-title">
         <span class="settings-title-span">Show Tags</span>
       </div>
-      {#each todoTags as tag}
+      {#each todoTags as tag, i}
         <div class="tag-checkbox-item">
           <label class="task-list-label">
             <input class="task-list-item-checkbox" type="checkbox" checked={!hiddenTags.includes(tag)} on:change={() => toggleTag(tag)} />
@@ -135,7 +149,7 @@
     align-items: center;
   }
 
-  .search {
+  .task-search {
     width: 100%;
     background: var(--background-modifier-form-field);
     border: 1px solid var(--background-modifier-border);
@@ -147,12 +161,12 @@
     box-sizing: border-box;
   }
 
-  .search:focus {
+  .task-search:focus {
     border-color: var(--interactive-accent);
     box-shadow: 0 0 0 2px var(--background-modifier-border-hover);
   }
 
-  .search:disabled {
+  .task-search:disabled {
     opacity: 0.5;
   }
 

@@ -17,6 +17,7 @@
   export let priorityTag: string = ''
   export let maxTasksPerGroup: number | null = null
   export let enableLimit: boolean = true
+  export let registerSearchInput: (input: HTMLInputElement) => void = () => {}
 
   // Track which groups have their "Show all" button clicked
   let showAllMap: Record<string, boolean> = {}
@@ -43,7 +44,6 @@
 
 <div class="checklist-plugin-main markdown-preview-view">
     <Header
-      disableSearch={todoGroups.length === 0}
       {todoTags}
       hiddenTags={_hiddenTags}
       onTagStatusChange={updateTagStatus}
@@ -51,6 +51,7 @@
       {onCopyTasks}
       {enableLimit}
       {updateSetting}
+      {registerSearchInput}
     />
     {#if todoGroups.length === 0}
       <div class="empty">

@@ -35,6 +35,22 @@ export default class TodoPlugin extends Plugin {
     toggleTodoItem(item, this.app)
   }
 
+  public async focusSearchInput(searchQuery?: string): Promise<void> {
+    const view = this.view
+    if (!view) {
+      // View doesn't exist yet, open it first
+      const workspace = this.app.workspace
+      await workspace.getRightLeaf(false).setViewState({
+        type: TODO_VIEW_TYPE,
+        active: true,
+      })
+    }
+    // Now get the view and focus
+    const focusedView = this.view
+    if (!focusedView) return
+    await focusedView.focusSearchInput(searchQuery)
+  }
+
   async onload() {
     await this.loadSettings()
 
@@ -101,6 +117,15 @@ export default class TodoPlugin extends Plugin {
         }
         // Add the event listener
         window.addEventListener('keydown', handleEnter)
+      },
+    })
+
+    this.addCommand({
+      id: 'open-search',
+      name: 'Open search',
+      icon: 'list-todo',
+      callback: async () => {
+        await this.focusSearchInput()
       },
     })
 
