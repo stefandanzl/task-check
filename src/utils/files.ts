@@ -1,4 +1,4 @@
-import {App, MarkdownView, Keymap, TFile} from 'obsidian'
+import {App, MarkdownView, Keymap, TFile, Notice} from 'obsidian'
 
 import {ensureMdExtension, getFileFromPath} from './helpers'
 
@@ -14,7 +14,10 @@ export const navToFile = async (
   const mod = Keymap.isModEvent(ev)
   const leaf = app.workspace.getLeaf(mod)
   const file = app.vault.getFileByPath(filePath)
-  if (!file) return
+  if (!file) {
+    new Notice('File not found!')
+    return
+  }
   await leaf.openFile(file)
   if (line) {
     // Wait for editor to be ready
@@ -28,18 +31,27 @@ export const navToFile = async (
     const from = {line, ch: 0}
     const to = {line, ch: lineContent?.length ?? 0}
 
-    if (file) {
-      // 2. Explicitly set the Ephemeral State to trigger the "Search Match" logic
-      leaf.setEphemeralState({
-        line: line,
-        focus: true,
-      })
-    }
+    // 2. Explicitly set the Ephemeral State to trigger the "Search Match" logic
+    leaf.setEphemeralState({
+      line: line,
+      focus: true,
+    })
 
-    // Set cursor manually, because setEphemeralState wants it to be in front of selection or highlight
     setTimeout(() => {
       editor.setCursor(to)
-    }, 300)
+    }, 5)
+
+    function keydownCallback(ev: KeyboardEvent) {
+      leaf.setEphemeralState({
+        match: {
+          content: '',
+          matches: [],
+        },
+      })
+      removeEventListener('keydown', keydownCallback)
+    }
+
+    addEventListener('keydown', keydownCallback)
   }
 }
 
