@@ -104,6 +104,12 @@ export default class TodoListView extends ItemView {
       workspace.setActiveLeaf(leaf, {focus: true})
     }
 
+    // Reset scroll to top
+    const container = (this as any).containerEl
+    if (container) {
+      container.scrollTop = 0
+    }
+
     // Wait for render then focus
     setTimeout(() => {
       this.searchInputRef?.focus()
