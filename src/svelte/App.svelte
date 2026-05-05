@@ -12,13 +12,13 @@
     _hiddenTags,
     updateSetting,
     onSearch,
-    onCopyTasks = () => '',
+    onCopyTasks,
     app,
-    todoGroups = [],
-    priorityTag = '',
-    maxTasksPerGroup = null,
-    enableLimit = true,
-    registerSearchInput = () => {}
+    todoGroups: groups,
+    priorityTag,
+    maxTasksPerGroup,
+    enableLimit,
+    registerSearchInput
   }: {
     todoTags: string[]
     lookAndFeel: LookAndFeel
@@ -38,6 +38,11 @@
   // Track which groups have their "Show all" button clicked
   let showAllMap = $state<Record<string, boolean>>({})
 
+  // Derived values for optional props
+  const todoGroups = $derived(groups ?? [])
+  const effectiveEnableLimit = $derived(enableLimit ?? true)
+  const effectivePriorityTag = $derived(priorityTag ?? '')
+  const effectiveMaxTasksPerGroup = $derived(maxTasksPerGroup ?? null)
   const visibleTags = $derived(todoTags.filter((t) => !_hiddenTags.includes(t)))
 
   function toggleGroup(id: string) {
@@ -64,11 +69,11 @@
       hiddenTags={_hiddenTags}
       onTagStatusChange={updateTagStatus}
       {onSearch}
-      {onCopyTasks}
-      {enableLimit}
+      onCopyTasks={onCopyTasks || (() => '')}
+      enableLimit={effectiveEnableLimit}
       {updateSetting}
-      {registerSearchInput}
-      {todoGroups}
+      registerSearchInput={registerSearchInput || (() => {})}
+      todoGroups={todoGroups}
       _collapsedSections={_collapsedSections}
     />
     {#if todoGroups.length === 0}
@@ -87,9 +92,9 @@
           {group}
           {app}
           {lookAndFeel}
-          {priorityTag}
-          {maxTasksPerGroup}
-          {enableLimit}
+          priorityTag={effectivePriorityTag}
+          maxTasksPerGroup={effectiveMaxTasksPerGroup}
+          enableLimit={effectiveEnableLimit}
           showAllMap={showAllMap}
           onToggleShowAll={handleToggleShowAll}
           isCollapsed={_collapsedSections.includes(group.id)}

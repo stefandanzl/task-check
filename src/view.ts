@@ -1,4 +1,5 @@
 import {ItemView, WorkspaceLeaf} from 'obsidian'
+import {mount, unmount} from 'svelte'
 
 import {TODO_VIEW_TYPE} from './constants'
 import App from './svelte/App.svelte'
@@ -8,7 +9,7 @@ import type {TodoSettings} from './settings'
 import type TodoPlugin from './main'
 import type {TodoGroup, TodoItem} from './_types'
 export default class TodoListView extends ItemView {
-  private _app: App
+  private _app: ReturnType<typeof mount>
   private lastRerender = 0
   public groupedItems: TodoGroup[] = []
   public itemsByFile = new Map<string, TodoItem[]>()
@@ -48,14 +49,14 @@ export default class TodoListView extends ItemView {
   }
 
   async onClose() {
-    this._app.$destroy()
+    if (this._app) {
+      unmount(this._app)
+      this._app = null
+    }
   }
 
   async onOpen(): Promise<void> {
-    this._app = new App({
-      target: (this as any).contentEl,
-      props: this.props(),
-    })
+    this.renderView()
     this.registerEvent(
       this.app.metadataCache.on('resolved', async () => {
         if (!this.plugin.getSettingValue('autoRefresh')) return
@@ -70,6 +71,16 @@ export default class TodoListView extends ItemView {
     )
     this.registerEvent(this.app.vault.on('delete', file => this.deleteFile(file.path)))
     this.refresh()
+  }
+
+  private renderView() {
+    if (this._app) {
+      unmount(this._app)
+    }
+    this._app = mount(App, {
+      target: (this as any).contentEl,
+      props: this.props(),
+    })
   }
 
   async refresh(all = false) {
@@ -275,9 +286,5 @@ export default class TodoListView extends ItemView {
       this.plugin.getSettingValue('baseTagFirst'),
       this.plugin.getSettingValue('priorityTag'),
     )
-  }
-
-  private renderView() {
-    this._app.$set(this.props())
   }
 }

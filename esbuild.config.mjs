@@ -2,7 +2,6 @@ import esbuild from 'esbuild'
 import process from 'process'
 import builtins from 'builtin-modules'
 import sveltePlugin from 'esbuild-svelte'
-import autoPreprocess from 'svelte-preprocess'
 import fs from 'fs'
 
 const banner = `/*
@@ -14,8 +13,8 @@ if you want to view the source, please visit the github repository of this plugi
 const prod = process.argv[2] === 'production'
 const meta = process.argv[3] === 'meta'
 
-esbuild
-  .build({
+async function build() {
+  const context = await esbuild.context({
     banner: {
       js: banner,
     },
@@ -51,7 +50,6 @@ esbuild
       ...builtins,
     ],
     format: 'cjs',
-    watch: !prod,
     target: 'es2020',
     logLevel: 'info',
     sourcemap: prod ? false : 'inline',
@@ -59,10 +57,9 @@ esbuild
     metafile: meta,
     plugins: [
       sveltePlugin({
-        preprocess: autoPreprocess(),
         compilerOptions: {
           css: 'injected',
-          runes: true
+          runes: true,
         },
         filterWarnings: warning =>
           !warning.message.toLowerCase().includes('a11y'),
@@ -70,12 +67,24 @@ esbuild
     ],
     outfile: 'main.js',
   })
-  .then(result => {
-    // Check if metafile exists in the result
-    if (meta && result.metafile) {
-      // Write the metafile object to a JSON file
+
+  if (!prod) {
+    await context.watch()
+  }
+
+  if (prod) {
+    await context.rebuild()
+    context.dispose()
+  }
+
+  if (meta) {
+    const result = await context.rebuild()
+    if (result.metafile) {
       fs.writeFileSync('meta.json', JSON.stringify(result.metafile))
       console.log('Build succeeded. Metafile saved to meta.json')
     }
-  })
-  .catch(() => process.exit(1))
+    context.dispose()
+  }
+}
+
+build().catch(() => process.exit(1))
