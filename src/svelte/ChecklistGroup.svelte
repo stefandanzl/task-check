@@ -8,22 +8,35 @@
   import PriorityDropZone from "./PriorityDropZone.svelte"
   import { dragState } from "./dragState"
 
-  export let group: TodoGroup
-  export let isCollapsed: boolean
-  export let lookAndFeel: LookAndFeel
-  export let app: App
-  export let onToggle: (id: string) => void
-  export let priorityTag: string = ''
-  export let maxTasksPerGroup: number | null = null
-  export let enableLimit: boolean = true
-  export let showAllMap: Record<string, boolean> = {}
-  export let onToggleShowAll: (className: string) => void = () => {}
+  let {
+    group,
+    isCollapsed,
+    lookAndFeel,
+    app,
+    onToggle,
+    priorityTag = '',
+    maxTasksPerGroup = null,
+    enableLimit = true,
+    showAllMap = {},
+    onToggleShowAll = () => {}
+  }: {
+    group: TodoGroup
+    isCollapsed: boolean
+    lookAndFeel: LookAndFeel
+    app: App
+    onToggle: (id: string) => void
+    priorityTag?: string
+    maxTasksPerGroup?: number | null
+    enableLimit?: boolean
+    showAllMap?: Record<string, boolean>
+    onToggleShowAll?: (className: string) => void
+  } = $props()
 
   function toggleShowAll() {
     onToggleShowAll(group.className)
   }
 
-  $: isGroupShowingAll = showAllMap[group.className] || false
+  const isGroupShowingAll = $derived(showAllMap[group.className] || false)
 
   function clickTitle(ev: MouseEvent) {
     if (group.type === "page") navToFile(app, group.id, ev)
@@ -189,43 +202,54 @@
     dragState.update(s => ({ ...s, inProgress: false, sourcePriority: null, dragGroupId: null }))
   }
 
-  $: groupedTodos = priorityTag ? groupTodosByPriority(group.todos) : new Map()
-  $: sortedKeys = groupedTodos ? getSortedPriorityKeys(groupedTodos) : []
-  $: visibleItemsPerZone = getVisibleItemsPerZone(groupedTodos, sortedKeys, maxTasksPerGroup, isGroupShowingAll, enableLimit)
-  $: isMyDrag = $dragState.inProgress && $dragState.dragGroupId === group.id
+  // Adapter for ChecklistItem's native drag event
+  function handleItemDragStart(item: TodoItem) {
+    return (_e: DragEvent) => {
+      dragState.update(s => ({ ...s, inProgress: true, sourcePriority: item.priority ?? 0, dragGroupId: group.id }))
+    }
+  }
+
+  const handleItemDragEnd = () => {
+    dragState.update(s => ({ ...s, inProgress: false, sourcePriority: null, dragGroupId: null }))
+  }
+
+  const groupedTodos = $derived(priorityTag ? groupTodosByPriority(group.todos) : new Map())
+  const sortedKeys = $derived(groupedTodos ? getSortedPriorityKeys(groupedTodos) : [])
+  const visibleItemsPerZone = $derived(getVisibleItemsPerZone(groupedTodos, sortedKeys, maxTasksPerGroup, isGroupShowingAll, enableLimit))
+  const isMyDrag = $derived($dragState.inProgress && $dragState.dragGroupId === group.id)
 
   // Check if the source priority level has only one task
-  $: sourceHasSingleTask = (() => {
+  const sourceHasSingleTask = $derived((() => {
     if (!$dragState.inProgress || $dragState.sourcePriority === null) return false
     const sourceKey = $dragState.sourcePriority === 0 ? null : $dragState.sourcePriority
     const items = groupedTodos?.get(sourceKey)
     return items?.length === 1
-  })()
+  })())
 
   // Find the index of the source priority in sortedKeys
-  $: sourceIndex = (() => {
+  const sourceIndex = $derived((() => {
     if (!$dragState.inProgress || $dragState.sourcePriority === null) return -1
     const sourceKey = $dragState.sourcePriority === 0 ? null : $dragState.sourcePriority
     return sortedKeys.indexOf(sourceKey)
-  })()
+  })())
 
   // Create an array indicating whether each gap should be hidden
   // Gap i is between sortedKeys[i-1] and sortedKeys[i] (or above sortedKeys[0] if i=0)
-  $: hiddenGaps = (() => {
+  const hiddenGaps = $derived((() => {
     if (!sourceHasSingleTask || sourceIndex === -1) return []
     const result: boolean[] = []
     for (let i = 0; i <= sortedKeys.length; i++) {
       result.push(i === sourceIndex || i === sourceIndex + 1)
     }
     return result
-  })()
+  })())
 </script>
 
 <section class="group {group.className}">
   <!-- svelte-ignore a11y-click-events-have-key-events -->
-  <header class={`group-header ${group.type}`} on:click={() => onToggle(group.id)} title="Toggle Group">
+  <header class={`group-header ${group.type}`} onclick={() => onToggle(group.id)} title="Toggle Group">
     <!-- svelte-ignore a11y-click-events-have-key-events -->
-    <div class="title" on:click={clickTitle}>
+    <div class="title" onclick={clickTitle}>
       {#if group.type === "page"}
         {group.pageName}
       {:else if group.mainTag}
@@ -255,9 +279,9 @@
             targetPriority={key}
             isDragging={isMyDrag}
             shouldHide={hiddenGaps[i]}
-            on:drop={handleDropPosition}
-            on:dragStart={handleDragStart}
-            on:dragEnd={handleDragEnd}
+            ondrop={handleDropPosition}
+            ondragstart={handleDragStart}
+            ondragend={handleDragEnd}
           />
           <PriorityDropZone
             position="into"
@@ -266,9 +290,9 @@
             {lookAndFeel}
             {app}
             isDragging={isMyDrag}
-            on:drop={handleDropPosition}
-            on:dragStart={handleDragStart}
-            on:dragEnd={handleDragEnd}
+            ondrop={handleDropPosition}
+            ondragstart={handleDragStart}
+            ondragend={handleDragEnd}
           />
           {#if i === sortedKeys.length - 1}
             <PriorityDropZone
@@ -276,34 +300,34 @@
               targetPriority={key}
               isDragging={isMyDrag}
               shouldHide={hiddenGaps[i + 1]}
-              on:drop={handleDropPosition}
-              on:dragStart={handleDragStart}
-              on:dragEnd={handleDragEnd}
+              ondrop={handleDropPosition}
+              ondragstart={handleDragStart}
+              ondragend={handleDragEnd}
             />
           {/if}
         {/each}
       </div>
       {#if maxTasksPerGroup && enableLimit && group.todos.length > maxTasksPerGroup && !isGroupShowingAll}
-        <button class="show-more-button" on:click={toggleShowAll}>
+        <button class="show-more-button" onclick={toggleShowAll}>
           Show all ({group.todos.length})
         </button>
       {:else if maxTasksPerGroup && enableLimit && group.todos.length > maxTasksPerGroup && isGroupShowingAll}
-        <button class="show-more-button" on:click={toggleShowAll}>
+        <button class="show-more-button" onclick={toggleShowAll}>
           Hide some
         </button>
       {/if}
     {:else}
       <ul>
         {#each group.todos as item, i}
-          <ChecklistItem {item} {lookAndFeel} {app} draggable={true} on:dragstart={handleDragStart} on:dragend={handleDragEnd} />
+          <ChecklistItem {item} {lookAndFeel} {app} draggable={true} ondragstart={handleItemDragStart(item)} ondragend={handleItemDragEnd} />
         {/each}
       </ul>
       {#if maxTasksPerGroup && enableLimit && group.todos.length > maxTasksPerGroup && !isGroupShowingAll}
-      <button class="show-more-button" on:click={toggleShowAll}>
+      <button class="show-more-button" onclick={toggleShowAll}>
         Show all ({group.todos.length})
       </button>
       {:else if maxTasksPerGroup && enableLimit && group.todos.length > maxTasksPerGroup && isGroupShowingAll}
-        <button class="show-more-button" on:click={toggleShowAll}>
+        <button class="show-more-button" onclick={toggleShowAll}>
         Collapse ({group.todos.length})
       </button>
       {/if}

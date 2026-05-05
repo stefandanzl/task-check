@@ -4,23 +4,36 @@
   import type { TodoGroup } from "src/_types"
   import type { TodoSettings } from "src/settings"
 
-  export let todoTags: string[]
-  export let hiddenTags: string[]
-  export let onTagStatusChange: (tag: string, status: boolean) => void
-  export let onSearch: (str: string) => void
-  export let onCopyTasks: () => string = () => ''
-  export let enableLimit: boolean = true
-  export let updateSetting: (updates: Partial<TodoSettings>) => Promise<void>
-  export let registerSearchInput: (input: HTMLInputElement) => void = () => {}
-  export let todoGroups: TodoGroup[] = []
-  export let _collapsedSections: string[] = []
+  let {
+    todoTags,
+    hiddenTags,
+    onTagStatusChange,
+    onSearch,
+    onCopyTasks = () => '',
+    enableLimit = true,
+    updateSetting,
+    registerSearchInput = () => {},
+    todoGroups = [],
+    _collapsedSections = []
+  }: {
+    todoTags: string[]
+    hiddenTags: string[]
+    onTagStatusChange: (tag: string, status: boolean) => void
+    onSearch: (str: string) => void
+    onCopyTasks?: () => string
+    enableLimit?: boolean
+    updateSetting: (updates: Partial<TodoSettings>) => Promise<void>
+    registerSearchInput?: (input: HTMLInputElement) => void
+    todoGroups?: TodoGroup[]
+    _collapsedSections?: string[]
+  } = $props()
 
-  let showSettings = false
-  let search = ""
+  let showSettings = $state(false)
+  let search = $state("")
   let searchInput: HTMLInputElement
   let inputRegistered = false
 
-  $: allCollapsed = todoGroups.length > 0 && _collapsedSections.length === todoGroups.length
+  const allCollapsed = $derived(todoGroups.length > 0 && _collapsedSections.length === todoGroups.length)
 
   async function toggleExpandCollapseAll() {
     if (allCollapsed) {
@@ -32,10 +45,12 @@
     }
   }
 
-  $: if (searchInput && !inputRegistered) {
-    registerSearchInput(searchInput)
-    inputRegistered = true
-  }
+  $effect(() => {
+    if (searchInput && !inputRegistered) {
+      registerSearchInput(searchInput)
+      inputRegistered = true
+    }
+  })
 
   function clearSearch() {
     search = ""
@@ -69,8 +84,8 @@
         placeholder="Search..."
         bind:value={search}
         bind:this={searchInput}
-        on:input={() => onSearch(search)}
-        on:keydown={(e) => {
+        oninput={() => onSearch(search)}
+        onkeydown={(e) => {
           if (e.key === 'Escape') {
             search = ""
             onSearch("")
@@ -79,7 +94,7 @@
       />
       {#if search}
         <!-- svelte-ignore a11y-click-events-have-key-events -->
-        <div class="search-clear-button" on:click={clearSearch} role="button" tabindex="0" aria-label="Clear search">
+        <div class="search-clear-button" onclick={clearSearch} role="button" tabindex="0" aria-label="Clear search">
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
         </div>
       {/if}
@@ -89,7 +104,7 @@
       class="settings-button clickable-icon {showSettings ? 'is-active' : ''}"
       role="button"
       tabindex="0"
-      on:click={() => showSettings = !showSettings}
+      onclick={() => showSettings = !showSettings}
       aria-label="Search settings"
     >
       <Icon name="settings" style="button" />
@@ -103,17 +118,17 @@
         <div class="toggle-switch">
 
           <label class="toggle-label">
-            <input type="checkbox" class="toggle-input" checked={enableLimit} on:change={toggleLimit} />
+            <input type="checkbox" class="toggle-input" checked={enableLimit} onchange={toggleLimit} />
             <span class="toggle-slider"></span>
             <span class="toggle-text">Limit tasks</span>
           </label>
         </div>
         <div class="toggle-switch">
-        <button class="copy-icon-button" on:click={toggleExpandCollapseAll} title={allCollapsed ? "Expand all" : "Collapse all"}>
+        <button class="copy-icon-button" onclick={toggleExpandCollapseAll} title={allCollapsed ? "Expand all" : "Collapse all"}>
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevrons-up-down-icon lucide-chevrons-up-down"><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></svg>
         </button>
         &nbsp;&nbsp;
-        <button class="copy-icon-button" on:click={handleCopy} title="Copy tasks to clipboard">
+        <button class="copy-icon-button" onclick={handleCopy} title="Copy tasks to clipboard">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
         </button>
         </div>
@@ -124,7 +139,7 @@
       {#each todoTags as tag, i}
         <div class="tag-checkbox-item">
           <label class="task-list-label">
-            <input class="task-list-item-checkbox" type="checkbox" checked={!hiddenTags.includes(tag)} on:change={() => toggleTag(tag)} />
+            <input class="task-list-item-checkbox" type="checkbox" checked={!hiddenTags.includes(tag)} onchange={() => toggleTag(tag)} />
             <span><span class="hash">#</span>{tag}</span>
           </label>
         </div>

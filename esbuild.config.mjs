@@ -60,7 +60,10 @@ esbuild
     plugins: [
       sveltePlugin({
         preprocess: autoPreprocess(),
-        compilerOptions: {css: 'injected'},
+        compilerOptions: {
+          css: 'injected',
+          runes: true
+        },
         filterWarnings: warning =>
           !warning.message.toLowerCase().includes('a11y'),
       }),

@@ -3,7 +3,8 @@
     "allow": [
       "Bash(task default:*)",
       "Bash(npm run *)",
-      "mcp__plugin_svelte_svelte__svelte-autofixer"
+      "mcp__plugin_svelte_svelte__svelte-autofixer",
+      "mcp__plugin_svelte_svelte__get-documentation"
     ]
   }
 }

@@ -1,18 +1,28 @@
 <script lang="ts">
   import type { App } from "obsidian"
-  import { createEventDispatcher } from "svelte"
 
   import type { LookAndFeel, TodoItem } from "src/_types"
   import { navToFile, toggleTodoItem } from "src/utils"
   import CheckCircle from "./CheckCircle.svelte"
 
-  export let item: TodoItem
-  export let lookAndFeel: LookAndFeel
-  export let app: App
-  export let draggable = false
-  export let targetPriority = null
+  let {
+    item,
+    lookAndFeel,
+    app,
+    draggable = false,
+    targetPriority = null,
+    ondragstart = () => {},
+    ondragend = () => {}
+  }: {
+    item: TodoItem
+    lookAndFeel: LookAndFeel
+    app: App
+    draggable?: boolean
+    targetPriority?: number | null
+    ondragstart?: (e: DragEvent) => void
+    ondragend?: (e: DragEvent) => void
+  } = $props()
 
-  const dispatch = createEventDispatcher()
   let contentDiv: HTMLDivElement
 
   const toggleItem = async (item: TodoItem) => {
@@ -40,31 +50,29 @@
       dt.setData('text/plain', `${item.filePath}:${item.line}`)
       dt.effectAllowed = 'move'
     }
-    dispatch('dragstart', { item })
+    ondragstart(e)
   }
 
   const handleDragEnd = (e: DragEvent) => {
-    dispatch('dragend')
+    ondragend(e)
   }
 
-  $: {
+  $effect(() => {
     if (contentDiv) contentDiv.innerHTML = item.rawHTML
-  }
+  })
 </script>
 
-<li class={`${lookAndFeel} HyperMD-list-line HyperMD-task-line cm-line`} data-task={item.taskStatus} draggable={draggable} on:dragstart={handleDragStart} on:dragend={handleDragEnd}>
+<li class={`${lookAndFeel} HyperMD-list-line HyperMD-task-line cm-line`} data-task={item.taskStatus} draggable={draggable} ondragstart={handleDragStart} ondragend={handleDragEnd}>
   <button
     class="toggle"
-    on:click={(ev) => {
+    onclick={(ev) => {
       toggleItem(item)
       ev.stopPropagation()
     }}
   >
     <CheckCircle taskStatus={item.taskStatus} />
   </button>
-  <!-- svelte-ignore a11y-click-events-have-key-events -->
-  <div bind:this={contentDiv} on:click={(ev) => handleClick(ev, item)} class="content cm-s-obsidian"></div>
-  <slot />
+  <div bind:this={contentDiv} onclick={(ev) => handleClick(ev, item)} class="content cm-s-obsidian"></div>
   {#if targetPriority}
   <span class="prio-level">{targetPriority}</span>
   {/if}

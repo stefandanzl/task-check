@@ -1,6 +1,5 @@
 <script lang="ts">
-  // export let checked = false
-  export let taskStatus = ' '
+  let { taskStatus = ' ' }: { taskStatus?: string } = $props()
 </script>
 
 <label class="task-list-label">

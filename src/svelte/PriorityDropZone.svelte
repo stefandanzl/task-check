@@ -1,23 +1,38 @@
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte'
   import type { App } from 'obsidian'
   import type { LookAndFeel, TodoItem } from 'src/_types'
   import ChecklistItem from './ChecklistItem.svelte'
 
-  export let position: 'above' | 'below' | 'into'
-  export let items: TodoItem[] = []
-  export let targetPriority: number | null
-  export let lookAndFeel: LookAndFeel = 'classic'
-  export let app: App | undefined = undefined
-  export let isDragging: boolean = false
-  export let shouldHide: boolean = false
+  let {
+    position,
+    items = [],
+    targetPriority = null,
+    lookAndFeel = 'classic',
+    app,
+    isDragging = false,
+    shouldHide = false,
+    ondrop = () => {},
+    ondragstart = () => {},
+    ondragend = () => {}
+  }: {
+    position: 'above' | 'below' | 'into'
+    items?: TodoItem[]
+    targetPriority?: number | null
+    lookAndFeel?: LookAndFeel
+    app?: App
+    isDragging?: boolean
+    shouldHide?: boolean
+    ondrop?: (e: CustomEvent) => void
+    ondragstart?: (e: CustomEvent) => void
+    ondragend?: () => void
+  } = $props()
 
-  const dispatch = createEventDispatcher()
-  let isDragOver = false
+  let isDragOver = $state(false)
+  // svelte-ignore non_reactive_update
   let dropZoneEl: HTMLDivElement
 
   // 'into' is droppable for all zones to set priority to that zone's value
-  $: isDroppable = true
+  const isDroppable = true
 
   function handleDragOver(e: DragEvent) {
     if (!isDroppable || !isDragging) return
@@ -41,23 +56,27 @@
     isDragOver = false
     const itemId = e.dataTransfer?.getData('text/plain')
     if (itemId) {
-      dispatch('drop', { item: { id: itemId }, dropPosition: position, targetPriority })
+      ondrop(new CustomEvent('drop', { detail: { item: { id: itemId }, dropPosition: position, targetPriority } }))
     }
-    dispatch('dragEnd')
+    ondragend()
   }
 
-  function forwardDragStart(e: CustomEvent) {
-    dispatch('dragStart', { item: e.detail.item })
+  function forwardDragStart(item: TodoItem) {
+    return (_e: DragEvent) => {
+      ondragstart(new CustomEvent('dragStart', { detail: { item } }))
+    }
   }
 
   function forwardDragEnd() {
-    dispatch('dragEnd')
+    ondragend()
   }
 
-  $: if (!isDragging) isDragOver = false
+  $effect(() => {
+    if (!isDragging) isDragOver = false
+  })
 
-  $: displayLabel = targetPriority === null ? 'Neutral' : `Priority ${targetPriority}`
-  $: zoneClass = `${position}-zone ${targetPriority === null ? 'neutral' : targetPriority > 0 ? 'positive' : 'negative'}`
+  const displayLabel = $derived(targetPriority === null ? 'Neutral' : `Priority ${targetPriority}`)
+  const zoneClass = $derived(`${position}-zone ${targetPriority === null ? 'neutral' : targetPriority > 0 ? 'positive' : 'negative'}`)
 </script>
 
 {#if position === 'into'}
@@ -69,9 +88,9 @@
       class:drop-visible={isDragging && items.length === 0}
       class:hovered={isDragOver}
       bind:this={dropZoneEl}
-      on:dragover={handleDragOver}
-      on:dragleave={handleDragLeave}
-      on:drop={handleDrop}
+      ondragover={handleDragOver}
+      ondragleave={handleDragLeave}
+      ondrop={handleDrop}
     >
       {#if items.length > 0 && app}
         <div class="zone-header">
@@ -85,8 +104,8 @@
               lookAndFeel={lookAndFeel ?? 'classic'}
               {app}
               draggable={true}
-              on:dragstart={forwardDragStart}
-              on:dragend={forwardDragEnd}
+              ondragstart={forwardDragStart(item)}
+              ondragend={forwardDragEnd}
             />
           {/each}
         </ul>
@@ -100,9 +119,9 @@
         class="priority-content {zoneClass}"
         class:hovered={isDragOver}
         bind:this={dropZoneEl}
-        on:dragover={handleDragOver}
-        on:dragleave={handleDragLeave}
-        on:drop={handleDrop}
+        ondragover={handleDragOver}
+        ondragleave={handleDragLeave}
+        ondrop={handleDrop}
       >
         <div class="zone-header">
           <span class="zone-label">{displayLabel}</span>
@@ -115,9 +134,8 @@
               lookAndFeel={lookAndFeel ?? 'classic'}
               {app}
               draggable={true}
-
-              on:dragstart={forwardDragStart}
-              on:dragend={forwardDragEnd}
+              ondragstart={forwardDragStart(item)}
+              ondragend={forwardDragEnd}
               {targetPriority}
             />
           {/each}
@@ -129,9 +147,9 @@
         class:visible={isDragging}
         class:hovered={isDragOver}
         bind:this={dropZoneEl}
-        on:dragover={handleDragOver}
-        on:dragleave={handleDragLeave}
-        on:drop={handleDrop}
+        ondragover={handleDragOver}
+        ondragleave={handleDragLeave}
+        ondrop={handleDrop}
       >
         <span class="priority-drop-label">Drop to set {displayLabel}</span>
       </div>
@@ -144,9 +162,9 @@
       class:visible={isDragging}
       class:hovered={isDragOver}
       bind:this={dropZoneEl}
-      on:dragover={handleDragOver}
-      on:dragleave={handleDragLeave}
-      on:drop={handleDrop}
+      ondragover={handleDragOver}
+      ondragleave={handleDragLeave}
+      ondrop={handleDrop}
     >
       <div class="drop-indicator"></div>
     </div>

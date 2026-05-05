@@ -5,33 +5,49 @@
   import ChecklistGroup from "./ChecklistGroup.svelte"
   import Header from "./Header.svelte"
 
-  export let todoTags: string[]
-  export let lookAndFeel: LookAndFeel
-  export let _collapsedSections: string[]
-  export let _hiddenTags: string[]
-  export let updateSetting: (updates: Partial<TodoSettings>) => Promise<void>
-  export let onSearch: (str: string) => void
-  export let onCopyTasks: () => string = () => ''
-  export let app: App
-  export let todoGroups: TodoGroup[] = []
-  export let priorityTag: string = ''
-  export let maxTasksPerGroup: number | null = null
-  export let enableLimit: boolean = true
-  export let registerSearchInput: (input: HTMLInputElement) => void = () => {}
+  let {
+    todoTags,
+    lookAndFeel,
+    _collapsedSections,
+    _hiddenTags,
+    updateSetting,
+    onSearch,
+    onCopyTasks = () => '',
+    app,
+    todoGroups = [],
+    priorityTag = '',
+    maxTasksPerGroup = null,
+    enableLimit = true,
+    registerSearchInput = () => {}
+  }: {
+    todoTags: string[]
+    lookAndFeel: LookAndFeel
+    _collapsedSections: string[]
+    _hiddenTags: string[]
+    updateSetting: (updates: Partial<TodoSettings>) => Promise<void>
+    onSearch: (str: string) => void
+    onCopyTasks?: () => string
+    app: App
+    todoGroups?: TodoGroup[]
+    priorityTag?: string
+    maxTasksPerGroup?: number | null
+    enableLimit?: boolean
+    registerSearchInput?: (input: HTMLInputElement) => void
+  } = $props()
 
   // Track which groups have their "Show all" button clicked
-  let showAllMap: Record<string, boolean> = {}
+  let showAllMap = $state<Record<string, boolean>>({})
 
-  const visibleTags = todoTags.filter((t) => !_hiddenTags.includes(t))
+  const visibleTags = $derived(todoTags.filter((t) => !_hiddenTags.includes(t)))
 
-  const toggleGroup = (id: string) => {
+  function toggleGroup(id: string) {
     const newCollapsedSections = _collapsedSections.includes(id)
       ? _collapsedSections.filter((e) => e !== id)
       : [..._collapsedSections, id]
     updateSetting({ _collapsedSections: newCollapsedSections })
   }
 
-  const updateTagStatus = (tag: string, status: boolean) => {
+  function updateTagStatus(tag: string, status: boolean) {
     const newHiddenTags = _hiddenTags.filter((t) => t !== tag)
     if (!status) newHiddenTags.push(tag)
     updateSetting({ _hiddenTags: newHiddenTags })
