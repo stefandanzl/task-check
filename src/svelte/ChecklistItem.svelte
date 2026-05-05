@@ -52,7 +52,7 @@
   }
 </script>
 
-<li class={`${lookAndFeel}`} draggable={draggable} on:dragstart={handleDragStart} on:dragend={handleDragEnd}>
+<li class={`${lookAndFeel} HyperMD-list-line HyperMD-task-line cm-line`} data-task={item.taskStatus} draggable={draggable} on:dragstart={handleDragStart} on:dragend={handleDragEnd}>
   <button
     class="toggle"
     on:click={(ev) => {
@@ -60,7 +60,7 @@
       ev.stopPropagation()
     }}
   >
-    <CheckCircle checked={item.checked} />
+    <CheckCircle taskStatus={item.taskStatus} />
   </button>
   <!-- svelte-ignore a11y-click-events-have-key-events -->
   <div bind:this={contentDiv} on:click={(ev) => handleClick(ev, item)} class="content cm-s-obsidian" />

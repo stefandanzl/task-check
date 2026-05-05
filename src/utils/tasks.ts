@@ -120,7 +120,7 @@ export const toggleTodoItem = async (item: TodoItem, app: App) => {
   const newData = setTodoStatusAtLineTo(
     currentFileLines,
     item.line,
-    !item.checked,
+    item.taskStatus === " ",
   )
   app.vault.modify(file, newData)
   item.checked = !item.checked
@@ -336,6 +336,7 @@ const formTodo = (
     mainTag: tagMeta?.main,
     subTag: tagMeta?.sub,
     checked,
+    taskStatus,
     filePath: file.file.path,
     fileName: file.file.name,
     fileLabel: getFileLabelFromName(file.file.name),

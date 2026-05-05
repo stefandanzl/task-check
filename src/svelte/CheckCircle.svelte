@@ -1,37 +1,21 @@
 <script lang="ts">
-  export let checked = false
+  // export let checked = false
+  export let taskStatus = ' '
 </script>
 
-<div class="checkbox">
-  <div class:checked />
-</div>
+<label class="task-list-label">
+  <input
+    type="checkbox"
+    class="task-list-item-checkbox"
+    data-task={taskStatus}
+    checked={taskStatus !== ' '}
+    readonly
+  />
+</label>
 
 <style>
-  .checkbox {
-    width: var(--checklist-checkboxSize);
-    height: var(--checklist-checkboxSize);
-    min-width: var(--checklist-checkboxSize);
-    min-height: var(--checklist-checkboxSize);
-    border-radius: var(--checklist-checkboxBorderRadius);
-    border: var(--checklist-checkboxBorder);
-    padding: 2px;
-    position: relative;
-    cursor: pointer;
-  }
-
-  .checked {
-    background-color: var(--text-muted);
-    width: var(--checklist-checkboxCheckedSize);
-    height: var(--checklist-checkboxCheckedSize);
-    border-radius: 50%;
-    position: absolute;
-    top: calc(
-      calc(var(--checklist-checkboxSize) - var(--checklist-checkboxCheckedSize)) /
-        4
-    );
-    left: calc(
-      calc(var(--checklist-checkboxSize) - var(--checklist-checkboxCheckedSize)) /
-        4
-    );
+  .task-list-label {
+    display: flex;
+    align-items: center;
   }
 </style>

@@ -2,6 +2,7 @@ import type {CachedMetadata, TagCache, TFile} from 'obsidian'
 
 export type TodoItem = {
   checked: boolean
+  taskStatus: string
   filePath: string
   fileName: string
   fileLabel: string
