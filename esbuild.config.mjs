@@ -61,8 +61,8 @@ async function build() {
           css: 'injected',
           runes: true,
         },
-        filterWarnings: warning =>
-          !warning.message.toLowerCase().includes('a11y'),
+        // filterWarnings: warning =>
+        //   !warning.message.toLowerCase().includes('a11y'),
       }),
     ],
     outfile: 'main.js',

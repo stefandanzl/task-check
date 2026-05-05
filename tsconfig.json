@@ -1,11 +1,13 @@
 {
   "extends": "@tsconfig/svelte/tsconfig.json",
   "compilerOptions": {
-    "baseUrl": ".",
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "importHelpers": true,
     "types": ["svelte", "node"],
-    "lib": ["ESNext", "DOM"]
+    "lib": ["ESNext", "DOM"],
+    "paths": {
+      "src/*": ["./src/*"]
+    }
   },
   "include": ["src/**/*", "svelte-custom.d.ts"]
 }
