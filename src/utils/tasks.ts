@@ -18,7 +18,6 @@ import {
   parsePriorityTag,
   removePriorityTagFromText,
   retrieveTag,
-  lineIsValidTodo,
   removeTagFromText,
   setLineTo,
 } from './helpers'
@@ -200,49 +199,44 @@ const findAllTodosFromTagBlock = (file: FileInfo, tag: TagCache, priorityTag: st
   if (!file.content) return []
   const fileLines = getAllLinesFromFile(file.content)
   const tagMeta = getTagMeta(tag.tag)
-  const tagLine = fileLines[tag.position.start.line]
-
-  // Check if the tag line itself is a todo (edge case)
-  if (lineIsValidTodo(tagLine)) {
-    // Extract task status from line for this edge case
-    const taskMatch = /^(\s|\>)*([\-\*]|[0-9]+\.)\s\[([^\]]+)\]/.exec(tagLine)
-    const taskStatus = taskMatch?.[3] ?? ' '
-    return [formTodo(tagLine, file, tag.position.start.line, taskStatus, tagMeta, priorityTag, app)]
-  }
-
-  // Use cached listItems to find tasks after the tag
-  const listItems = file.cache.listItems ?? []
   const tagLineNum = tag.position.start.line
+
+  const listItems = file.cache.listItems ?? []
   const todos: TodoItem[] = []
 
-  for (const listItem of listItems) {
-    // Only process items that have a task property (are tasks)
-    if (listItem.task === undefined) continue
-
-    const lineNum = listItem.position.start.line
-
-    // Only consider items after the tag
-    if (lineNum <= tagLineNum) continue
-
-    // Skip first line after tag if empty (original behavior)
-    if (lineNum === tagLineNum + 1 && fileLines[lineNum]?.trim().length === 0) continue
-
-    // Check for empty line gap (original behavior: break on empty line)
-    if (todos.length > 0) {
-      const prevLineNum = todos[todos.length - 1].line
-      // Check all lines between previous task and this one
-      for (let checkLine = prevLineNum + 1; checkLine < lineNum; checkLine++) {
-        if (fileLines[checkLine]?.trim().length === 0) {
-          // Empty line found - stop processing
-          return todos
-        }
-      }
+  // Step 1: Check if tag and task are on same line (inline tag - single task mode)
+  const sameLineItem = listItems.find(item =>
+    item.position.start.line === tagLineNum &&
+    item.task !== undefined
+  )
+  if (sameLineItem) {
+    const line = fileLines[tagLineNum]
+    if (line) {
+      return [formTodo(line, file, tagLineNum, sameLineItem.task, tagMeta, priorityTag, app)]
     }
+  }
 
-    const line = fileLines[lineNum]
-    if (!line) continue
+  // Step 2: Walk line by line from tagLineNum + 1 (block mode)
+  let currentLine = tagLineNum + 1
+  while (currentLine < fileLines.length) {
+    const line = fileLines[currentLine]
 
-    todos.push(formTodo(line, file, lineNum, listItem.task, tagMeta, priorityTag, app))
+    // Check if there's a task on this line
+    const taskOnLine = listItems.find(item =>
+      item.position.start.line === currentLine &&
+      item.task !== undefined
+    )
+
+    if (taskOnLine) {
+      // Found a task - add it and continue
+      todos.push(formTodo(line, file, currentLine, taskOnLine.task, tagMeta, priorityTag, app))
+    } else if (line.trim().length === 0) {
+      // Empty line - stop processing (end of block)
+      break
+    }
+    // If line has content but no task, just continue (description text between tasks)
+
+    currentLine++
   }
 
   return todos
