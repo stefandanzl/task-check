@@ -82,6 +82,7 @@
 {#if position === 'into'}
   {#if targetPriority === null}
     <!-- Neutral zone: always droppable to remove priority, shows items if any -->
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
     <div
       class="neutral-zone {zoneClass}"
       class:has-items={items.length > 0}
@@ -115,6 +116,7 @@
     </div>
   {:else}
     {#if items.length > 0 && app}
+      <!-- svelte-ignore a11y_no_static_element_interactions -->
       <div
         class="priority-content {zoneClass}"
         class:hovered={isDragOver}
@@ -142,6 +144,7 @@
         </ul>
       </div>
     {:else if isDragging}
+      <!-- svelte-ignore a11y_no_static_element_interactions -->
       <div
         class="priority-drop-zone {zoneClass}"
         class:visible={isDragging}
@@ -157,6 +160,7 @@
   {/if}
 {:else}
   {#if !shouldHide}
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
     <div
       class="drop-zone {zoneClass}"
       class:visible={isDragging}
