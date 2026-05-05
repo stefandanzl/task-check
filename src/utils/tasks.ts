@@ -228,8 +228,12 @@ const findAllTodosFromTagBlock = (file: FileInfo, tag: TagCache, priorityTag: st
     )
 
     if (taskOnLine) {
-      // Found a task - add it and continue
-      todos.push(formTodo(line, file, currentLine, taskOnLine.task, tagMeta, priorityTag, app))
+      // Empty task check
+      const content = line.match(/- \[.\]\s(.*)/)?.[1];
+      if (content.trim().length !== 0) {
+        // Found a task - add it and continue
+        todos.push(formTodo(line, file, currentLine, taskOnLine.task, tagMeta, priorityTag, app))
+      }
     } else if (line.trim().length === 0) {
       // Empty line - stop processing (end of block)
       break

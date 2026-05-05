@@ -163,6 +163,7 @@ export default class TodoPlugin extends Plugin {
       'autoRefresh',
       'lookAndFeel',
       '_collapsedSections',
+      '_showSettingsPanel',
     ]
     const onlyReGroupWhenChanges = [
       'subGroups',

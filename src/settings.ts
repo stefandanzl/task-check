@@ -22,6 +22,7 @@ export interface TodoSettings {
   priorityTag: string
   maxTasksPerGroup: number | null
   enableLimit: boolean
+  _showSettingsPanel: boolean
 }
 
 export const DEFAULT_SETTINGS: TodoSettings = {
@@ -43,6 +44,7 @@ export const DEFAULT_SETTINGS: TodoSettings = {
   priorityTag: 'prio',
   maxTasksPerGroup: 5,
   enableLimit: true,
+  _showSettingsPanel: false,
 }
 
 export class TodoSettingTab extends PluginSettingTab {
