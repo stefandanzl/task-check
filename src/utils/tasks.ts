@@ -21,7 +21,6 @@ import {
   lineIsValidTodo,
   removeTagFromText,
   setLineTo,
-  todoLineIsChecked,
 } from './helpers'
 import { DONE_TASK_SYMBOLS } from '../constants'
 
@@ -191,7 +190,7 @@ const findAllTodosInFile = (file: FileInfo, priorityTag: string, app?: App): Tod
     const line = fileLines[lineNum]
     if (!line) continue
 
-    todos.push(formTodo(line, file, lineNum, tagMeta, priorityTag, app, listItem.task))
+    todos.push(formTodo(line, file, lineNum, listItem.task, tagMeta, priorityTag, app))
   }
 
   return todos
@@ -205,7 +204,10 @@ const findAllTodosFromTagBlock = (file: FileInfo, tag: TagCache, priorityTag: st
 
   // Check if the tag line itself is a todo (edge case)
   if (lineIsValidTodo(tagLine)) {
-    return [formTodo(tagLine, file, tag.position.start.line, tagMeta, priorityTag, app, undefined)]
+    // Extract task status from line for this edge case
+    const taskMatch = /^(\s|\>)*([\-\*]|[0-9]+\.)\s\[([^\]]+)\]/.exec(tagLine)
+    const taskStatus = taskMatch?.[3] ?? ' '
+    return [formTodo(tagLine, file, tag.position.start.line, taskStatus, tagMeta, priorityTag, app)]
   }
 
   // Use cached listItems to find tasks after the tag
@@ -240,7 +242,7 @@ const findAllTodosFromTagBlock = (file: FileInfo, tag: TagCache, priorityTag: st
     const line = fileLines[lineNum]
     if (!line) continue
 
-    todos.push(formTodo(line, file, lineNum, tagMeta, priorityTag, app, listItem.task))
+    todos.push(formTodo(line, file, lineNum, listItem.task, tagMeta, priorityTag, app))
   }
 
   return todos
@@ -321,10 +323,10 @@ const formTodo = (
   line: string,
   file: FileInfo,
   lineNum: number,
+  taskStatus: string,
   tagMeta?: TagMeta,
   priorityTag?: string,
   app?: App,
-  taskStatus?: string,
 ): TodoItem => {
   const rawText = extractTextFromTodoLine(line)
   const spacesIndented = getIndentationSpacesFromTodoLine(line)
@@ -333,10 +335,8 @@ const formTodo = (
   const displayText = priorityTag ? removePriorityTagFromText(tagStripped, priorityTag) : tagStripped
   const rawHTML = app ? preprocessMarkdown(displayText, app.metadataCache, file.file.path) : displayText
 
-  // Use the task status from cache if available, otherwise fall back to line parsing
-  const checked = taskStatus !== undefined
-    ? DONE_TASK_SYMBOLS.has(taskStatus.toLowerCase())
-    : todoLineIsChecked(line)
+  // Use the task status from cache - no fallback needed since we only call this for actual tasks
+  const checked = DONE_TASK_SYMBOLS.has(taskStatus)
 
   return {
     mainTag: tagMeta?.main,
