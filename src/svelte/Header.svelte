@@ -14,7 +14,8 @@
     updateSetting,
     registerSearchInput = () => {},
     todoGroups = [],
-    _collapsedSections = []
+    _collapsedSections = [],
+    showSettingsPanel = false
   }: {
     todoTags: string[]
     hiddenTags: string[]
@@ -26,9 +27,9 @@
     registerSearchInput?: (input: HTMLInputElement) => void
     todoGroups?: TodoGroup[]
     _collapsedSections?: string[]
+    showSettingsPanel?: boolean
   } = $props()
 
-  let showSettings = $state(false)
   let search = $state("")
   let searchInput: HTMLInputElement
   let inputRegistered = false
@@ -101,17 +102,17 @@
     </div>
     <!-- svelte-ignore a11y-click-events-have-key-events -->
     <div
-      class="settings-button clickable-icon {showSettings ? 'is-active' : ''}"
+      class="settings-button clickable-icon {showSettingsPanel ? 'is-active' : ''}"
       role="button"
       tabindex="0"
-      onclick={() => showSettings = !showSettings}
+      onclick={() => updateSetting({ _showSettingsPanel: !showSettingsPanel })}
       aria-label="Search settings"
     >
       <Icon name="settings" style="button" />
     </div>
   </div>
 
-  {#if showSettings}
+  {#if showSettingsPanel}
     <div class="settings-panel">
       <div class="settings-controls">
 

@@ -18,7 +18,8 @@
     priorityTag,
     maxTasksPerGroup,
     enableLimit,
-    registerSearchInput
+    registerSearchInput,
+    _showSettingsPanel = false
   }: {
     todoTags: string[]
     lookAndFeel: LookAndFeel
@@ -33,6 +34,7 @@
     maxTasksPerGroup?: number | null
     enableLimit?: boolean
     registerSearchInput?: (input: HTMLInputElement) => void
+    _showSettingsPanel?: boolean
   } = $props()
 
   // Track which groups have their "Show all" button clicked
@@ -75,6 +77,7 @@
       registerSearchInput={registerSearchInput || (() => {})}
       todoGroups={todoGroups}
       _collapsedSections={_collapsedSections}
+      showSettingsPanel={_showSettingsPanel}
     />
     {#if todoGroups.length === 0}
       <div class="empty">

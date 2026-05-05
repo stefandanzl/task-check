@@ -15,6 +15,7 @@ export default class TodoListView extends ItemView {
   public itemsByFile = new Map<string, TodoItem[]>()
   private searchTerm = ''
   private searchInputRef: HTMLInputElement | null = null
+  private isRefreshing = false
 
   constructor(
     leaf: WorkspaceLeaf,
@@ -56,7 +57,7 @@ export default class TodoListView extends ItemView {
   }
 
   async onOpen(): Promise<void> {
-    this.renderView()
+    this.refresh()
     this.registerEvent(
       this.app.metadataCache.on('resolved', async () => {
         if (!this.plugin.getSettingValue('autoRefresh')) return
@@ -70,7 +71,6 @@ export default class TodoListView extends ItemView {
       }),
     )
     this.registerEvent(this.app.vault.on('delete', file => this.deleteFile(file.path)))
-    this.refresh()
   }
 
   private renderView() {
@@ -84,14 +84,25 @@ export default class TodoListView extends ItemView {
   }
 
   async refresh(all = false) {
-    if (all) {
-      this.lastRerender = 0
-      this.itemsByFile.clear()
+    // Prevent recursive refreshes
+    if (this.isRefreshing) {
+      return
     }
-    await this.calculateAllItems()
-    this.groupItems()
-    this.renderView()
-    this.lastRerender = +new Date()
+
+    this.isRefreshing = true
+
+    try {
+      if (all) {
+        this.lastRerender = 0
+        this.itemsByFile.clear()
+      }
+      await this.calculateAllItems()
+      this.groupItems()
+      this.renderView()
+      this.lastRerender = +new Date()
+    } finally {
+      this.isRefreshing = false
+    }
   }
 
   rerender() {
