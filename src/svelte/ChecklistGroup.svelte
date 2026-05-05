@@ -6,7 +6,7 @@
   import ChecklistItem from "./ChecklistItem.svelte"
   import Icon from "./Icon.svelte"
   import PriorityDropZone from "./PriorityDropZone.svelte"
-  import { dragState } from "./dragState"
+  import { dragState } from "./viewStore"
 
   let {
     group,

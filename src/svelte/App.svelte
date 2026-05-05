@@ -1,61 +1,45 @@
 <script lang="ts">
   import type { App } from "obsidian"
-  import type { LookAndFeel, TodoGroup } from "src/_types"
   import type { TodoSettings } from "src/settings"
   import ChecklistGroup from "./ChecklistGroup.svelte"
   import Header from "./Header.svelte"
+  import {
+    todoGroupsStore,
+    todoTagsStore,
+    lookAndFeelStore,
+    collapsedSectionsStore,
+    hiddenTagsStore,
+    priorityTagStore,
+    maxTasksPerGroupStore,
+    enableLimitStore,
+  } from "./viewStore"
 
   let {
-    todoTags,
-    lookAndFeel,
-    _collapsedSections,
-    _hiddenTags,
+    app,
     updateSetting,
     onSearch,
     onCopyTasks,
-    app,
-    todoGroups: groups,
-    priorityTag,
-    maxTasksPerGroup,
-    enableLimit,
     registerSearchInput,
-    _showSettingsPanel = false
   }: {
-    todoTags: string[]
-    lookAndFeel: LookAndFeel
-    _collapsedSections: string[]
-    _hiddenTags: string[]
+    app: App
     updateSetting: (updates: Partial<TodoSettings>) => Promise<void>
     onSearch: (str: string) => void
     onCopyTasks?: () => string
-    app: App
-    todoGroups?: TodoGroup[]
-    priorityTag?: string
-    maxTasksPerGroup?: number | null
-    enableLimit?: boolean
     registerSearchInput?: (input: HTMLInputElement) => void
-    _showSettingsPanel?: boolean
   } = $props()
 
-  // Track which groups have their "Show all" button clicked
   let showAllMap = $state<Record<string, boolean>>({})
 
-  // Derived values for optional props
-  const todoGroups = $derived(groups ?? [])
-  const effectiveEnableLimit = $derived(enableLimit ?? true)
-  const effectivePriorityTag = $derived(priorityTag ?? '')
-  const effectiveMaxTasksPerGroup = $derived(maxTasksPerGroup ?? null)
-  const visibleTags = $derived(todoTags.filter((t) => !_hiddenTags.includes(t)))
-
   function toggleGroup(id: string) {
-    const newCollapsedSections = _collapsedSections.includes(id)
-      ? _collapsedSections.filter((e) => e !== id)
-      : [..._collapsedSections, id]
+    const collapsed = $collapsedSectionsStore
+    const newCollapsedSections = collapsed.includes(id)
+      ? collapsed.filter((e) => e !== id)
+      : [...collapsed, id]
     updateSetting({ _collapsedSections: newCollapsedSections })
   }
 
   function updateTagStatus(tag: string, status: boolean) {
-    const newHiddenTags = _hiddenTags.filter((t) => t !== tag)
+    const newHiddenTags = $hiddenTagsStore.filter((t) => t !== tag)
     if (!status) newHiddenTags.push(tag)
     updateSetting({ _hiddenTags: newHiddenTags })
   }
@@ -66,45 +50,39 @@
 </script>
 
 <div class="checklist-plugin-main markdown-preview-view">
-    <Header
-      {todoTags}
-      hiddenTags={_hiddenTags}
-      onTagStatusChange={updateTagStatus}
-      {onSearch}
-      onCopyTasks={onCopyTasks || (() => '')}
-      enableLimit={effectiveEnableLimit}
-      {updateSetting}
-      registerSearchInput={registerSearchInput || (() => {})}
-      todoGroups={todoGroups}
-      _collapsedSections={_collapsedSections}
-      showSettingsPanel={_showSettingsPanel}
-    />
-    {#if todoGroups.length === 0}
-      <div class="empty">
-        {#if _hiddenTags.length === todoTags.length}
-          All checklist set to hidden
-        {:else if visibleTags.length}
-          No checklists found for tag{visibleTags.length > 1 ? "s" : ""}: {visibleTags.map((e) => `#${e}`).join(" ")}
-        {:else}
-          No checklists found in all files
-        {/if}
-      </div>
-    {:else}
-      {#each todoGroups as group}
-        <ChecklistGroup
-          {group}
-          {app}
-          {lookAndFeel}
-          priorityTag={effectivePriorityTag}
-          maxTasksPerGroup={effectiveMaxTasksPerGroup}
-          enableLimit={effectiveEnableLimit}
-          showAllMap={showAllMap}
-          onToggleShowAll={handleToggleShowAll}
-          isCollapsed={_collapsedSections.includes(group.id)}
-          onToggle={toggleGroup}
-        />
-      {/each}
-    {/if}
+  <Header
+    onTagStatusChange={updateTagStatus}
+    {onSearch}
+    onCopyTasks={onCopyTasks || (() => '')}
+    {updateSetting}
+    registerSearchInput={registerSearchInput || (() => {})}
+  />
+  {#if $todoGroupsStore.length === 0}
+    <div class="empty">
+      {#if $hiddenTagsStore.length === $todoTagsStore.length && $todoTagsStore.length > 0}
+        All checklist set to hidden
+      {:else if $todoTagsStore.filter((t) => !$hiddenTagsStore.includes(t)).length}
+        No checklists found for tag{$todoTagsStore.filter((t) => !$hiddenTagsStore.includes(t)).length > 1 ? "s" : ""}: {$todoTagsStore.filter((t) => !$hiddenTagsStore.includes(t)).map((e) => `#${e}`).join(" ")}
+      {:else}
+        No checklists found in all files
+      {/if}
+    </div>
+  {:else}
+    {#each $todoGroupsStore as group (group.id)}
+      <ChecklistGroup
+        {group}
+        {app}
+        lookAndFeel={$lookAndFeelStore}
+        priorityTag={$priorityTagStore ?? ''}
+        maxTasksPerGroup={$maxTasksPerGroupStore ?? null}
+        enableLimit={$enableLimitStore ?? true}
+        {showAllMap}
+        onToggleShowAll={handleToggleShowAll}
+        isCollapsed={$collapsedSectionsStore.includes(group.id)}
+        onToggle={toggleGroup}
+      />
+    {/each}
+  {/if}
 </div>
 
 <style>

@@ -1,48 +1,43 @@
 <script lang="ts">
   import { Notice } from "obsidian"
   import Icon from "./Icon.svelte"
-  import type { TodoGroup } from "src/_types"
   import type { TodoSettings } from "src/settings"
+  import {
+    todoTagsStore,
+    hiddenTagsStore,
+    enableLimitStore,
+    todoGroupsStore,
+    collapsedSectionsStore,
+    showSettingsPanelStore,
+  } from "./viewStore"
 
   let {
-    todoTags,
-    hiddenTags,
     onTagStatusChange,
     onSearch,
     onCopyTasks = () => '',
-    enableLimit = true,
     updateSetting,
     registerSearchInput = () => {},
-    todoGroups = [],
-    _collapsedSections = [],
-    showSettingsPanel = false
   }: {
-    todoTags: string[]
-    hiddenTags: string[]
     onTagStatusChange: (tag: string, status: boolean) => void
     onSearch: (str: string) => void
     onCopyTasks?: () => string
-    enableLimit?: boolean
     updateSetting: (updates: Partial<TodoSettings>) => Promise<void>
     registerSearchInput?: (input: HTMLInputElement) => void
-    todoGroups?: TodoGroup[]
-    _collapsedSections?: string[]
-    showSettingsPanel?: boolean
   } = $props()
 
   let search = $state("")
   let searchInput: HTMLInputElement
   let inputRegistered = false
 
-  const allCollapsed = $derived(todoGroups.length > 0 && _collapsedSections.length === todoGroups.length)
+  const allCollapsed = $derived(
+    $todoGroupsStore.length > 0 && $collapsedSectionsStore.length === $todoGroupsStore.length
+  )
 
   async function toggleExpandCollapseAll() {
     if (allCollapsed) {
-      // Expand all
       await updateSetting({ _collapsedSections: [] })
     } else {
-      // Collapse all
-      await updateSetting({ _collapsedSections: todoGroups.map(g => g.id) })
+      await updateSetting({ _collapsedSections: $todoGroupsStore.map(g => g.id) })
     }
   }
 
@@ -60,7 +55,7 @@
   }
 
   function toggleTag(tag: string) {
-    onTagStatusChange(tag, hiddenTags.includes(tag))
+    onTagStatusChange(tag, $hiddenTagsStore.includes(tag))
   }
 
   async function handleCopy() {
@@ -70,7 +65,11 @@
   }
 
   async function toggleLimit() {
-    await updateSetting({ enableLimit: !enableLimit })
+    await updateSetting({ enableLimit: !$enableLimitStore })
+  }
+
+  async function toggleSettingsPanel() {
+    await updateSetting({ _showSettingsPanel: !$showSettingsPanelStore })
   }
 </script>
 
@@ -102,53 +101,51 @@
     </div>
     <!-- svelte-ignore a11y-click-events-have-key-events -->
     <div
-      class="settings-button clickable-icon {showSettingsPanel ? 'is-active' : ''}"
+      class="settings-button clickable-icon {$showSettingsPanelStore ? 'is-active' : ''}"
       role="button"
       tabindex="0"
-      onclick={() => updateSetting({ _showSettingsPanel: !showSettingsPanel })}
+      onclick={toggleSettingsPanel}
       aria-label="Search settings"
     >
       <Icon name="settings" style="button" />
     </div>
   </div>
 
-  {#if showSettingsPanel}
+  {#if $showSettingsPanelStore}
     <div class="settings-panel">
       <div class="settings-controls">
 
         <div class="toggle-switch">
-
           <label class="toggle-label">
-            <input type="checkbox" class="toggle-input" checked={enableLimit} onchange={toggleLimit} />
+            <input type="checkbox" class="toggle-input" checked={$enableLimitStore} onchange={toggleLimit} />
             <span class="toggle-slider"></span>
             <span class="toggle-text">Limit tasks</span>
           </label>
         </div>
         <div class="toggle-switch">
-        <button class="copy-icon-button" onclick={toggleExpandCollapseAll} title={allCollapsed ? "Expand all" : "Collapse all"}>
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevrons-up-down-icon lucide-chevrons-up-down"><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></svg>
-        </button>
-        &nbsp;&nbsp;
-        <button class="copy-icon-button" onclick={handleCopy} title="Copy tasks to clipboard">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
-        </button>
+          <button class="copy-icon-button" onclick={toggleExpandCollapseAll} title={allCollapsed ? "Expand all" : "Collapse all"}>
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevrons-up-down-icon lucide-chevrons-up-down"><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></svg>
+          </button>
+          &nbsp;&nbsp;
+          <button class="copy-icon-button" onclick={handleCopy} title="Copy tasks to clipboard">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+          </button>
         </div>
       </div>
       <div class="settings-title">
         <span class="settings-title-span">Show Tags</span>
       </div>
-      {#each todoTags as tag, i}
+      {#each $todoTagsStore as tag}
         <div class="tag-checkbox-item">
           <label class="task-list-label">
-            <input class="task-list-item-checkbox" type="checkbox" checked={!hiddenTags.includes(tag)} onchange={() => toggleTag(tag)} />
+            <input class="task-list-item-checkbox" type="checkbox" checked={!$hiddenTagsStore.includes(tag)} onchange={() => toggleTag(tag)} />
             <span><span class="hash">#</span>{tag}</span>
           </label>
         </div>
       {/each}
-      {#if todoTags.length === 0}
+      {#if $todoTagsStore.length === 0}
         <div class="empty">No tags specified</div>
       {/if}
-
     </div>
   {/if}
 </div>
@@ -170,7 +167,6 @@
     flex-direction: column;
     gap: 8px;
     margin-bottom: 5px;
-
   }
 
   .header-row {

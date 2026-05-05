@@ -4,10 +4,22 @@ import {mount, unmount} from 'svelte'
 import {TODO_VIEW_TYPE} from './constants'
 import App from './svelte/App.svelte'
 import {groupTodos, parseTodos} from './utils'
+import {
+  todoGroupsStore,
+  todoTagsStore,
+  lookAndFeelStore,
+  collapsedSectionsStore,
+  hiddenTagsStore,
+  priorityTagStore,
+  maxTasksPerGroupStore,
+  enableLimitStore,
+  showSettingsPanelStore,
+} from './svelte/viewStore'
 
 import type {TodoSettings} from './settings'
 import type TodoPlugin from './main'
 import type {TodoGroup, TodoItem} from './_types'
+
 export default class TodoListView extends ItemView {
   private _app: ReturnType<typeof mount>
   private lastRerender = 0
@@ -73,24 +85,44 @@ export default class TodoListView extends ItemView {
     this.registerEvent(this.app.vault.on('delete', file => this.deleteFile(file.path)))
   }
 
+  private updateStores() {
+    todoGroupsStore.set(this.groupedItems)
+    todoTagsStore.set(this.todoTagArray)
+    lookAndFeelStore.set(this.plugin.getSettingValue('lookAndFeel'))
+    collapsedSectionsStore.set(this.plugin.getSettingValue('_collapsedSections'))
+    hiddenTagsStore.set(this.plugin.getSettingValue('_hiddenTags'))
+    priorityTagStore.set(this.plugin.getSettingValue('priorityTag'))
+    maxTasksPerGroupStore.set(this.plugin.getSettingValue('maxTasksPerGroup'))
+    enableLimitStore.set(this.plugin.getSettingValue('enableLimit'))
+    showSettingsPanelStore.set(this.plugin.getSettingValue('_showSettingsPanel'))
+  }
+
   private renderView() {
-    if (this._app) {
-      unmount(this._app)
+    this.updateStores()
+    if (!this._app) {
+      this._app = mount(App, {
+        target: (this as any).contentEl,
+        props: {
+          app: this.app,
+          updateSetting: (updates: Partial<TodoSettings>) => this.plugin.updateSettings(updates),
+          onSearch: (val: string) => {
+            this.searchTerm = val
+            this.groupItems()
+            todoGroupsStore.set(this.groupedItems)
+          },
+          onCopyTasks: this.handleCopyTasks.bind(this),
+          registerSearchInput: (input: HTMLInputElement) => {
+            this.searchInputRef = input
+          },
+        },
+      })
     }
-    this._app = mount(App, {
-      target: (this as any).contentEl,
-      props: this.props(),
-    })
   }
 
   async refresh(all = false) {
-    // Prevent recursive refreshes
-    if (this.isRefreshing) {
-      return
-    }
+    if (this.isRefreshing) return
 
     this.isRefreshing = true
-
     try {
       if (all) {
         this.lastRerender = 0
@@ -126,23 +158,20 @@ export default class TodoListView extends ItemView {
       workspace.setActiveLeaf(leaf, {focus: true})
     }
 
-    // Reset scroll to top
     const container = (this as any).containerEl
     if (container) {
       container.scrollTop = 0
     }
 
-    // Wait for render then focus
     setTimeout(() => {
       this.searchInputRef?.focus()
       if (searchQuery !== undefined) {
-        // Set the search query via input value and trigger search
-        const inputEvent = new Event('input', { bubbles: true })
+        const inputEvent = new Event('input', {bubbles: true})
         this.searchInputRef.value = searchQuery
         this.searchInputRef.dispatchEvent(inputEvent)
         requestAnimationFrame(() => {
-        //@ts-ignore
-        this.searchInputRef?.focus({focusVisible: true})
+          //@ts-ignore
+          this.searchInputRef?.focus({focusVisible: true})
         })
       }
     }, 100)
@@ -154,53 +183,24 @@ export default class TodoListView extends ItemView {
     this.renderView()
   }
 
-  private props() {
-    return {
-      todoTags: this.todoTagArray,
-      lookAndFeel: this.plugin.getSettingValue('lookAndFeel'),
-      subGroups: this.plugin.getSettingValue('subGroups'),
-      _collapsedSections: this.plugin.getSettingValue('_collapsedSections'),
-      _hiddenTags: this.plugin.getSettingValue('_hiddenTags'),
-      app: this.app,
-      todoGroups: this.groupedItems,
-      priorityTag: this.plugin.getSettingValue('priorityTag'),
-      maxTasksPerGroup: this.plugin.getSettingValue('maxTasksPerGroup'),
-      enableLimit: this.plugin.getSettingValue('enableLimit'),
-      groupBy: this.plugin.getSettingValue('groupBy'),
-      updateSetting: (updates: Partial<TodoSettings>) => this.plugin.updateSettings(updates),
-      onSearch: (val: string) => {
-        this.searchTerm = val
-        this.refresh()
-      },
-      onCopyTasks: this.handleCopyTasks.bind(this),
-      registerSearchInput: (input: HTMLInputElement) => {
-        this.searchInputRef = input
-      },
-    }
-  }
-
   private handleCopyTasks(): string {
     const lines: string[] = []
 
     for (const group of this.groupedItems) {
-      // Add group title if grouping by page
       if (this.plugin.getSettingValue('groupBy') === 'page' && (group as any).pageName) {
         lines.push((group as any).pageName)
       } else if (this.plugin.getSettingValue('groupBy') === 'tag' && (group as any).mainTag) {
         const mainTag = (group as any).mainTag
-        const subTags = (group as any).subTags ?? ""
+        const subTags = (group as any).subTags ?? ''
         const header = subTags ? `${mainTag}/${subTags}` : mainTag
         lines.push(header)
       }
 
-      // Add all tasks in this group
       for (const todo of group.todos) {
-        // Remove hashtag symbols from task text
         const cleanText = todo.originalText.replace(/^#\s*/, '')
         lines.push(`- [${todo.checked ? 'x' : ' '}] ${cleanText}`)
       }
 
-      // Add empty line between groups
       lines.push('')
     }
 
@@ -234,7 +234,6 @@ export default class TodoListView extends ItemView {
     for (const group of orGroups) {
       const andTerms: string[] = []
 
-      // Extract quoted phrases first
       const quotedRegex = /"([^"]+)"/g
       let match: RegExpExecArray | null
       let remaining = group
@@ -244,7 +243,6 @@ export default class TodoListView extends ItemView {
         remaining = remaining.replace(match[0], '')
       }
 
-      // Split remaining by AND or whitespace
       const remainingTerms = remaining.split(/\s+AND\s+|\s+/i).filter(t => t.trim())
       for (const term of remainingTerms) {
         andTerms.push(term.toLowerCase())
@@ -264,11 +262,12 @@ export default class TodoListView extends ItemView {
     const lowerSubTag = item.subTag?.toLowerCase() ?? ''
     const combined = item.mainTag && item.subTag ? `#${item.mainTag}/${item.subTag}`.toLowerCase() : ''
 
-    return searchTerms.every(term =>
-      lowerText.includes(term) ||
-      lowerMainTag.includes(term) ||
-      lowerSubTag.includes(term) ||
-      combined.includes(term)
+    return searchTerms.every(
+      term =>
+        lowerText.includes(term) ||
+        lowerMainTag.includes(term) ||
+        lowerSubTag.includes(term) ||
+        combined.includes(term),
     )
   }
 
@@ -276,16 +275,14 @@ export default class TodoListView extends ItemView {
     const flattenedItems = Array.from(this.itemsByFile.values()).flat()
     const viewOnlyOpen = this.plugin.getSettingValue('showOnlyActiveFile')
     const openFile = this.app.workspace.getActiveFile()
-    const filteredItems = viewOnlyOpen ? flattenedItems.filter(i => i.filePath === openFile.path) : flattenedItems
+    const filteredItems = viewOnlyOpen
+      ? flattenedItems.filter(i => i.filePath === openFile.path)
+      : flattenedItems
 
     const searchQuery = this.parseSearchQuery(this.searchTerm)
     const searchedItems = filteredItems.filter(e => {
       if (searchQuery.length === 0) return true
-      // OR logic: match ANY group
-      return searchQuery.some(andTerms =>
-        // AND logic within group: match ALL terms
-        this.itemMatchesSearch(e, andTerms)
-      )
+      return searchQuery.some(andTerms => this.itemMatchesSearch(e, andTerms))
     })
     this.groupedItems = groupTodos(
       searchedItems,
