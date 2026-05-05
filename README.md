@@ -32,6 +32,18 @@ You can complete checklist items by checking them off in your editor (e.g. `- [ 
 
 **Sort order:** By default checklist items will appear in the order they appear in the file, with files ordered with the oldest at the top. This can be changed to show the newest files at the top.
 
+## Custom Checkbox Styling
+
+This plugin supports custom checkbox states and styling! You can use something like the [Obsidian Checkbox Snippets](https://github.com/deathau/obsidian-snippets#checkboxes) to add visual distinction to different task states:
+
+- `[/]` - In progress (accent color filled)
+- `[!]` - Important (red background)
+- `[?]` - Question (yellow background)
+- `[>]` - Deferred (chevron icon)
+- `[-]` - Cancelled (line icon)
+
+Simply install the CSS snippet and your checkboxes in the plugin sidebar will match your editor's styling exactly!
+
 ## Glob File Matching
 
 The "Include Files" setting uses Glob file matching. Specifically the plugin uses [minimatch](https://github.com/isaacs/minimatch) to match the file pattern - so any specific oddities will come from that plugin.

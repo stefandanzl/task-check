@@ -52,7 +52,7 @@ esbuild
     ],
     format: 'cjs',
     watch: !prod,
-    target: 'es2016',
+    target: 'es2020',
     logLevel: 'info',
     sourcemap: prod ? false : 'inline',
     treeShaking: true,
@@ -60,7 +60,9 @@ esbuild
     plugins: [
       sveltePlugin({
         preprocess: autoPreprocess(),
-        compilerOptions: {css: true},
+        compilerOptions: {css: 'injected'},
+        filterWarnings: warning =>
+          !warning.message.toLowerCase().includes('a11y'),
       }),
     ],
     outfile: 'main.js',

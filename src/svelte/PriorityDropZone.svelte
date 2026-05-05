@@ -148,7 +148,7 @@
       on:dragleave={handleDragLeave}
       on:drop={handleDrop}
     >
-      <div class="drop-indicator" />
+      <div class="drop-indicator"></div>
     </div>
   {/if}
 {/if}

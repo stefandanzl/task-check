@@ -63,7 +63,7 @@
     <CheckCircle taskStatus={item.taskStatus} />
   </button>
   <!-- svelte-ignore a11y-click-events-have-key-events -->
-  <div bind:this={contentDiv} on:click={(ev) => handleClick(ev, item)} class="content cm-s-obsidian" />
+  <div bind:this={contentDiv} on:click={(ev) => handleClick(ev, item)} class="content cm-s-obsidian"></div>
   <slot />
   {#if targetPriority}
   <span class="prio-level">{targetPriority}</span>

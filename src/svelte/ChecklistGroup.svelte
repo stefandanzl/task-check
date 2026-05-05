@@ -240,7 +240,7 @@
         <span class="tag-base">All Tags</span>
       {/if}
     </div>
-    <div class="space" />
+    <div class="space"></div>
     <div class="count">{group.todos.length}</div>
     <button class="collapse"  >
       <Icon name="chevron" direction={isCollapsed ? "left" : "down"} />
