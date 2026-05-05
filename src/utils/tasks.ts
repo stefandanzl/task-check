@@ -23,6 +23,7 @@ import {
   setLineTo,
   todoLineIsChecked,
 } from './helpers'
+import { DONE_TASK_SYMBOLS } from '../constants'
 
 import type {
   App,
@@ -178,13 +179,19 @@ const findAllTodosInFile = (file: FileInfo, priorityTag: string, app?: App): Tod
     ? getTagMeta(file.frontmatterTag)
     : undefined
 
+  // Use cached listItems instead of parsing all lines
+  const listItems = file.cache.listItems ?? []
   const todos: TodoItem[] = []
-  for (let i = 0; i < fileLines.length; i++) {
-    const line = fileLines[i]
-    if (line.length === 0) continue
-    if (lineIsValidTodo(line)) {
-      todos.push(formTodo(line, file, i, tagMeta, priorityTag, app))
-    }
+
+  for (const listItem of listItems) {
+    // Only process items that have a task property (are tasks)
+    if (listItem.task === undefined) continue
+
+    const lineNum = listItem.position.start.line
+    const line = fileLines[lineNum]
+    if (!line) continue
+
+    todos.push(formTodo(line, file, lineNum, tagMeta, priorityTag, app, listItem.task))
   }
 
   return todos
@@ -195,18 +202,45 @@ const findAllTodosFromTagBlock = (file: FileInfo, tag: TagCache, priorityTag: st
   const fileLines = getAllLinesFromFile(file.content)
   const tagMeta = getTagMeta(tag.tag)
   const tagLine = fileLines[tag.position.start.line]
+
+  // Check if the tag line itself is a todo (edge case)
   if (lineIsValidTodo(tagLine)) {
-    return [formTodo(tagLine, file, tag.position.start.line, tagMeta, priorityTag, app)]
+    return [formTodo(tagLine, file, tag.position.start.line, tagMeta, priorityTag, app, undefined)]
   }
 
+  // Use cached listItems to find tasks after the tag
+  const listItems = file.cache.listItems ?? []
+  const tagLineNum = tag.position.start.line
   const todos: TodoItem[] = []
-  for (let i = tag.position.start.line; i < fileLines.length; i++) {
-    const line = fileLines[i]
-    if (i === tag.position.start.line + 1 && line.length === 0) continue
-    if (line.length === 0) break
-    if (lineIsValidTodo(line)) {
-      todos.push(formTodo(line, file, i, tagMeta, priorityTag, app))
+
+  for (const listItem of listItems) {
+    // Only process items that have a task property (are tasks)
+    if (listItem.task === undefined) continue
+
+    const lineNum = listItem.position.start.line
+
+    // Only consider items after the tag
+    if (lineNum <= tagLineNum) continue
+
+    // Skip first line after tag if empty (original behavior)
+    if (lineNum === tagLineNum + 1 && fileLines[lineNum]?.trim().length === 0) continue
+
+    // Check for empty line gap (original behavior: break on empty line)
+    if (todos.length > 0) {
+      const prevLineNum = todos[todos.length - 1].line
+      // Check all lines between previous task and this one
+      for (let checkLine = prevLineNum + 1; checkLine < lineNum; checkLine++) {
+        if (fileLines[checkLine]?.trim().length === 0) {
+          // Empty line found - stop processing
+          return todos
+        }
+      }
     }
+
+    const line = fileLines[lineNum]
+    if (!line) continue
+
+    todos.push(formTodo(line, file, lineNum, tagMeta, priorityTag, app, listItem.task))
   }
 
   return todos
@@ -290,6 +324,7 @@ const formTodo = (
   tagMeta?: TagMeta,
   priorityTag?: string,
   app?: App,
+  taskStatus?: string,
 ): TodoItem => {
   const rawText = extractTextFromTodoLine(line)
   const spacesIndented = getIndentationSpacesFromTodoLine(line)
@@ -298,10 +333,15 @@ const formTodo = (
   const displayText = priorityTag ? removePriorityTagFromText(tagStripped, priorityTag) : tagStripped
   const rawHTML = app ? preprocessMarkdown(displayText, app.metadataCache, file.file.path) : displayText
 
+  // Use the task status from cache if available, otherwise fall back to line parsing
+  const checked = taskStatus !== undefined
+    ? DONE_TASK_SYMBOLS.has(taskStatus.toLowerCase())
+    : todoLineIsChecked(line)
+
   return {
     mainTag: tagMeta?.main,
     subTag: tagMeta?.sub,
-    checked: todoLineIsChecked(line),
+    checked,
     filePath: file.file.path,
     fileName: file.file.name,
     fileLabel: getFileLabelFromName(file.file.name),
