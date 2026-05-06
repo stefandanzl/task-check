@@ -149,7 +149,7 @@ export const setTodoPrioritiesBatch = async (
   for (const [, fileUpdates] of byFile) {
     const file = getFileFromPath(app.vault, fileUpdates[0].item.filePath)
     if (!file) continue
-    const lines = getAllLinesFromFile(await app.vault.read(file))
+    const lines = getAllLinesFromFile(await app.vault.cachedRead(file))
 
     for (const { item, newPriority } of fileUpdates) {
       const currentLine = lines[item.line]
@@ -167,18 +167,18 @@ export const setTodoPrioritiesBatch = async (
   }
 }
 
-const findAllTodosInFile = (file: FileInfo, priorityTag: string, app?: App): TodoItem[] => {
-  if (!file.parseEntireFile)
-    return file.validTags.flatMap(tag => findAllTodosFromTagBlock(file, tag, priorityTag, app))
+const findAllTodosInFile = (fileInfo: FileInfo, priorityTag: string, app?: App): TodoItem[] => {
+  if (!fileInfo.parseEntireFile)
+    return fileInfo.validTags.flatMap(tag => findAllTodosFromTagBlock(fileInfo, tag, priorityTag, app))
 
-  if (!file.content) return []
-  const fileLines = getAllLinesFromFile(file.content)
-  const tagMeta = file.frontmatterTag
-    ? getTagMeta(file.frontmatterTag)
+  if (!fileInfo.content) return []
+  const fileLines = getAllLinesFromFile(fileInfo.content)
+  const tagMeta = fileInfo.frontmatterTag
+    ? getTagMeta(fileInfo.frontmatterTag)
     : undefined
 
   // Use cached listItems instead of parsing all lines
-  const listItems = file.cache.listItems ?? []
+  const listItems = fileInfo.cache.listItems ?? []
   const todos: TodoItem[] = []
 
   for (const listItem of listItems) {
@@ -189,7 +189,7 @@ const findAllTodosInFile = (file: FileInfo, priorityTag: string, app?: App): Tod
     const line = fileLines[lineNum]
     if (!line) continue
 
-    todos.push(formTodo(line, file, lineNum, listItem.task, tagMeta, priorityTag, app))
+    todos.push(formTodo(line, fileInfo, lineNum, listItem.task, tagMeta, priorityTag, app))
   }
 
   return todos
@@ -299,6 +299,9 @@ const preprocessMarkdown = (text: string, metadataCache: MetadataCache, sourcePa
 const postprocessHTML = (html: string): string => {
   let processed = html
 
+  // <p> → Obsidian inline code span
+processed = processed.replace(/^\s*<p>([\s\S]*)<\/p>\s*$/, "$1")
+
   // <code> → Obsidian inline code span
   processed = processed.replace(/<code>(.*?)<\/code>/g, (_, content) =>
     `<span class="cm-inline-code cm-list-1" spellcheck="false">${content}</span>`
@@ -329,7 +332,7 @@ const formTodo = (
   const rawText = extractTextFromTodoLine(line)
   const spacesIndented = getIndentationSpacesFromTodoLine(line)
   const tagStripped = removeTagFromText(rawText, tagMeta?.main)
-  const priority = parsePriorityTag(rawText, priorityTag ?? '')
+  const priority = priorityTag ? parsePriorityTag(rawText, priorityTag) : undefined
   const displayText = priorityTag ? removePriorityTagFromText(tagStripped, priorityTag) : tagStripped
   const rawHTML = app ? preprocessMarkdown(displayText, app.metadataCache, file.file.path) : displayText
 

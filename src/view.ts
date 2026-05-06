@@ -14,6 +14,7 @@ import {
   maxTasksPerGroupStore,
   enableLimitStore,
   showSettingsPanelStore,
+  searchQueriesStore,
 } from './svelte/viewStore'
 
 import type {TodoSettings} from './settings'
@@ -95,6 +96,7 @@ export default class TodoListView extends ItemView {
     maxTasksPerGroupStore.set(this.plugin.getSettingValue('maxTasksPerGroup'))
     enableLimitStore.set(this.plugin.getSettingValue('enableLimit'))
     showSettingsPanelStore.set(this.plugin.getSettingValue('_showSettingsPanel'))
+    searchQueriesStore.set(this.plugin.getSettingValue('_searchQueries'))
   }
 
   private renderView() {

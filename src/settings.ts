@@ -23,6 +23,7 @@ export interface TodoSettings {
   maxTasksPerGroup: number | null
   enableLimit: boolean
   _showSettingsPanel: boolean
+  _searchQueries: string[]
 }
 
 export const DEFAULT_SETTINGS: TodoSettings = {
@@ -45,6 +46,7 @@ export const DEFAULT_SETTINGS: TodoSettings = {
   maxTasksPerGroup: 5,
   enableLimit: true,
   _showSettingsPanel: false,
+  _searchQueries: [],
 }
 
 export class TodoSettingTab extends PluginSettingTab {

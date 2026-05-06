@@ -49,7 +49,7 @@
   }
 </script>
 
-<div class="checklist-plugin-main markdown-preview-view">
+<div class="checklist-plugin-main markdown-preview-view markdown-source-view mod-cm6">
   <Header
     onTagStatusChange={updateTagStatus}
     {onSearch}

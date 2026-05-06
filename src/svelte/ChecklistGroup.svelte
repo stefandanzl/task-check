@@ -249,7 +249,7 @@
   <!-- svelte-ignore a11y_click_events_have_key_events -->
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <header class={`group-header ${group.type}`} onclick={() => onToggle(group.id)} title="Toggle Group">
-    <div class="title" onclick={clickTitle}>
+    <div class="title no-select" onclick={clickTitle}>
       {#if group.type === "page"}
         {group.pageName}
       {:else if group.mainTag}
@@ -265,7 +265,7 @@
       {/if}
     </div>
     <div class="space"></div>
-    <div class="count">{group.todos.length}</div>
+    <div class="count no-select">{group.todos.length}</div>
     <button class="collapse"  >
       <Icon name="chevron" direction={isCollapsed ? "left" : "down"} />
     </button>

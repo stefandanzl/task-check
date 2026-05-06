@@ -52,5 +52,9 @@
 }
 
 .group {
-	width: auto !important; 
+  width: auto !important;
+}
+.no-select {
+  user-select: none;
+  -webkit-user-select: none;
 }

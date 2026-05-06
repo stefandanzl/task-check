@@ -9,6 +9,7 @@
     todoGroupsStore,
     collapsedSectionsStore,
     showSettingsPanelStore,
+    searchQueriesStore,
   } from "./viewStore"
 
   let {
@@ -28,6 +29,10 @@
   let search = $state("")
   let searchInput: HTMLInputElement
   let inputRegistered = false
+  let showRecentDropdown = $state(false)
+  let saveTimeout: ReturnType<typeof setTimeout> | null = null
+
+  const searchQueries = $derived($searchQueriesStore)
 
   const allCollapsed = $derived(
     $todoGroupsStore.length > 0 && $collapsedSectionsStore.length === $todoGroupsStore.length
@@ -71,6 +76,41 @@
   async function toggleSettingsPanel() {
     await updateSetting({ _showSettingsPanel: !$showSettingsPanelStore })
   }
+
+  $effect(() => {
+    search;
+    scheduleSaveSearch()
+  })
+
+  function scheduleSaveSearch() {
+    if (saveTimeout) clearTimeout(saveTimeout)
+    saveTimeout = setTimeout(() => {
+      if (search.trim() && search !== "") {
+        const queries = [...searchQueries].filter(q => q !== search)
+        updateSetting({ _searchQueries: [search, ...queries].slice(0, 10) })
+      }
+    }, 1000)
+  }
+
+  function handleSearchFocus() {
+    showRecentDropdown = true
+  }
+
+  function handleSearchBlur(ev: FocusEvent) {
+    const historyDiv = document.getElementById('task-search-history');
+    if (historyDiv) {
+      const isClickInside = historyDiv.contains(ev.relatedTarget as Node);
+      if (isClickInside) return
+    }  
+      showRecentDropdown = false
+  }
+
+  function selectRecentQuery(query: string) {
+    console.log(query)
+    search = query
+    onSearch(query)
+    searchInput?.focus()
+  }
 </script>
 
 <div class="task-search-settings">
@@ -85,6 +125,8 @@
         bind:value={search}
         bind:this={searchInput}
         oninput={() => onSearch(search)}
+        onfocus={handleSearchFocus}
+        onblur={handleSearchBlur}
         onkeydown={(e) => {
           if (e.key === 'Escape') {
             search = ""
@@ -92,6 +134,13 @@
           }
         }}
       />
+      {#if showRecentDropdown && search.length === 0 && searchQueries.length > 0}
+        <div class="recent-searches" id="task-search-history">
+          {#each searchQueries as query}
+            <div class="recent-item" onclick={() => selectRecentQuery(query)} onkeydown={(e) => e.key === 'Enter' && selectRecentQuery(query)} role="option" aria-selected="false" tabindex="0">{query}</div>
+          {/each}
+        </div>
+      {/if}
       {#if search}
         <!-- svelte-ignore a11y_click_events_have_key_events -->
         <div class="search-clear-button" onclick={clearSearch} role="button" tabindex="0" aria-label="Clear search">
@@ -348,6 +397,7 @@
 
   .tag-checkbox-item {
     padding: 4px 0;
+    max-width: 10rem;
   }
 
   .task-list-label {
@@ -371,5 +421,33 @@
 
   .clickable-icon {
     cursor: pointer;
+  }
+
+  .recent-searches {
+    position: absolute;
+    right: 4px;
+    top: 42px;
+    background: var(--background-secondary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 6px;
+    box-shadow: var(--shadow-lg);
+    z-index: 100;
+    min-width: 200px;
+    max-width: 280px;
+}
+
+  .recent-item {
+    padding: 6px 12px;
+    cursor: pointer;
+    font-size: var(--font-ui-small);
+    color: var(--text-normal);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .recent-item:hover,
+  .recent-item:focus {
+    background: var(--background-modifier-hover);
   }
 </style>
