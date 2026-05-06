@@ -354,7 +354,7 @@
     font-weight: var(--checklist-headerFontWeight);
     font-size: var(--checklist-headerFontSize);
     /* margin: var(--checklist-headerMargin); */
-    padding: 4px 6px 4px 16px;
+    padding: 4px 6px 4px 12px;
     border-radius: 5px;
     display: flex;
     gap: var(--checklist-headerGap);
@@ -405,7 +405,7 @@
   }
 
   .group {
-    border-bottom: 2px solid var(--background-modifier-border);
+    border-bottom: 1px solid var(--background-modifier-border);
     overflow: hidden; /* IMPORTANT */
     
     padding-bottom: 8px;

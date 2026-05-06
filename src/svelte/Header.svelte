@@ -34,6 +34,8 @@
 
   const searchQueries = $derived($searchQueriesStore)
 
+  const totalCount = $derived($todoGroupsStore.reduce((sum, g) => sum + g.todos.length, 0))
+
   const allCollapsed = $derived(
     $todoGroupsStore.length > 0 && $collapsedSectionsStore.length === $todoGroupsStore.length
   )
@@ -171,8 +173,7 @@
       {/if}
       {#if search}
         <!-- svelte-ignore a11y_click_events_have_key_events -->
-        <div class="search-clear-button" onclick={clearSearch} role="button" tabindex="0" aria-label="Clear search">
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        <div class="search-input-clear-button" onclick={clearSearch} role="button" tabindex="0" aria-label="Clear search">
         </div>
       {/if}
     </div>
@@ -229,8 +230,30 @@
       {#if $todoTagsStore.length === 0}
         <div class="empty">No tags specified</div>
       {/if}
-    </div>
-  {/if}
+
+      
+          <div class="search-results-info" style="border-top: var(--border-width) solid var(--background-modifier-border); border-bottom: none; padding: 0; margin: 4px 0 0 0;">
+            <div class="clickable-icon search-results-result-count">
+              <span>{totalCount} tasks</span>
+              <div class="more-options-icon">
+               {@html getIcon("more-horizontal")?.outerHTML}
+            </div>
+          </div>
+          <!-- <select 
+            class="dropdown" 
+            bind:value={sortMethod} 
+            onchange={handleSortChange}
+          >
+            <option value="alphabetical">File name (A to Z)</option>
+            <option value="alphabeticalReverse">File name (Z to A)</option>
+            <option value="byModifiedTime">Modified time (new to old)</option>
+            <option value="byModifiedTimeReverse">Modified time (old to new)</option>
+            <option value="byCreatedTime">Created time (new to old)</option>
+            <option value="byCreatedTimeReverse">Created time (old to new)</option>
+          </select> -->
+        </div>
+      </div>
+    {/if}
 </div>
 
 <style>
@@ -260,71 +283,7 @@
 
   .search-input-wrapper {
     flex-grow: 1;
-    /* flex: 1;
-    position: relative;
-    display: flex;
-    align-items: center; */
   }
-/* 
-  .task-search {
-    width: 100%;
-    background: var(--background-modifier-form-field);
-    border: 1px solid var(--background-modifier-border);
-    font-size: var(--font-ui-medium);
-    border-radius: var(--input-radius);
-    padding: 8px 32px 8px 8px;
-    color: var(--text-normal);
-    height: 36px;
-    box-sizing: border-box;
-  }
-
-  .task-search:focus {
-    border-color: var(--interactive-accent);
-    box-shadow: 0 0 0 2px var(--background-modifier-border-hover);
-  }
-
-  .task-search:disabled {
-    opacity: 0.5;
-  } */
-
-  .search-clear-button {
-    position: absolute;
-    right: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    color: var(--text-faint);
-    padding: 2px;
-    border-radius: 4px;
-  }
-
-  .search-clear-button:hover {
-    color: var(--text-normal);
-    background: var(--background-modifier-hover);
-  }
-
-  /* .settings-button {
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 36px;
-    height: 36px;
-    border-radius: var(--input-radius);
-    color: var(--text-faint);
-    transition: color 0.15s ease, background-color 0.15s ease;
-  } */
-/* 
-  .settings-button:hover {
-    color: var(--text-normal);
-    background: var(--background-modifier-hover);
-  }
-
-  .settings-button.is-active {
-    color: var(--interactive-accent);
-    background: var(--background-modifier-border-hover);
-  } */
 
   .settings-panel {
     background: var(--background-secondary);
