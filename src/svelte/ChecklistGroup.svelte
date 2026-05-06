@@ -396,11 +396,13 @@
     padding: 0;
     margin: 0;
     padding-inline-start: initial !important;
+    overflow-x: hidden;
   }
 
   .group {
     border-bottom: 2px solid var(--background-modifier-border);
     margin-bottom: var(--checklist-groupMargin);
+    overflow-x: hidden;
   }
 
   .collapse {

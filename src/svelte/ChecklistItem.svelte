@@ -130,6 +130,7 @@
     flex: 1; /* claim all remaining width to the right of the checkbox */
     min-width: 0;
     padding-inline-start: 4px;
+    overflow-wrap: anywhere;
   }
 
   /* Has to be scaled up because of smaller font size used for sidepanel (?) */
