@@ -1,6 +1,5 @@
 <script lang="ts">
-  import { Notice } from "obsidian"
-  import Icon from "./Icon.svelte"
+  import { getIcon, Notice } from "obsidian"
   import type { TodoSettings } from "src/settings"
   import {
     todoTagsStore,
@@ -31,6 +30,7 @@
   let inputRegistered = false
   let showRecentDropdown = $state(false)
   let saveTimeout: ReturnType<typeof setTimeout> | null = null
+  let dropdownStyle = $state('')
 
   const searchQueries = $derived($searchQueriesStore)
 
@@ -45,6 +45,32 @@
       await updateSetting({ _collapsedSections: $todoGroupsStore.map(g => g.id) })
     }
   }
+
+  const portal = (node: HTMLElement, target: HTMLElement = document.body) => {
+    target.appendChild(node)
+    return {
+      destroy() { node.parentNode?.removeChild(node) }
+    }
+  }
+
+  $effect(() => {
+    if (!showRecentDropdown || !searchInput) return
+    const updatePosition = () => {
+      const r = searchInput!.getBoundingClientRect();
+      dropdownStyle = `position: fixed; top: ${r.bottom}px; left: ${r.left}px; width: ${r.width}px; z-index: var(--layer-popover);`
+    };
+
+    // 1. Initial position
+    updatePosition();
+
+    // 2. Obsidan Sidepanel Support:
+    // ResizeObserver catches the sidebar being dragged
+    const observer = new ResizeObserver(updatePosition);
+    observer.observe(searchInput);
+
+    // 3. Cleanup: Stop observing when dropdown closes
+    return () => observer.disconnect();
+  })
 
   $effect(() => {
     if (searchInput && !inputRegistered) {
@@ -115,7 +141,7 @@
 
 <div class="task-search-settings">
   <div class="header-row">
-    <div class="search-input-wrapper">
+    <div class="search-input-wrapper search-input-container">
       <input
         class="task-search"
         type="search"
@@ -134,12 +160,14 @@
           }
         }}
       />
-      {#if showRecentDropdown && search.length === 0 && searchQueries.length > 0}
-        <div class="recent-searches" id="task-search-history">
+      {#if showRecentDropdown && search.length === 0 && searchQueries.length > 0 && dropdownStyle}
+        {#key dropdownStyle}
+        <div class="recent-searches suggestion-container mod-search-suggestion" id="task-search-history" use:portal style={dropdownStyle}>
           {#each searchQueries as query}
             <div class="recent-item" onclick={() => selectRecentQuery(query)} onkeydown={(e) => e.key === 'Enter' && selectRecentQuery(query)} role="option" aria-selected="false" tabindex="0">{query}</div>
           {/each}
         </div>
+        {/key}
       {/if}
       {#if search}
         <!-- svelte-ignore a11y_click_events_have_key_events -->
@@ -154,9 +182,9 @@
       role="button"
       tabindex="0"
       onclick={toggleSettingsPanel}
-      aria-label="Search settings"
+      aria-label="Settings panel"
     >
-      <Icon name="settings" style="button" />
+      {@html getIcon("sliders-horizontal")?.outerHTML}
     </div>
   </div>
 
@@ -164,20 +192,20 @@
     <div class="settings-panel">
       <div class="settings-controls">
 
-        <div class="toggle-switch">
+        <div class="toggle-switch" aria-label="Toggle limit for shown task group lenght">
           <label class="toggle-label">
-            <input type="checkbox" class="toggle-input" checked={$enableLimitStore} onchange={toggleLimit} />
+            <input type="checkbox" class="toggle-input" checked={$enableLimitStore} onchange={toggleLimit}/>
             <span class="toggle-slider"></span>
             <span class="toggle-text">Limit tasks</span>
           </label>
         </div>
         <div class="toggle-switch">
-          <button class="copy-icon-button" onclick={toggleExpandCollapseAll} title={allCollapsed ? "Expand all" : "Collapse all"}>
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevrons-up-down-icon lucide-chevrons-up-down"><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></svg>
+          <button class="copy-icon-button" onclick={toggleExpandCollapseAll} aria-label={allCollapsed ? "Expand all" : "Collapse all"}>
+            {@html getIcon("chevrons-up-down")?.outerHTML}
           </button>
           &nbsp;&nbsp;
-          <button class="copy-icon-button" onclick={handleCopy} title="Copy tasks to clipboard">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+          <button class="copy-icon-button" onclick={handleCopy} aria-label="Copy tasks to clipboard">
+          {@html getIcon("copy")?.outerHTML}
           </button>
         </div>
       </div>
@@ -225,12 +253,13 @@
   }
 
   .search-input-wrapper {
-    flex: 1;
+    flex-grow: 1;
+    /* flex: 1;
     position: relative;
     display: flex;
-    align-items: center;
+    align-items: center; */
   }
-
+/* 
   .task-search {
     width: 100%;
     background: var(--background-modifier-form-field);
@@ -250,7 +279,7 @@
 
   .task-search:disabled {
     opacity: 0.5;
-  }
+  } */
 
   .search-clear-button {
     position: absolute;
@@ -269,7 +298,7 @@
     background: var(--background-modifier-hover);
   }
 
-  .settings-button {
+  /* .settings-button {
     flex-shrink: 0;
     display: flex;
     align-items: center;
@@ -279,8 +308,8 @@
     border-radius: var(--input-radius);
     color: var(--text-faint);
     transition: color 0.15s ease, background-color 0.15s ease;
-  }
-
+  } */
+/* 
   .settings-button:hover {
     color: var(--text-normal);
     background: var(--background-modifier-hover);
@@ -289,7 +318,7 @@
   .settings-button.is-active {
     color: var(--interactive-accent);
     background: var(--background-modifier-border-hover);
-  }
+  } */
 
   .settings-panel {
     background: var(--background-secondary);
@@ -389,11 +418,11 @@
     color: var(--text-normal);
     background: var(--background-modifier-hover);
   }
-
+/* 
   .copy-icon-button svg {
     width: 16px;
     height: 16px;
-  }
+  } */
 
   .tag-checkbox-item {
     padding: 4px 0;
@@ -423,18 +452,7 @@
     cursor: pointer;
   }
 
-  .recent-searches {
-    position: absolute;
-    right: 4px;
-    top: 42px;
-    background: var(--background-secondary);
-    border: 1px solid var(--background-modifier-border);
-    border-radius: 6px;
-    box-shadow: var(--shadow-lg);
-    z-index: 100;
-    min-width: 200px;
-    max-width: 280px;
-}
+
 
   .recent-item {
     padding: 6px 12px;

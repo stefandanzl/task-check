@@ -308,11 +308,11 @@
         {/each}
       </div>
       {#if maxTasksPerGroup && enableLimit && group.todos.length > maxTasksPerGroup && !isGroupShowingAll}
-        <button class="show-more-button" onclick={toggleShowAll}>
+        <button class="show-more-button" onclick={toggleShowAll} aria-label="Show more">
           Show all ({group.todos.length})
         </button>
       {:else if maxTasksPerGroup && enableLimit && group.todos.length > maxTasksPerGroup && isGroupShowingAll}
-        <button class="show-more-button" onclick={toggleShowAll}>
+        <button class="show-more-button" onclick={toggleShowAll} aria-label="Hide some"> 
           Hide some
         </button>
       {/if}
@@ -323,12 +323,12 @@
         {/each}
       </ul>
       {#if maxTasksPerGroup && enableLimit && group.todos.length > maxTasksPerGroup && !isGroupShowingAll}
-      <button class="show-more-button" onclick={toggleShowAll}>
-        Show all ({group.todos.length})
+      <button class="show-more-button" onclick={toggleShowAll} aria-label="Show more">
+          Show all ({group.todos.length})
       </button>
       {:else if maxTasksPerGroup && enableLimit && group.todos.length > maxTasksPerGroup && isGroupShowingAll}
-        <button class="show-more-button" onclick={toggleShowAll}>
-        Collapse ({group.todos.length})
+        <button class="show-more-button" onclick={toggleShowAll} aria-label="Hide some">
+          Collapse ({group.todos.length})
       </button>
       {/if}
     {/if}
@@ -350,7 +350,9 @@
   header {
     font-weight: var(--checklist-headerFontWeight);
     font-size: var(--checklist-headerFontSize);
-    margin: var(--checklist-headerMargin);
+    /* margin: var(--checklist-headerMargin); */
+    padding: 4px 6px 4px 16px;
+    border-radius: 5px;
     display: flex;
     gap: var(--checklist-headerGap);
     align-items: center;
@@ -401,8 +403,14 @@
 
   .group {
     border-bottom: 2px solid var(--background-modifier-border);
-    margin-bottom: var(--checklist-groupMargin);
-    overflow-x: hidden;
+    overflow: hidden; /* IMPORTANT */
+    
+    padding-bottom: 6px;
+    margin-top: 10px;
+  }
+
+  header:hover {
+    background-color: rgba(0, 0, 0, 0.1);
   }
 
   .collapse {
