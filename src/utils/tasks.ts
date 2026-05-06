@@ -30,6 +30,7 @@ import type {
   TFile,
   Vault,
 } from 'obsidian'
+import { Notice } from 'obsidian'
 import type {TodoItem, TagMeta, FileInfo} from 'src/_types'
 
 /**
@@ -161,6 +162,10 @@ export const setTodoPrioritiesBatch = async (
       lines[item.line] = currentLine.replace(rawText, newText)
       item.priority = newPriority ?? undefined
       item.originalText = newText
+
+      if (newPriority === null && item.blockPriority !== undefined) {
+        new Notice(`This task still has a block-level priority tag.\nAdd #${priorityTag}/0 manually.`)
+      }
     }
 
     await app.vault.modify(file, combineFileLines(lines))
@@ -209,12 +214,16 @@ const findAllTodosFromTagBlock = (file: FileInfo, tag: TagCache, priorityTag: st
     item.position.start.line === tagLineNum &&
     item.task !== undefined
   )
+  const tagLine = fileLines[tagLineNum]
+  if (!tagLine) return
+
   if (sameLineItem) {
-    const line = fileLines[tagLineNum]
-    if (line) {
-      return [formTodo(line, file, tagLineNum, sameLineItem.task, tagMeta, priorityTag, app)]
-    }
+      return [formTodo(tagLine, file, tagLineNum, sameLineItem.task, tagMeta, priorityTag, app)]
   }
+
+
+  const blockPriority = priorityTag ? parsePriorityTag(tagLine, priorityTag) : undefined
+
 
   // Step 2: Walk line by line from tagLineNum + 1 (block mode)
   let currentLine = tagLineNum + 1
@@ -232,7 +241,7 @@ const findAllTodosFromTagBlock = (file: FileInfo, tag: TagCache, priorityTag: st
       const content = line.match(/- \[.\]\s(.*)/)?.[1];
       if (content.trim().length !== 0) {
         // Found a task - add it and continue
-        todos.push(formTodo(line, file, currentLine, taskOnLine.task, tagMeta, priorityTag, app))
+        todos.push(formTodo(line, file, currentLine, taskOnLine.task, tagMeta, priorityTag, app, blockPriority))
       }
     } else if (line.trim().length === 0) {
       // Empty line - stop processing (end of block)
@@ -328,11 +337,13 @@ const formTodo = (
   tagMeta?: TagMeta,
   priorityTag?: string,
   app?: App,
+  blockPriority: number | undefined = undefined
 ): TodoItem => {
   const rawText = extractTextFromTodoLine(line)
   const spacesIndented = getIndentationSpacesFromTodoLine(line)
   const tagStripped = removeTagFromText(rawText, tagMeta?.main)
-  const priority = priorityTag ? parsePriorityTag(rawText, priorityTag) : undefined
+  const linePriority = priorityTag ? parsePriorityTag(rawText, priorityTag) : undefined
+  const priority = linePriority ? linePriority : blockPriority
   const displayText = priorityTag ? removePriorityTagFromText(tagStripped, priorityTag) : tagStripped
   const rawHTML = app ? preprocessMarkdown(displayText, app.metadataCache, file.file.path) : displayText
 
@@ -355,6 +366,7 @@ const formTodo = (
     fileInfo: file,
     originalText: rawText,
     priority,
+    blockPriority
   }
 }
 
