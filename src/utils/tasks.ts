@@ -62,20 +62,17 @@ export const parseTodos = async (
   const includePattern = includeFiles.trim()
     ? includeFiles.trim().split('\n')
     : ['**/*']
-  const filesWithCache = await Promise.all(
+
+  const todosForUpdatedFiles = new Map<TFile, TodoItem[]>()
+
+  await Promise.all(
     files
       .filter(file => {
         if (file.stat.mtime < lastRerender) return false
         if (!includePattern.some(p => minimatch(file.path, p))) return false
-        if (todoTags.length === 1 && todoTags[0] === '*') return true
-        const fileCache = cache.getFileCache(file)
-        const allTags = getAllTagsFromMetadata(fileCache)
-        const tagsOnPage = allTags.filter(tag =>
-          todoTags.includes(retrieveTag(getTagMeta(tag)).toLowerCase()),
-        )
-        return tagsOnPage.length > 0
+        return true
       })
-      .map<Promise<FileInfo>>(async file => {
+      .map(async file => {
         const fileCache = cache.getFileCache(file)
         const tagsOnPage =
           fileCache?.tags?.filter(e =>
@@ -83,33 +80,34 @@ export const parseTodos = async (
           ) ?? []
         const frontMatterTags = getFrontmatterTags(fileCache, todoTags)
         const hasFrontMatterTag = frontMatterTags.length > 0
+        const qualifies =
+          todoTags[0] === '*' || tagsOnPage.length > 0 || hasFrontMatterTag
+
+        if (!qualifies) {
+          todosForUpdatedFiles.set(file, [])
+          return
+        }
+
         const parseEntireFile =
           todoTags[0] === '*' || hasFrontMatterTag || showAllTodos
         const content = await vault.cachedRead(file)
-        return {
+
+        const fileInfo: FileInfo = {
           content,
           cache: fileCache,
-          validTags: tagsOnPage.map(e => ({
-            ...e,
-            tag: e.tag.toLowerCase(),
-          })),
+          validTags: tagsOnPage.map(e => ({...e, tag: e.tag.toLowerCase()})),
           file,
           parseEntireFile,
           frontmatterTag: todoTags.length ? frontMatterTags[0] : undefined,
         }
-      }),
+
+        let todos = findAllTodosInFile(fileInfo, priorityTag, app)
+        if (!showChecked) todos = todos.filter(todo => !todo.checked)
+        todosForUpdatedFiles.set(file, todos)
+      })
   )
 
-  const todosForUpdatedFiles = new Map<TFile, TodoItem[]>()
-  for (const fileInfo of filesWithCache) {
-    let todos = findAllTodosInFile(fileInfo, priorityTag, app)
-    if (!showChecked) {
-      todos = todos.filter(todo => !todo.checked)
-    }
-    todosForUpdatedFiles.set(fileInfo.file, todos)
-  }
-
-  return todosForUpdatedFiles
+return todosForUpdatedFiles
 }
 
 export const toggleTodoItem = async (item: TodoItem, app: App) => {

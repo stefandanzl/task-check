@@ -103,7 +103,7 @@ export default class TodoListView extends ItemView {
     this.updateStores()
     if (!this._app) {
       this._app = mount(App, {
-        target: (this as any).contentEl,
+        target: this.contentEl,
         props: {
           app: this.app,
           updateSetting: (updates: Partial<TodoSettings>) => this.plugin.updateSettings(updates),
@@ -123,9 +123,10 @@ export default class TodoListView extends ItemView {
 
   async refresh(all = false) {
     if (this.isRefreshing) return
-
+    
     this.isRefreshing = true
     try {
+      const startTime = Date.now()
       if (all) {
         this.lastRerender = 0
         this.itemsByFile.clear()
@@ -133,7 +134,7 @@ export default class TodoListView extends ItemView {
       await this.calculateAllItems()
       this.groupItems()
       this.renderView()
-      this.lastRerender = +new Date()
+      this.lastRerender = startTime
     } finally {
       this.isRefreshing = false
     }
@@ -160,7 +161,7 @@ export default class TodoListView extends ItemView {
       workspace.setActiveLeaf(leaf, {focus: true})
     }
 
-    const container = (this as any).containerEl
+    const container = this.containerEl
     if (container) {
       container.scrollTop = 0
     }
