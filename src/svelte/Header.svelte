@@ -200,9 +200,15 @@
           </label>
         </div>
         <div class="toggle-switch">
-          <button class="copy-icon-button" onclick={toggleExpandCollapseAll} aria-label={allCollapsed ? "Expand all" : "Collapse all"}>
+        {#if allCollapsed}
+          <button class="copy-icon-button" onclick={toggleExpandCollapseAll} aria-label="Expand all">
             {@html getIcon("chevrons-up-down")?.outerHTML}
           </button>
+        {:else}
+          <button class="copy-icon-button" onclick={toggleExpandCollapseAll} aria-label="Collapse all">
+            {@html getIcon("chevrons-down-up")?.outerHTML}
+          </button>
+        {/if}
           &nbsp;&nbsp;
           <button class="copy-icon-button" onclick={handleCopy} aria-label="Copy tasks to clipboard">
           {@html getIcon("copy")?.outerHTML}

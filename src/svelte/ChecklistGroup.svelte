@@ -7,6 +7,7 @@
   import Icon from "./Icon.svelte"
   import PriorityDropZone from "./PriorityDropZone.svelte"
   import { dragState } from "./viewStore"
+  import { slide } from "svelte/transition"
 
   let {
     group,
@@ -271,6 +272,7 @@
     </button>
   </header>
   {#if !isCollapsed}
+    <div transition:slide={{ duration: 100 }}>
     {#if priorityTag && groupedTodos}
       <div class="priority-zones" class:dragging={isMyDrag}>
         {#each sortedKeys as key, i (key ?? 'neutral')}
@@ -332,6 +334,7 @@
       </button>
       {/if}
     {/if}
+    </div>
   {/if}
 </section>
 
@@ -405,8 +408,8 @@
     border-bottom: 2px solid var(--background-modifier-border);
     overflow: hidden; /* IMPORTANT */
     
-    padding-bottom: 6px;
-    margin-top: 10px;
+    padding-bottom: 8px;
+    margin-top: 8px;
   }
 
   header:hover {

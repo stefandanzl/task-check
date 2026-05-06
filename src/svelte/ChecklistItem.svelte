@@ -92,7 +92,7 @@
     align-items: center;
     background-color: var(--checklist-listItemBackground);
     border-radius: var(--checklist-listItemBorderRadius);
-    margin: var(--checklist-listItemMargin);
+    margin: 2px 0;
     cursor: pointer;
     transition: background-color 100ms ease-in-out;
     width: 100%;
