@@ -293,8 +293,8 @@ const preprocessMarkdown = (text: string, metadataCache: MetadataCache, sourcePa
     const main = parts[0] || ''
     const stringer = parts.join('')
     const sub = parts.slice(1).join('/') || ''
-    const escapedTag = sub ? main + '/' + sub : main
-    return `${space}<span class="cm-formatting cm-formatting-hashtag cm-hashtag cm-hashtag-begin cm-meta cm-tag-${stringer}" spellcheck="false">#</span><span class="cm-hashtag cm-hashtag-end cm-meta cm-tag-${stringer}" spellcheck="false">${escapeHtml(escapedTag)}</span>`
+    // const escapedTag = sub ? main + '/' + sub : main
+    return `${space}<span class="cm-formatting cm-formatting-hashtag cm-hashtag cm-hashtag-begin cm-meta cm-tag-${stringer}" spellcheck="false">#</span><span class="cm-hashtag cm-hashtag-end cm-meta cm-tag-${stringer}" spellcheck="false">${escapeHtml(tag)}</span>`
   })
 
   // Finally, render any remaining markdown with marked
@@ -343,7 +343,7 @@ const formTodo = (
   const spacesIndented = getIndentationSpacesFromTodoLine(line)
   const tagStripped = removeTagFromText(rawText, tagMeta?.main)
   const linePriority = priorityTag ? parsePriorityTag(rawText, priorityTag) : undefined
-  const priority = linePriority ? linePriority : blockPriority
+  const priority =  (linePriority !== undefined) ? linePriority : blockPriority
   const displayText = priorityTag ? removePriorityTagFromText(tagStripped, priorityTag) : tagStripped
   const rawHTML = app ? preprocessMarkdown(displayText, app.metadataCache, file.file.path) : displayText
 

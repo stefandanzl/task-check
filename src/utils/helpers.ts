@@ -28,7 +28,7 @@ export const parsePriorityTag = (text: string, priorityTagName: string): number 
   const match = text.match(priorityRegex)
   if (match) {
     const value = parseInt(match[1], 10)
-    if (value === 0) return undefined
+    // if (value === 0) return undefined
     return value
   }
   return undefined
