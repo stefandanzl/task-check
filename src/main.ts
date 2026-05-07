@@ -172,6 +172,7 @@ export default class TodoPlugin extends Plugin {
       'sortDirectionSubGroups',
       'sortDirectionItems',
       'baseTagFirst',
+      'prioGrouping',
     ]
     if (onlyRepaintWhenChanges.includes(Object.keys(updates)[0]))
       this.view.rerender()

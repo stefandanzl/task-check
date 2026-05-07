@@ -3,7 +3,7 @@ import {mount, unmount} from 'svelte'
 
 import {TODO_VIEW_TYPE} from './constants'
 import App from './svelte/App.svelte'
-import {groupTodos, parseTodos} from './utils'
+import {groupTodos, groupTodosByPriority, parseTodos} from './utils'
 import {
   todoGroupsStore,
   todoTagsStore,
@@ -15,6 +15,7 @@ import {
   enableLimitStore,
   showSettingsPanelStore,
   searchQueriesStore,
+  prioGroupingStore,
 } from './svelte/viewStore'
 
 import type {TodoSettings} from './settings'
@@ -97,6 +98,7 @@ export default class TodoListView extends ItemView {
     enableLimitStore.set(this.plugin.getSettingValue('enableLimit'))
     showSettingsPanelStore.set(this.plugin.getSettingValue('_showSettingsPanel'))
     searchQueriesStore.set(this.plugin.getSettingValue('_searchQueries'))
+    prioGroupingStore.set(this.plugin.getSettingValue('prioGrouping'))
   }
 
   private renderView() {
@@ -190,12 +192,12 @@ export default class TodoListView extends ItemView {
     const lines: string[] = []
 
     for (const group of this.groupedItems) {
-      if (this.plugin.getSettingValue('groupBy') === 'page' && (group as any).pageName) {
-        lines.push((group as any).pageName)
-      } else if (this.plugin.getSettingValue('groupBy') === 'tag' && (group as any).mainTag) {
-        const mainTag = (group as any).mainTag
-        const subTags = (group as any).subTags ?? ''
-        const header = subTags ? `${mainTag}/${subTags}` : mainTag
+      if (group.type === 'priority') {
+        lines.push(`Priority ${group.priorityValue}`)
+      } else if (group.type === 'page' && group.pageName) {
+        lines.push(group.pageName)
+      } else if (group.type === 'tag' && group.mainTag) {
+        const header = group.subTags ? `${group.mainTag}/${group.subTags}` : group.mainTag
         lines.push(header)
       }
 
@@ -287,15 +289,24 @@ export default class TodoListView extends ItemView {
       if (searchQuery.length === 0) return true
       return searchQuery.some(andTerms => this.itemMatchesSearch(e, andTerms))
     })
-    this.groupedItems = groupTodos(
-      searchedItems,
-      this.plugin.getSettingValue('groupBy'),
-      this.plugin.getSettingValue('sortDirectionGroups'),
-      this.plugin.getSettingValue('sortDirectionItems'),
-      this.plugin.getSettingValue('subGroups'),
-      this.plugin.getSettingValue('sortDirectionSubGroups'),
-      this.plugin.getSettingValue('baseTagFirst'),
-      this.plugin.getSettingValue('priorityTag'),
-    )
+    const prioGrouping = this.plugin.getSettingValue('prioGrouping')
+    const priorityTag = this.plugin.getSettingValue('priorityTag')
+    if (prioGrouping && priorityTag) {
+      this.groupedItems = groupTodosByPriority(
+        searchedItems,
+        this.plugin.getSettingValue('sortDirectionItems'),
+      )
+    } else {
+      this.groupedItems = groupTodos(
+        searchedItems,
+        this.plugin.getSettingValue('groupBy'),
+        this.plugin.getSettingValue('sortDirectionGroups'),
+        this.plugin.getSettingValue('sortDirectionItems'),
+        this.plugin.getSettingValue('subGroups'),
+        this.plugin.getSettingValue('sortDirectionSubGroups'),
+        this.plugin.getSettingValue('baseTagFirst'),
+        priorityTag,
+      )
+    }
   }
 }

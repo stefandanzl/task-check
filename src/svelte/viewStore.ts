@@ -13,6 +13,7 @@ export const enableLimitStore = writable<boolean>(true)
 export const showSettingsPanelStore = writable<boolean>(false)
 export const searchQueriesStore = writable<string[]>([])
 export const todoGroupsCountStore = writable<number>(0)
+export const prioGroupingStore = writable<boolean>(false)
 export const dragState = writable({
   inProgress: false,
   sourcePriority: null as number | null,

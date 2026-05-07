@@ -24,6 +24,7 @@ export interface TodoSettings {
   enableLimit: boolean
   _showSettingsPanel: boolean
   _searchQueries: string[]
+  prioGrouping: boolean
 }
 
 export const DEFAULT_SETTINGS: TodoSettings = {
@@ -47,6 +48,7 @@ export const DEFAULT_SETTINGS: TodoSettings = {
   enableLimit: true,
   _showSettingsPanel: false,
   _searchQueries: [],
+  prioGrouping: false,
 }
 
 export class TodoSettingTab extends PluginSettingTab {

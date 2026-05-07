@@ -42,7 +42,12 @@ export type TagGroup = BaseGroup & {
   subTags?: string
 }
 
-export type TodoGroup = PageGroup | TagGroup
+export type PriorityGroup = BaseGroup & {
+  type: 'priority'
+  priorityValue: number
+}
+
+export type TodoGroup = PageGroup | TagGroup | PriorityGroup
 
 export type FileInfo = {
   content: string

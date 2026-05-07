@@ -9,6 +9,8 @@
     collapsedSectionsStore,
     showSettingsPanelStore,
     searchQueriesStore,
+    priorityTagStore,
+    prioGroupingStore,
   } from "./viewStore"
 
   let {
@@ -99,6 +101,10 @@
 
   async function toggleLimit() {
     await updateSetting({ enableLimit: !$enableLimitStore })
+  }
+
+  async function togglePrioGrouping() {
+    await updateSetting({ prioGrouping: !$prioGroupingStore })
   }
 
   async function toggleSettingsPanel() {
@@ -200,6 +206,15 @@
             <span class="toggle-text">Limit tasks</span>
           </label>
         </div>
+        {#if $priorityTagStore}
+          <div class="toggle-switch" aria-label="Toggle priority groups mode">
+            <label class="toggle-label">
+              <input type="checkbox" class="toggle-input" checked={$prioGroupingStore} onchange={togglePrioGrouping}/>
+              <span class="toggle-slider" class:prio-active={$prioGroupingStore}></span>
+              <span class="toggle-text" class:prio-active={$prioGroupingStore}>Priority Groups</span>
+            </label>
+          </div>
+        {/if}
         <div class="toggle-switch">
         {#if allCollapsed}
           <button class="copy-icon-button" onclick={toggleExpandCollapseAll} aria-label="Expand all">
@@ -358,6 +373,15 @@
 
   .toggle-input:checked + .toggle-slider::before {
     transform: translateX(16px);
+  }
+
+  .toggle-slider.prio-active {
+    background-color: var(--color-orange, var(--interactive-accent));
+  }
+
+  .toggle-text.prio-active {
+    color: var(--color-orange, var(--text-accent));
+    font-weight: 600;
   }
 
   .toggle-text {

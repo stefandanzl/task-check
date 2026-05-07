@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { App } from "obsidian"
 
-  import type { LookAndFeel, TodoGroup, TodoItem } from "src/_types"
+  import type { LookAndFeel, TodoGroup, PriorityGroup, TodoItem } from "src/_types"
   import { navToFile, setTodoPrioritiesBatch } from "src/utils"
   import ChecklistItem from "./ChecklistItem.svelte"
   import Icon from "./Icon.svelte"
@@ -251,7 +251,9 @@
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <header class={`group-header ${group.type}`} onclick={() => onToggle(group.id)} title="Toggle Group">
     <div class="title no-select" onclick={clickTitle}>
-      {#if group.type === "page"}
+      {#if group.type === "priority"}
+        <span class="priority-label">Priority {(group as PriorityGroup).priorityValue}</span>
+      {:else if group.type === "page"}
         {group.pageName}
       {:else if group.mainTag}
         <span class="tag-base">#</span>
@@ -273,7 +275,7 @@
   </header>
   {#if !isCollapsed}
     <div transition:slide={{ duration: 100 }}>
-    {#if priorityTag && groupedTodos}
+    {#if priorityTag && groupedTodos && group.type !== 'priority'}
       <div class="priority-zones" class:dragging={isMyDrag}>
         {#each sortedKeys as key, i (key ?? 'neutral')}
           <PriorityDropZone
@@ -394,6 +396,10 @@
   }
   .tag-sub {
     color: var(--checklist-tagSubColor);
+  }
+  .priority-label {
+    color: var(--color-orange, var(--text-accent));
+    font-weight: 600;
   }
 
   ul {
