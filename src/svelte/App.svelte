@@ -49,7 +49,7 @@
   }
 </script>
 
-<div class="checklist-plugin-main markdown-preview-view markdown-source-view is-live-preview mod-cm6">
+<div class="checklist-plugin-main markdown-preview-view markdown-source-view is-live-preview mod-cm6 cm-s-obsidian">
   <Header
     onTagStatusChange={updateTagStatus}
     {onSearch}

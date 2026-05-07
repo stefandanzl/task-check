@@ -97,7 +97,7 @@
     transition: background-color 100ms ease-in-out;
     width: 100%;
     box-sizing: border-box;
-    padding: 10px 0 10px 4px;
+    padding: 6px 0 6px 4px;
   }
 
   li.checklist-item:hover {
