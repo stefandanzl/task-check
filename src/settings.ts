@@ -24,6 +24,7 @@ export interface TodoSettings {
   enableLimit: boolean
   _showSettingsPanel: boolean
   _searchQueries: string[]
+  _restoreLastSearch: boolean
   prioGrouping: boolean
 }
 
@@ -48,6 +49,7 @@ export const DEFAULT_SETTINGS: TodoSettings = {
   enableLimit: true,
   _showSettingsPanel: false,
   _searchQueries: [],
+  _restoreLastSearch: false,
   prioGrouping: false,
 }
 

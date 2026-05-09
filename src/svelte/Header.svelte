@@ -19,12 +19,16 @@
     onCopyTasks = () => '',
     updateSetting,
     registerSearchInput = () => {},
+    restoreLastSearch,
+    lastSearchQuery,
   }: {
     onTagStatusChange: (tag: string, status: boolean) => void
     onSearch: (str: string) => void
     onCopyTasks?: () => string
     updateSetting: (updates: Partial<TodoSettings>) => Promise<void>
     registerSearchInput?: (input: HTMLInputElement) => void
+    restoreLastSearch: boolean
+    lastSearchQuery: string
   } = $props()
 
   let search = $state("")
@@ -33,6 +37,7 @@
   let showRecentDropdown = $state(false)
   let saveTimeout: ReturnType<typeof setTimeout> | null = null
   let dropdownStyle = $state('')
+  let hasRestoredSearch = false
 
   const searchQueries = $derived($searchQueriesStore)
 
@@ -83,10 +88,22 @@
     }
   })
 
+  // Restore last search on mount if flag is set
+  $effect(() => {
+    if (!hasRestoredSearch && restoreLastSearch && lastSearchQuery && search === '') {
+      search = lastSearchQuery
+      onSearch(lastSearchQuery)
+      hasRestoredSearch = true
+      // Reset the flag so it doesn't keep restoring
+      updateSetting({ _restoreLastSearch: false })
+    }
+  })
+
   function clearSearch() {
     search = ""
     onSearch("")
     searchInput?.focus()
+    updateSetting({ _restoreLastSearch: false })
   }
 
   function toggleTag(tag: string) {
@@ -121,7 +138,13 @@
     saveTimeout = setTimeout(() => {
       if (search.trim() && search !== "") {
         const queries = [...searchQueries].filter(q => q !== search)
-        updateSetting({ _searchQueries: [search, ...queries].slice(0, 10) })
+        updateSetting({
+          _searchQueries: [search, ...queries].slice(0, 10),
+          _restoreLastSearch: true
+        })
+      } else if (search === "") {
+        // Search was cleared, don't restore on next load
+        updateSetting({ _restoreLastSearch: false })
       }
     }, 1000)
   }
@@ -140,7 +163,6 @@
   }
 
   function selectRecentQuery(query: string) {
-    console.log(query)
     search = query
     onSearch(query)
     searchInput?.focus()
@@ -165,6 +187,7 @@
           if (e.key === 'Escape') {
             search = ""
             onSearch("")
+            updateSetting({ _restoreLastSearch: false })
           }
         }}
       />

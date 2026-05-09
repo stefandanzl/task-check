@@ -20,12 +20,16 @@
     onSearch,
     onCopyTasks,
     registerSearchInput,
+    restoreLastSearch,
+    lastSearchQuery,
   }: {
     app: App
     updateSetting: (updates: Partial<TodoSettings>) => Promise<void>
     onSearch: (str: string) => void
     onCopyTasks?: () => string
     registerSearchInput?: (input: HTMLInputElement) => void
+    restoreLastSearch: boolean
+    lastSearchQuery: string
   } = $props()
 
   let showAllMap = $state<Record<string, boolean>>({})
@@ -56,6 +60,8 @@
     onCopyTasks={onCopyTasks || (() => '')}
     {updateSetting}
     registerSearchInput={registerSearchInput || (() => {})}
+    {restoreLastSearch}
+    {lastSearchQuery}
   />
   {#if $todoGroupsStore.length === 0}
     <div class="empty">

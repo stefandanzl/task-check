@@ -118,6 +118,8 @@ export default class TodoListView extends ItemView {
           registerSearchInput: (input: HTMLInputElement) => {
             this.searchInputRef = input
           },
+          restoreLastSearch: this.plugin.getSettingValue('_restoreLastSearch'),
+          lastSearchQuery: this.plugin.getSettingValue('_searchQueries')[0] || '',
         },
       })
     }
