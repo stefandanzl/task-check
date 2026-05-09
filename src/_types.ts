@@ -20,7 +20,7 @@ export type TodoItem = {
 }
 
 type BaseGroup = {
-  type: GroupByType
+  type: GroupByType | 'priority'
   todos: TodoItem[]
   id: string
   sortName: string

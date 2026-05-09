@@ -398,7 +398,7 @@
     color: var(--checklist-tagSubColor);
   }
   .priority-label {
-    color: var(--color-orange, var(--text-accent));
+    color: var(--inline-title-color);
     font-weight: 600;
   }
 
