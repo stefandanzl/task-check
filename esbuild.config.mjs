@@ -11,7 +11,6 @@ if you want to view the source, please visit the github repository of this plugi
 `
 
 const prod = process.argv[2] === 'production'
-const meta = process.argv[3] === 'meta'
 
 async function build() {
   const context = await esbuild.context({
@@ -54,7 +53,8 @@ async function build() {
     logLevel: 'info',
     sourcemap: prod ? false : 'inline',
     treeShaking: true,
-    metafile: meta,
+    metafile: prod,
+    minify: prod,
     plugins: [
       sveltePlugin({
         compilerOptions: {
@@ -73,15 +73,10 @@ async function build() {
   }
 
   if (prod) {
-    await context.rebuild()
-    context.dispose()
-  }
-
-  if (meta) {
     const result = await context.rebuild()
     if (result.metafile) {
+      // Visit https://esbuild.github.io/analyze/ to analyze metafile
       fs.writeFileSync('meta.json', JSON.stringify(result.metafile))
-      console.log('Build succeeded. Metafile saved to meta.json')
     }
     context.dispose()
   }

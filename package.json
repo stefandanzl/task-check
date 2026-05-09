@@ -14,23 +14,22 @@
   "author": "delashum",
   "license": "MIT",
   "devDependencies": {
-    "@tsconfig/svelte": "^2.0.0",
+    "@tsconfig/svelte": "^5.0.8",
     "@types/markdown-it": "^12.0.1",
+    "@types/marked": "^5.0.2",
     "@types/node": "^16.11.6",
     "@typescript-eslint/eslint-plugin": "5.29.0",
     "@typescript-eslint/parser": "5.29.0",
     "builtin-modules": "3.3.0",
     "esbuild": "^0.28.0",
     "esbuild-svelte": "^0.9.4",
-    "minimatch": "^5.1.0",
+    "minimatch": "^5.1.9",
     "obsidian": "latest",
     "svelte": "^5.0.0",
     "tslib": "^2.4.0",
     "typescript": "^6.0.3"
   },
   "dependencies": {
-    "@types/marked": "^5.0.2",
-    "marked": "^18.0.2",
-    "prettier": "^3.0.3"
+    "marked": "^18.0.2"
   }
 }

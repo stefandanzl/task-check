@@ -5,9 +5,7 @@
     "importHelpers": true,
     "types": ["svelte", "node"],
     "lib": ["ESNext", "DOM"],
-    "paths": {
-      "src/*": ["./src/*"]
-    }
+    "paths": {"*": ["./*"]}
   },
   "include": ["src/**/*", "svelte-custom.d.ts"]
 }

@@ -18,3 +18,4 @@ yarn.lock
 data.json
 
 meta.json
+.env

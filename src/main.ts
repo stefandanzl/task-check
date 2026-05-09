@@ -1,7 +1,7 @@
 import {MarkdownView, Plugin} from 'obsidian'
 
 import {TODO_VIEW_TYPE} from './constants'
-import {DEFAULT_SETTINGS, TodoSettings, TodoSettingTab} from './settings'
+import {DEFAULT_SETTINGS, type TodoSettings, TodoSettingTab} from './settings'
 import TodoListView from './view'
 import type {TodoGroup, TodoItem} from './_types'
 import {toggleTodoItem} from './utils'

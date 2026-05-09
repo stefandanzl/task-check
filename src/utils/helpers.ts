@@ -1,4 +1,4 @@
-import {CachedMetadata, parseFrontMatterTags, TFile, Vault} from 'obsidian'
+import {type CachedMetadata, parseFrontMatterTags, TFile, Vault} from 'obsidian'
 
 import {LOCAL_SORT_OPT} from '../constants'
 
