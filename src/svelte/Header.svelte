@@ -206,15 +206,6 @@
             <span class="toggle-text">Limit tasks</span>
           </label>
         </div>
-        {#if $priorityTagStore}
-          <div class="toggle-switch" aria-label="Toggle priority groups mode">
-            <label class="toggle-label">
-              <input type="checkbox" class="toggle-input" checked={$prioGroupingStore} onchange={togglePrioGrouping}/>
-              <span class="toggle-slider" class:prio-active={$prioGroupingStore}></span>
-              <span class="toggle-text" class:prio-active={$prioGroupingStore}>Priority Groups</span>
-            </label>
-          </div>
-        {/if}
         <div class="toggle-switch">
         {#if allCollapsed}
           <button class="copy-icon-button" onclick={toggleExpandCollapseAll} aria-label="Expand all">
@@ -231,6 +222,17 @@
           </button>
         </div>
       </div>
+       <div class="settings-controls">
+        {#if $priorityTagStore}
+          <div class="toggle-switch" aria-label={"Toggle priority groups mode\nOnly tasks with a set priority level will be shown"}>
+            <label class="toggle-label">
+              <input type="checkbox" class="toggle-input" checked={$prioGroupingStore} onchange={togglePrioGrouping}/>
+              <span class="toggle-slider"></span>
+              <span class="toggle-text">Show priority groups only</span>
+            </label>
+          </div>
+        {/if}
+       </div>
       <div class="settings-title">
         <span class="settings-title-span">Show Tags</span>
       </div>
@@ -373,15 +375,6 @@
 
   .toggle-input:checked + .toggle-slider::before {
     transform: translateX(16px);
-  }
-
-  .toggle-slider.prio-active {
-    background-color: var(--color-orange, var(--interactive-accent));
-  }
-
-  .toggle-text.prio-active {
-    color: var(--color-orange, var(--text-accent));
-    font-weight: 600;
   }
 
   .toggle-text {
