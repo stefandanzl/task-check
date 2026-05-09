@@ -213,7 +213,7 @@ const findAllTodosFromTagBlock = (file: FileInfo, tag: TagCache, priorityTag: st
     item.task !== undefined
   )
   const tagLine = fileLines[tagLineNum]
-  if (!tagLine) return
+  if (!tagLine) return []
 
   if (sameLineItem) {
       return [formTodo(tagLine, file, tagLineNum, sameLineItem.task, tagMeta, priorityTag, app)]
