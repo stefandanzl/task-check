@@ -109,11 +109,23 @@ export const groupTodosByPriority = (
   // Sort keys numerically descending: 5, 4, 3, 2, 1, 0, -1, -2...
   const sortedKeys = Array.from(map.keys()).sort((a, b) => b - a)
 
-  return sortedKeys.map(key => {
-    const todos = map.get(key)!
-    sortGenericItemsInplace(todos, sortItems, 'originalText', 'fileCreatedTs')
-    const tsValues = todos.map(t => t.fileCreatedTs)
-    const modValues = todos.map(t => t.fileModifiedTs)
+  // Fill in gaps between existing priorities with empty groups
+  const allKeys: number[] = []
+  if (sortedKeys.length > 0) {
+    const maxPrio = sortedKeys[0]
+    const minPrio = sortedKeys[sortedKeys.length - 1]
+    for (let p = maxPrio; p >= minPrio; p--) {
+      allKeys.push(p)
+    }
+  }
+
+  return allKeys.map(key => {
+    const todos = map.get(key) || []
+    if (todos.length > 0) {
+      sortGenericItemsInplace(todos, sortItems, 'originalText', 'fileCreatedTs')
+    }
+    const tsValues = todos.length > 0 ? todos.map(t => t.fileCreatedTs) : [0, 0]
+    const modValues = todos.length > 0 ? todos.map(t => t.fileModifiedTs) : [0, 0]
     return {
       type: 'priority' as const,
       priorityValue: key,

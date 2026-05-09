@@ -143,11 +143,12 @@
           {/each}
         </ul>
       </div>
-    {:else if isDragging}
+    {:else}
+      <!-- Empty priority zone: always visible as a drop target -->
       <!-- svelte-ignore a11y_no_static_element_interactions -->
       <div
         class="priority-drop-zone {zoneClass}"
-        class:visible={isDragging}
+        class:visible={isDragging || items.length === 0}
         class:hovered={isDragOver}
         bind:this={dropZoneEl}
         ondragover={handleDragOver}

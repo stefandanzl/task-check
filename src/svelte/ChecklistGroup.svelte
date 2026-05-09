@@ -6,7 +6,7 @@
   import ChecklistItem from "./ChecklistItem.svelte"
   import Icon from "./Icon.svelte"
   import PriorityDropZone from "./PriorityDropZone.svelte"
-  import { dragState } from "./viewStore"
+  import { dragState, todoGroupsStore } from "./viewStore"
   import { slide } from "svelte/transition"
 
   let {
@@ -280,6 +280,19 @@
   {#if !isCollapsed}
     <div transition:slide={{ duration: 100 }}>
     {#if group.type === 'priority'}
+      <!-- Above dropzone for highest priority group -->
+      {#if $todoGroupsStore[0]?.type === 'priority' && (group as PriorityGroup).priorityValue === ($todoGroupsStore[0] as PriorityGroup).priorityValue}
+        <PriorityDropZone
+          position="above"
+          targetPriority={(group as PriorityGroup).priorityValue}
+          {lookAndFeel}
+          {app}
+          isDragging={isMyDrag}
+          ondrop={handleDropPosition}
+          ondragstart={handleDragStart}
+          ondragend={handleDragEnd}
+        />
+      {/if}
       <div class="priority-group-dropzone" class:dragging={isMyDrag}>
         <PriorityDropZone
           position="into"
@@ -293,6 +306,19 @@
           ondragend={handleDragEnd}
         />
       </div>
+      <!-- Below dropzone for lowest priority group -->
+      {#if $todoGroupsStore[$todoGroupsStore.length - 1]?.type === 'priority' && (group as PriorityGroup).priorityValue === ($todoGroupsStore[$todoGroupsStore.length - 1] as PriorityGroup).priorityValue}
+        <PriorityDropZone
+          position="below"
+          targetPriority={(group as PriorityGroup).priorityValue}
+          {lookAndFeel}
+          {app}
+          isDragging={isMyDrag}
+          ondrop={handleDropPosition}
+          ondragstart={handleDragStart}
+          ondragend={handleDragEnd}
+        />
+      {/if}
       {#if maxTasksPerGroup && enableLimit && group.todos.length > maxTasksPerGroup && !isGroupShowingAll}
         <button class="show-more-button" onclick={toggleShowAll} aria-label="Show more">
           Show all ({group.todos.length})
