@@ -1,6 +1,7 @@
 import {writable} from 'svelte/store'
 import type {TodoGroup} from '../_types'
 import type {LookAndFeel, GroupByType} from '../_types'
+import type {TodoItem} from '../_types'
 
 export const todoGroupsStore = writable<TodoGroup[]>([])
 export const todoTagsStore = writable<string[]>([])
@@ -18,4 +19,5 @@ export const dragState = writable({
   inProgress: false,
   sourcePriority: null as number | null,
   dragGroupId: null as string | null,
+  draggedItem: null as TodoItem | null,
 })

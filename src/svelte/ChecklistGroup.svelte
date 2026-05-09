@@ -152,13 +152,17 @@
   }
 
   async function handleDropPosition(e: CustomEvent) {
-    const { item: draggedItemRef, dropPosition, targetPriority } = e.detail as {
-      item: { id: string }
+    const { itemId, dropPosition, targetPriority } = e.detail as {
+      itemId?: string
       dropPosition: 'above' | 'below' | 'into'
       targetPriority: number | null
     }
 
-    const item = group.todos.find(i => `${i.filePath}:${i.line}` === draggedItemRef.id)
+    // Try to find the item - first from dragState (for priority groups), then from current group
+    let item = $dragState.draggedItem
+    if (!item && itemId) {
+      item = group.todos.find(i => `${i.filePath}:${i.line}` === itemId)
+    }
     if (!item) return
 
     let newPriority: number | null
@@ -177,7 +181,7 @@
       newPriority = calculateNewPriority(upperPriority, lowerPriority)
     }
 
-    dragState.update(s => ({ ...s, inProgress: false, sourcePriority: null, dragGroupId: null }))
+    dragState.update(s => ({ ...s, inProgress: false, sourcePriority: null, dragGroupId: null, draggedItem: null }))
 
     const currentPriority = item.priority ?? 0
     const newPriorityVal = newPriority ?? 0
@@ -196,17 +200,17 @@
 
   function handleDragStart(e: CustomEvent) {
     const item = e.detail.item as TodoItem
-    dragState.update(s => ({ ...s, inProgress: true, sourcePriority: item.priority ?? 0, dragGroupId: group.id }))
+    dragState.update(s => ({ ...s, inProgress: true, sourcePriority: item.priority ?? 0, dragGroupId: group.id, draggedItem: item }))
   }
 
   function handleDragEnd() {
-    dragState.update(s => ({ ...s, inProgress: false, sourcePriority: null, dragGroupId: null }))
+    dragState.update(s => ({ ...s, inProgress: false, sourcePriority: null, dragGroupId: null, draggedItem: null }))
   }
 
   // Adapter for ChecklistItem's native drag event
   function handleItemDragStart(item: TodoItem) {
     return (_e: DragEvent) => {
-      dragState.update(s => ({ ...s, inProgress: true, sourcePriority: item.priority ?? 0, dragGroupId: group.id }))
+      dragState.update(s => ({ ...s, inProgress: true, sourcePriority: item.priority ?? 0, dragGroupId: group.id, draggedItem: item }))
     }
   }
 
@@ -217,7 +221,7 @@
   const groupedTodos = $derived(priorityTag ? groupTodosByPriority(group.todos) : new Map())
   const sortedKeys = $derived(groupedTodos ? getSortedPriorityKeys(groupedTodos) : [])
   const visibleItemsPerZone = $derived(getVisibleItemsPerZone(groupedTodos, sortedKeys, maxTasksPerGroup, isGroupShowingAll, enableLimit))
-  const isMyDrag = $derived($dragState.inProgress && $dragState.dragGroupId === group.id)
+  const isMyDrag = $derived($dragState.inProgress && ($dragState.dragGroupId === group.id || (group.type === 'priority' && $dragState.dragGroupId?.startsWith('priority:'))))
 
   // Check if the source priority level has only one task
   const sourceHasSingleTask = $derived((() => {
@@ -275,7 +279,30 @@
   </header>
   {#if !isCollapsed}
     <div transition:slide={{ duration: 100 }}>
-    {#if priorityTag && groupedTodos && group.type !== 'priority'}
+    {#if group.type === 'priority'}
+      <div class="priority-group-dropzone" class:dragging={isMyDrag}>
+        <PriorityDropZone
+          position="into"
+          items={group.todos}
+          targetPriority={(group as PriorityGroup).priorityValue}
+          {lookAndFeel}
+          {app}
+          isDragging={isMyDrag}
+          ondrop={handleDropPosition}
+          ondragstart={handleDragStart}
+          ondragend={handleDragEnd}
+        />
+      </div>
+      {#if maxTasksPerGroup && enableLimit && group.todos.length > maxTasksPerGroup && !isGroupShowingAll}
+        <button class="show-more-button" onclick={toggleShowAll} aria-label="Show more">
+          Show all ({group.todos.length})
+        </button>
+      {:else if maxTasksPerGroup && enableLimit && group.todos.length > maxTasksPerGroup && isGroupShowingAll}
+        <button class="show-more-button" onclick={toggleShowAll} aria-label="Hide some">
+          Hide some
+        </button>
+      {/if}
+    {:else if priorityTag && groupedTodos}
       <div class="priority-zones" class:dragging={isMyDrag}>
         {#each sortedKeys as key, i (key ?? 'neutral')}
           <PriorityDropZone
@@ -316,7 +343,7 @@
           Show all ({group.todos.length})
         </button>
       {:else if maxTasksPerGroup && enableLimit && group.todos.length > maxTasksPerGroup && isGroupShowingAll}
-        <button class="show-more-button" onclick={toggleShowAll} aria-label="Hide some"> 
+        <button class="show-more-button" onclick={toggleShowAll} aria-label="Hide some">
           Hide some
         </button>
       {/if}
@@ -333,7 +360,7 @@
       {:else if maxTasksPerGroup && enableLimit && group.todos.length > maxTasksPerGroup && isGroupShowingAll}
         <button class="show-more-button" onclick={toggleShowAll} aria-label="Hide some">
           Collapse ({group.todos.length})
-      </button>
+        </button>
       {/if}
     {/if}
     </div>
@@ -413,7 +440,7 @@
   .group {
     border-bottom: 1px solid var(--background-modifier-border);
     overflow: hidden; /* IMPORTANT */
-    
+
     padding-bottom: 8px;
     margin-top: 8px;
   }
@@ -444,5 +471,11 @@
 
   .show-more-button:hover {
     background: var(--background-modifier-border-hover);
+  }
+
+  .priority-group-dropzone {
+    border-radius: 4px;
+    min-height: 28px;
+    transition: background-color 0.1s;
   }
 </style>

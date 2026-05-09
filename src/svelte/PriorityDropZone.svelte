@@ -56,7 +56,7 @@
     isDragOver = false
     const itemId = e.dataTransfer?.getData('text/plain')
     if (itemId) {
-      ondrop(new CustomEvent('drop', { detail: { item: { id: itemId }, dropPosition: position, targetPriority } }))
+      ondrop(new CustomEvent('drop', { detail: { itemId, dropPosition: position, targetPriority } }))
     }
     ondragend()
   }
