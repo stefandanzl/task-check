@@ -118,14 +118,16 @@ export const sortGenericItemsInplace = <
     const lineA = getLine(a);
     const lineB = getLine(b);
 
-    // For tasks within same Group and in same file we want to keep the original order 
-    // from file in any case because it looks better when writing down multiple points 
+    // For tasks within same Group and in same file and in the same block we want to keep the original order 
+    // from file in any case because it looks better when writing down multiple points and using indentation
     // that depend on each other for context and order
     if ('line' in a && 'line' in b) {
-      return lineA - lineB;
+      if (a.blockTagLine !== undefined &&  b.blockTagLine !== undefined && a.blockTagLine === b.blockTagLine){
+        return lineA - lineB;
+      } 
     }
 
-    // For Groups it should depend on sorting direction
+    // For Groups and tasks with line tags it should depend on sorting direction
     return isNewToOld 
     ? lineB - lineA  // Higher line number first
     : lineA - lineB // Lower line number first

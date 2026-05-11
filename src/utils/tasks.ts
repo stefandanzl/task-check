@@ -221,6 +221,7 @@ const findAllTodosFromTagBlock = (file: FileInfo, tag: TagCache, priorityTag: st
 
 
   const blockPriority = priorityTag ? parsePriorityTag(tagLine, priorityTag) : undefined
+  const blockTagLine = tagLineNum
 
 
   // Step 2: Walk line by line from tagLineNum + 1 (block mode)
@@ -239,7 +240,7 @@ const findAllTodosFromTagBlock = (file: FileInfo, tag: TagCache, priorityTag: st
       const content = line.match(/- \[.\]\s(.*)/)?.[1];
       if (content.trim().length !== 0) {
         // Found a task - add it and continue
-        todos.push(formTodo(line, file, currentLine, taskOnLine.task, tagMeta, priorityTag, app, blockPriority))
+        todos.push(formTodo(line, file, currentLine, taskOnLine.task, tagMeta, priorityTag, app, blockPriority, blockTagLine))
       }
     } else if (line.trim().length === 0) {
       // Empty line - stop processing (end of block)
@@ -335,7 +336,8 @@ const formTodo = (
   tagMeta?: TagMeta,
   priorityTag?: string,
   app?: App,
-  blockPriority: number | undefined = undefined
+  blockPriority: number | undefined = undefined,
+  blockTagLine: number | undefined = undefined
 ): TodoItem => {
   const rawText = extractTextFromTodoLine(line)
   const spacesIndented = getIndentationSpacesFromTodoLine(line)
@@ -364,7 +366,8 @@ const formTodo = (
     fileInfo: file,
     originalText: rawText,
     priority,
-    blockPriority
+    blockPriority,
+    blockTagLine
   }
 }
 

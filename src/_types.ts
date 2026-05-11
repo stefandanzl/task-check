@@ -17,6 +17,7 @@ export type TodoItem = {
   rawHTML: string
   priority?: number
   blockPriority?: number
+  blockTagLine?: number
 }
 
 type BaseGroup = {
