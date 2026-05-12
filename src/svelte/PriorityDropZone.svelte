@@ -77,6 +77,7 @@
 
   const displayLabel = $derived(targetPriority === null ? 'Neutral' : `Priority ${targetPriority}`)
   const zoneClass = $derived(`${position}-zone ${targetPriority === null ? 'neutral' : targetPriority > 0 ? 'positive' : 'negative'}`)
+  const itemsKey = $derived(items.map(i => `${i.filePath}:${i.line}`).join('|'))
 </script>
 
 {#if position === 'into'}
@@ -98,6 +99,7 @@
           <span class="zone-label">{displayLabel}</span>
           <span class="zone-count">{items.length}</span>
         </div>
+        {#key itemsKey}
         <ul class="zone-items">
           {#each items as item (item.filePath + ':' + item.line)}
             <ChecklistItem
@@ -110,6 +112,7 @@
             />
           {/each}
         </ul>
+        {/key}
       {:else if isDragging}
         <span class="neutral-label">Drop here to remove priority</span>
       {/if}
@@ -129,6 +132,7 @@
           <span class="zone-label">{displayLabel}</span>
           <span class="zone-count">{items.length}</span>
         </div>
+        {#key itemsKey}
         <ul class="zone-items">
           {#each items as item (item.filePath + ':' + item.line)}
             <ChecklistItem
@@ -142,6 +146,7 @@
             />
           {/each}
         </ul>
+        {/key}
       </div>
     {:else}
       <!-- Empty priority zone: always visible as a drop target -->
