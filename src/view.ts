@@ -243,15 +243,21 @@ export default class TodoListView extends ItemView {
     const dateFilters: DateFilter[] = []
 
     // Extract date operators BEFORE text splitting
-    // Supports both: before:2026-04-15 and before: 2026-04-15 (with spaces)
-    // Also supports date<, date>, date<=, date>=, date=
-    const dateRegex = /(?:before:|after:|on:|due:|date[<>]=?|date=)\s*(\S+)/gi
+    // IMPORTANT: Longer patterns must come first (date>= before date=)
+    const dateRegex = /(before:|after:|on:|due:|date<=|date>=|date<|date>|date=)\s*(\S+)/gi
 
-    let remainingQuery = query.replace(dateRegex, (match, value) => {
-      const filter = this.parseDateOperator(match, value)
+    console.log('Search query:', query)
+    let matchCount = 0
+    let remainingQuery = query.replace(dateRegex, (match, operator, value) => {
+      matchCount++
+      console.log('Date match:', match, 'Operator:', operator, 'Value:', value)
+      const filter = this.parseDateOperator(operator, value)
+      console.log('Parsed filter:', filter)
       if (filter) dateFilters.push(filter)
       return '' // Remove from text query
     })
+    console.log('Total matches:', matchCount)
+    console.log('Remaining query:', remainingQuery)
 
     // Process remaining text search normally
     const textTerms: string[][] = []
@@ -283,47 +289,61 @@ export default class TodoListView extends ItemView {
   }
 
   private parseDateOperator(match: string, value: string): DateFilter | null {
-    const operator = match.toLowerCase().split(/\s+/)[0] // Get operator before potential space
+    const operator = match.toLowerCase().trim()
 
+    console.log('Parsing operator:', operator, 'with value:', value)
+
+    // Word syntax (spaces allowed after colon)
     if (operator.startsWith('before:')) {
-      return { operator: 'before', dateValue: this.parseDateValue(value) }
-    }
-    if (operator === 'date<') {
-      return { operator: '<', dateValue: this.parseDateValue(value) }
+      const dateValue = this.parseDateValue(value)
+      return dateValue ? { operator: 'before', dateValue } : null
     }
     if (operator.startsWith('after:')) {
-      return { operator: 'after', dateValue: this.parseDateValue(value) }
-    }
-    if (operator === 'date>') {
-      return { operator: '>', dateValue: this.parseDateValue(value) }
+      const dateValue = this.parseDateValue(value)
+      return dateValue ? { operator: 'after', dateValue } : null
     }
     if (operator.startsWith('on:')) {
-      return { operator: 'on', dateValue: this.parseDateValue(value) }
-    }
-    if (operator === 'date=') {
-      return { operator: '=', dateValue: this.parseDateValue(value) }
-    }
-    if (operator === 'date>=') {
-      return { operator: '>=', dateValue: this.parseDateValue(value) }
-    }
-    if (operator === 'date<=') {
-      return { operator: '<=', dateValue: this.parseDateValue(value) }
+      const dateValue = this.parseDateValue(value)
+      return dateValue ? { operator: 'on', dateValue } : null
     }
     if (operator.startsWith('due:')) {
-      // Handle due:today, due:tomorrow, due:overdue, due:week, due:month
       const dueValue = value.toLowerCase()
       if (dueValue === 'today') return { operator: 'on', dateValue: 'today' }
       if (dueValue === 'tomorrow') return { operator: 'on', dateValue: 'tomorrow' }
       if (dueValue === 'overdue') return { operator: 'before', dateValue: 'today' }
-      if (dueValue === 'week') return { operator: '>=', dateValue: 'today' } // Simplified for now
-      if (dueValue === 'month') return { operator: '>=', dateValue: 'today' } // Simplified for now
-      return { operator: 'on', dateValue: this.parseDateValue(value) }
+      if (dueValue === 'week') return { operator: '>=', dateValue: 'today' }
+      if (dueValue === 'month') return { operator: '>=', dateValue: 'today' }
+      const dateValue = this.parseDateValue(value)
+      return dateValue ? { operator: 'on', dateValue } : null
     }
 
+    // Symbol syntax (NO spaces in operator - exact match required)
+    if (operator === 'date<') {
+      const dateValue = this.parseDateValue(value)
+      return dateValue ? { operator: '<', dateValue } : null
+    }
+    if (operator === 'date>') {
+      const dateValue = this.parseDateValue(value)
+      return dateValue ? { operator: '>', dateValue } : null
+    }
+    if (operator === 'date<=') {
+      const dateValue = this.parseDateValue(value)
+      return dateValue ? { operator: '<=', dateValue } : null
+    }
+    if (operator === 'date>=') {
+      const dateValue = this.parseDateValue(value)
+      return dateValue ? { operator: '>=', dateValue } : null
+    }
+    if (operator === 'date=') {
+      const dateValue = this.parseDateValue(value)
+      return dateValue ? { operator: '=', dateValue } : null
+    }
+
+    console.log('No matching operator found for:', operator)
     return null
   }
 
-  private parseDateValue(value: string): Date | 'today' | 'tomorrow' | 'overdue' | 'week' | 'month' {
+  private parseDateValue(value: string): Date | 'today' | 'tomorrow' | 'overdue' | 'week' | 'month' | undefined {
     const lowerValue = value.toLowerCase()
 
     // Handle relative date keywords
@@ -340,7 +360,7 @@ export default class TodoListView extends ItemView {
       return new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
     }
 
-    return 'today' // Default fallback
+    return undefined // Invalid date format - fail instead of defaulting
   }
 
   private resolveDateValue(dateValue: Date | 'today' | 'tomorrow' | 'overdue' | 'week' | 'month'): Date {
@@ -361,11 +381,20 @@ export default class TodoListView extends ItemView {
   }
 
   private itemMatchesDateFilter(item: TodoItem, filter: DateFilter): boolean {
-    if (!item.date) return false // Items without dates don't match date filters
+    if (!item.date) {
+      return false // Items without dates don't match date filters
+    }
 
     const itemDate = new Date(item.date.getFullYear(), item.date.getMonth(), item.date.getDate())
     const filterDate = this.resolveDateValue(filter.dateValue)
     const filterDateMidnight = new Date(filterDate.getFullYear(), filterDate.getMonth(), filterDate.getDate())
+
+    console.log('Date comparison:', {
+      itemText: item.originalText.substring(0, 30),
+      itemDate: itemDate.toISOString().split('T')[0],
+      filterOperator: filter.operator,
+      filterDate: filterDateMidnight.toISOString().split('T')[0]
+    })
 
     switch (filter.operator) {
       case 'before':
@@ -414,10 +443,15 @@ export default class TodoListView extends ItemView {
       : flattenedItems
 
     const { textTerms, dateFilters } = this.parseSearchQuery(this.searchTerm)
+    console.log('Parsed search - textTerms:', textTerms, 'dateFilters:', dateFilters)
+
     const searchedItems = filteredItems.filter(e => {
       if (textTerms.length === 0 && dateFilters.length === 0) return true
+      if (textTerms.length === 0) return dateFilters.every(filter => this.itemMatchesDateFilter(e, filter))
       return textTerms.some(andTerms => this.itemMatchesSearch(e, andTerms, dateFilters))
     })
+
+    console.log('Search results:', searchedItems.length, 'items from', filteredItems.length)
     const prioGrouping = this.plugin.getSettingValue('prioGrouping')
     const priorityTag = this.plugin.getSettingValue('priorityTag')
     const dateGrouping = this.plugin.getSettingValue('dateGrouping')
