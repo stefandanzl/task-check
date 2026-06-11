@@ -2,7 +2,7 @@ import {type CachedMetadata, parseFrontMatterTags, TFile, Vault} from 'obsidian'
 
 import {LOCAL_SORT_OPT} from '../constants'
 
-import type {SortDirection, TagMeta, KeysOfType, TodoItem, TodoGroup} from 'src/_types'
+import type {SortDirection, TagMeta, KeysOfType, TodoItem, TodoGroup, DateCategory} from 'src/_types'
 export const isMacOS = () => window.navigator.userAgent.includes('Macintosh')
 export const classifyString = (str: string) => {
   const sanitzedGroupName = (str ?? '').replace(/[^A-Za-z0-9]/g, '')
@@ -43,6 +43,70 @@ export const addPriorityTagToText = (text: string, priorityTagName: string, prio
   if (!text || !priorityTagName) return text
   const cleanedText = removePriorityTagFromText(text, priorityTagName)
   return `${cleanedText} #${priorityTagName}/${priority}`
+}
+
+// Date parsing functions
+export const parseDateTag = (text: string, dateTagName: string): Date | undefined => {
+  if (!text || !dateTagName) return undefined
+  const dateRegex = new RegExp(`\\s#${dateTagName}/(\\d{4}-\\d{2}-\\d{2})`)
+  const match = text.match(dateRegex)
+  if (match) {
+    const dateStr = match[1]
+    const date = new Date(dateStr)
+    if (!isNaN(date.getTime())) return date
+  }
+  return undefined
+}
+
+export const removeDateTagFromText = (text: string, dateTagName: string): string => {
+  if (!text || !dateTagName) return text
+  return text.replace(new RegExp(`\\s+#${dateTagName}/\\d{4}-\\d{2}-\\d{2}`), '').trim()
+}
+
+export const addDateTagToText = (text: string, dateTagName: string, date: Date): string => {
+  if (!text || !dateTagName) return text
+  const cleanedText = removeDateTagFromText(text, dateTagName)
+  const dateStr = date.toISOString().split('T')[0] // YYYY-MM-DD format
+  return `${cleanedText} #${dateTagName}/${dateStr}`
+}
+
+export const getDateCategory = (date: Date): DateCategory => {
+  const now = new Date()
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const tomorrow = new Date(today)
+  tomorrow.setDate(tomorrow.getDate() + 1)
+  const endOfWeek = new Date(today)
+  endOfWeek.setDate(endOfWeek.getDate() + 7)
+  const endOfMonth = new Date(today)
+  endOfMonth.setMonth(endOfMonth.getMonth() + 1)
+
+  // Reset time to midnight for comparison
+  const compareDate = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+
+  if (compareDate < today) return 'overdue'
+  if (compareDate.getTime() === today.getTime()) return 'today'
+  if (compareDate.getTime() === tomorrow.getTime()) return 'tomorrow'
+  if (compareDate < endOfWeek) return 'thisWeek'
+  if (compareDate < endOfMonth) return 'thisMonth'
+  return 'future'
+}
+
+export const getRelativeDateString = (date: Date): string => {
+  const category = getDateCategory(date)
+  const now = new Date()
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const compareDate = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+  const diffDays = Math.floor((compareDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+
+  switch (category) {
+    case 'overdue': return `Overdue by ${Math.abs(diffDays)} day${Math.abs(diffDays) > 1 ? 's' : ''}`
+    case 'today': return 'Today'
+    case 'tomorrow': return 'Tomorrow'
+    case 'thisWeek': return `In ${diffDays} day${diffDays > 1 ? 's' : ''}`
+    case 'thisMonth': return date.toLocaleDateString()
+    case 'future': return date.toLocaleDateString()
+    default: return ''
+  }
 }
 
 export const getTagMeta = (tag: string): TagMeta => {

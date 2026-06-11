@@ -11,6 +11,8 @@
     searchQueriesStore,
     priorityTagStore,
     prioGroupingStore,
+    dateTagStore,
+    dateGroupingStore,
   } from "./viewStore"
 
   let {
@@ -122,6 +124,10 @@
 
   async function togglePrioGrouping() {
     await updateSetting({ prioGrouping: !$prioGroupingStore })
+  }
+
+  async function toggleDateGrouping() {
+    await updateSetting({ dateGrouping: !$dateGroupingStore })
   }
 
   async function toggleSettingsPanel() {
@@ -252,6 +258,15 @@
               <input type="checkbox" class="toggle-input" checked={$prioGroupingStore} onchange={togglePrioGrouping}/>
               <span class="toggle-slider"></span>
               <span class="toggle-text">Show priority groups only</span>
+            </label>
+          </div>
+        {/if}
+        {#if $dateTagStore}
+          <div class="toggle-switch" aria-label={"Toggle date groups mode\nOnly tasks with due dates will be shown"}>
+            <label class="toggle-label">
+              <input type="checkbox" class="toggle-input" checked={$dateGroupingStore} onchange={toggleDateGrouping}/>
+              <span class="toggle-slider"></span>
+              <span class="toggle-text">Show date groups only</span>
             </label>
           </div>
         {/if}

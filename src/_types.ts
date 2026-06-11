@@ -1,5 +1,12 @@
 import type {CachedMetadata, TagCache, TFile} from 'obsidian'
 
+export type DateCategory = 'overdue' | 'today' | 'tomorrow' | 'thisWeek' | 'thisMonth' | 'future' | 'noDate'
+
+export type DateFilter = {
+  operator: 'before' | 'after' | 'on' | '>=' | '<=' | '=' | '>' | '<'
+  dateValue: Date | 'today' | 'tomorrow' | 'overdue' | 'week' | 'month'
+}
+
 export type TodoItem = {
   checked: boolean
   taskStatus: string
@@ -18,10 +25,13 @@ export type TodoItem = {
   priority?: number
   blockPriority?: number
   blockTagLine?: number
+  date?: Date
+  dateCategory?: DateCategory
+  dateTag?: string  // raw date tag value like "2026-04-30"
 }
 
 type BaseGroup = {
-  type: GroupByType | 'priority'
+  type: GroupByType | 'priority' | 'date'
   todos: TodoItem[]
   id: string
   sortName: string
@@ -48,7 +58,13 @@ export type PriorityGroup = BaseGroup & {
   priorityValue: number
 }
 
-export type TodoGroup = PageGroup | TagGroup | PriorityGroup
+export type DateGroup = BaseGroup & {
+  type: 'date'
+  dateCategory: DateCategory
+  sortOrder: number  // for custom ordering of date groups
+}
+
+export type TodoGroup = PageGroup | TagGroup | PriorityGroup | DateGroup
 
 export type FileInfo = {
   content: string

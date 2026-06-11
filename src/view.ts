@@ -3,7 +3,7 @@ import {mount, unmount} from 'svelte'
 
 import {TODO_VIEW_TYPE} from './constants'
 import App from './svelte/App.svelte'
-import {groupTodos, groupTodosByPriority, parseTodos} from './utils'
+import {groupTodos, groupTodosByPriority, groupTodosByDate, parseTodos} from './utils'
 import {
   todoGroupsStore,
   todoTagsStore,
@@ -16,11 +16,13 @@ import {
   showSettingsPanelStore,
   searchQueriesStore,
   prioGroupingStore,
+  dateTagStore,
+  dateGroupingStore,
 } from './svelte/viewStore'
 
 import type {TodoSettings} from './settings'
 import type TodoPlugin from './main'
-import type {TodoGroup, TodoItem} from './_types'
+import type {TodoGroup, TodoItem, DateFilter} from './_types'
 
 export default class TodoListView extends ItemView {
   private _app: ReturnType<typeof mount>
@@ -99,6 +101,8 @@ export default class TodoListView extends ItemView {
     showSettingsPanelStore.set(this.plugin.getSettingValue('_showSettingsPanel'))
     searchQueriesStore.set(this.plugin.getSettingValue('_searchQueries'))
     prioGroupingStore.set(this.plugin.getSettingValue('prioGrouping'))
+    dateTagStore.set(this.plugin.getSettingValue('dateTag'))
+    dateGroupingStore.set(this.plugin.getSettingValue('dateGrouping'))
   }
 
   private renderView() {
@@ -225,6 +229,7 @@ export default class TodoListView extends ItemView {
       this.plugin.getSettingValue('showAllTodos'),
       this.lastRerender,
       this.plugin.getSettingValue('priorityTag'),
+      this.plugin.getSettingValue('dateTag'),
       this.app,
     )
     for (const [file, todos] of todosForUpdatedFiles) {
@@ -232,11 +237,25 @@ export default class TodoListView extends ItemView {
     }
   }
 
-  private parseSearchQuery(query: string): string[][] {
-    if (!query.trim()) return []
+  private parseSearchQuery(query: string): { textTerms: string[][], dateFilters: DateFilter[] } {
+    if (!query.trim()) return { textTerms: [], dateFilters: [] }
 
-    const terms: string[][] = []
-    const orGroups = query.split(/\s+OR\s+/i)
+    const dateFilters: DateFilter[] = []
+
+    // Extract date operators BEFORE text splitting
+    // Supports both: before:2026-04-15 and before: 2026-04-15 (with spaces)
+    // Also supports date<, date>, date<=, date>=, date=
+    const dateRegex = /(?:before:|after:|on:|due:|date[<>]=?|date=)\s*(\S+)/gi
+
+    let remainingQuery = query.replace(dateRegex, (match, value) => {
+      const filter = this.parseDateOperator(match, value)
+      if (filter) dateFilters.push(filter)
+      return '' // Remove from text query
+    })
+
+    // Process remaining text search normally
+    const textTerms: string[][] = []
+    const orGroups = remainingQuery.split(/\s+OR\s+/i)
 
     for (const group of orGroups) {
       const andTerms: string[] = []
@@ -256,26 +275,134 @@ export default class TodoListView extends ItemView {
       }
 
       if (andTerms.length > 0) {
-        terms.push(andTerms)
+        textTerms.push(andTerms)
       }
     }
 
-    return terms.length > 0 ? terms : []
+    return { textTerms: textTerms.length > 0 ? textTerms : [], dateFilters }
   }
 
-  private itemMatchesSearch(item: TodoItem, searchTerms: string[]): boolean {
+  private parseDateOperator(match: string, value: string): DateFilter | null {
+    const operator = match.toLowerCase().split(/\s+/)[0] // Get operator before potential space
+
+    if (operator.startsWith('before:')) {
+      return { operator: 'before', dateValue: this.parseDateValue(value) }
+    }
+    if (operator === 'date<') {
+      return { operator: '<', dateValue: this.parseDateValue(value) }
+    }
+    if (operator.startsWith('after:')) {
+      return { operator: 'after', dateValue: this.parseDateValue(value) }
+    }
+    if (operator === 'date>') {
+      return { operator: '>', dateValue: this.parseDateValue(value) }
+    }
+    if (operator.startsWith('on:')) {
+      return { operator: 'on', dateValue: this.parseDateValue(value) }
+    }
+    if (operator === 'date=') {
+      return { operator: '=', dateValue: this.parseDateValue(value) }
+    }
+    if (operator === 'date>=') {
+      return { operator: '>=', dateValue: this.parseDateValue(value) }
+    }
+    if (operator === 'date<=') {
+      return { operator: '<=', dateValue: this.parseDateValue(value) }
+    }
+    if (operator.startsWith('due:')) {
+      // Handle due:today, due:tomorrow, due:overdue, due:week, due:month
+      const dueValue = value.toLowerCase()
+      if (dueValue === 'today') return { operator: 'on', dateValue: 'today' }
+      if (dueValue === 'tomorrow') return { operator: 'on', dateValue: 'tomorrow' }
+      if (dueValue === 'overdue') return { operator: 'before', dateValue: 'today' }
+      if (dueValue === 'week') return { operator: '>=', dateValue: 'today' } // Simplified for now
+      if (dueValue === 'month') return { operator: '>=', dateValue: 'today' } // Simplified for now
+      return { operator: 'on', dateValue: this.parseDateValue(value) }
+    }
+
+    return null
+  }
+
+  private parseDateValue(value: string): Date | 'today' | 'tomorrow' | 'overdue' | 'week' | 'month' {
+    const lowerValue = value.toLowerCase()
+
+    // Handle relative date keywords
+    if (lowerValue === 'today') return 'today'
+    if (lowerValue === 'tomorrow') return 'tomorrow'
+    if (lowerValue === 'overdue') return 'overdue'
+    if (lowerValue === 'week') return 'week'
+    if (lowerValue === 'month') return 'month'
+
+    // Parse ISO date format YYYY-MM-DD
+    const dateMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
+    if (dateMatch) {
+      const [, year, month, day] = dateMatch
+      return new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
+    }
+
+    return 'today' // Default fallback
+  }
+
+  private resolveDateValue(dateValue: Date | 'today' | 'tomorrow' | 'overdue' | 'week' | 'month'): Date {
+    if (dateValue instanceof Date) return dateValue
+
+    const now = new Date()
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+
+    if (dateValue === 'today') return today
+    if (dateValue === 'tomorrow') {
+      const tomorrow = new Date(today)
+      tomorrow.setDate(tomorrow.getDate() + 1)
+      return tomorrow
+    }
+    if (dateValue === 'overdue') return today // For "before" comparisons
+
+    return today
+  }
+
+  private itemMatchesDateFilter(item: TodoItem, filter: DateFilter): boolean {
+    if (!item.date) return false // Items without dates don't match date filters
+
+    const itemDate = new Date(item.date.getFullYear(), item.date.getMonth(), item.date.getDate())
+    const filterDate = this.resolveDateValue(filter.dateValue)
+    const filterDateMidnight = new Date(filterDate.getFullYear(), filterDate.getMonth(), filterDate.getDate())
+
+    switch (filter.operator) {
+      case 'before':
+      case '<':
+        return itemDate < filterDateMidnight
+      case 'after':
+      case '>':
+        return itemDate > filterDateMidnight
+      case 'on':
+      case '=':
+        return itemDate.getTime() === filterDateMidnight.getTime()
+      case '>=':
+        return itemDate >= filterDateMidnight
+      case '<=':
+        return itemDate <= filterDateMidnight
+      default:
+        return false
+    }
+  }
+
+  private itemMatchesSearch(item: TodoItem, searchTerms: string[], dateFilters: DateFilter[]): boolean {
     const lowerText = item.originalText.toLowerCase()
     const lowerMainTag = item.mainTag?.toLowerCase() ?? ''
     const lowerSubTag = item.subTag?.toLowerCase() ?? ''
     const combined = item.mainTag && item.subTag ? `#${item.mainTag}/${item.subTag}`.toLowerCase() : ''
 
-    return searchTerms.every(
+    const textMatch = searchTerms.every(
       term =>
         lowerText.includes(term) ||
         lowerMainTag.includes(term) ||
         lowerSubTag.includes(term) ||
         combined.includes(term),
     )
+
+    const dateMatch = dateFilters.every(filter => this.itemMatchesDateFilter(item, filter))
+
+    return textMatch && dateMatch
   }
 
   private groupItems() {
@@ -286,14 +413,22 @@ export default class TodoListView extends ItemView {
       ? flattenedItems.filter(i => i.filePath === openFile.path)
       : flattenedItems
 
-    const searchQuery = this.parseSearchQuery(this.searchTerm)
+    const { textTerms, dateFilters } = this.parseSearchQuery(this.searchTerm)
     const searchedItems = filteredItems.filter(e => {
-      if (searchQuery.length === 0) return true
-      return searchQuery.some(andTerms => this.itemMatchesSearch(e, andTerms))
+      if (textTerms.length === 0 && dateFilters.length === 0) return true
+      return textTerms.some(andTerms => this.itemMatchesSearch(e, andTerms, dateFilters))
     })
     const prioGrouping = this.plugin.getSettingValue('prioGrouping')
     const priorityTag = this.plugin.getSettingValue('priorityTag')
-    if (prioGrouping && priorityTag) {
+    const dateGrouping = this.plugin.getSettingValue('dateGrouping')
+    const dateTag = this.plugin.getSettingValue('dateTag')
+
+    if (dateGrouping && dateTag) {
+      this.groupedItems = groupTodosByDate(
+        searchedItems,
+        this.plugin.getSettingValue('sortDirectionItems'),
+      )
+    } else if (prioGrouping && priorityTag) {
       this.groupedItems = groupTodosByPriority(
         searchedItems,
         this.plugin.getSettingValue('sortDirectionItems'),

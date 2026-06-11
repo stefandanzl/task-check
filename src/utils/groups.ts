@@ -1,6 +1,6 @@
 import {classifyString, sortGenericItemsInplace} from './helpers'
 
-import type {TodoItem, TodoGroup, PriorityGroup, GroupByType, SortDirection} from 'src/_types'
+import type {TodoItem, TodoGroup, PriorityGroup, GroupByType, SortDirection, DateCategory, DateGroup} from 'src/_types'
 
 export const groupTodos = (
   items: TodoItem[],
@@ -168,4 +168,62 @@ const sortTodosByPriority = (todos: TodoItem[], sortItems: SortDirection) => {
 
   todos.length = 0
   for (const key of orderedKeys) todos.push(...buckets.get(key)!)
+}
+
+export const groupTodosByDate = (
+  items: TodoItem[],
+  sortItems: SortDirection,
+): DateGroup[] => {
+  const withDate = items.filter(t => t.date !== undefined)
+  const map = new Map<DateCategory, TodoItem[]>()
+
+  for (const item of withDate) {
+    const category = item.dateCategory!
+    if (!map.has(category)) map.set(category, [])
+    map.get(category)!.push(item)
+  }
+
+  // Define custom order for date groups
+  const categoryOrder: DateCategory[] = ['today', 'tomorrow', 'thisWeek', 'thisMonth', 'future', 'overdue']
+
+  return categoryOrder.map(category => {
+    const todos = map.get(category) || []
+
+    // Sort todos within each date category by date, then by user's sort preference
+    todos.sort((a, b) => {
+      if (a.date && b.date) {
+        const dateDiff = a.date.getTime() - b.date.getTime()
+        if (dateDiff !== 0) return dateDiff
+      }
+      // Fallback to user's sort preference
+      if (sortItems === 'a->z') return a.originalText.localeCompare(b.originalText)
+      if (sortItems === 'z->a') return b.originalText.localeCompare(a.originalText)
+      if (sortItems.startsWith('created')) {
+        const isNewToOld = sortItems.includes('new->old')
+        return isNewToOld ? b.fileCreatedTs - a.fileCreatedTs : a.fileCreatedTs - b.fileCreatedTs
+      }
+      if (sortItems.startsWith('modified')) {
+        const isNewToOld = sortItems.includes('new->old')
+        return isNewToOld ? b.fileModifiedTs - a.fileModifiedTs : a.fileModifiedTs - b.fileModifiedTs
+      }
+      return 0
+    })
+
+    const tsValues = todos.length > 0 ? todos.map(t => t.fileCreatedTs) : [0, 0]
+    const modValues = todos.length > 0 ? todos.map(t => t.fileModifiedTs) : [0, 0]
+
+    return {
+      type: 'date' as const,
+      dateCategory: category,
+      id: `date:${category}`,
+      sortName: category,
+      sortOrder: categoryOrder.indexOf(category),
+      className: `date-group-${category}`,
+      todos,
+      oldestCreatedItem: Math.min(...tsValues),
+      newestCreatedItem: Math.max(...tsValues),
+      oldestModifiedItem: Math.min(...modValues),
+      newestModifiedItem: Math.max(...modValues),
+    }
+  }).filter(g => g.todos.length > 0) // Remove empty groups
 }

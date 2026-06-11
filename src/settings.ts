@@ -26,6 +26,8 @@ export interface TodoSettings {
   _searchQueries: string[]
   _restoreLastSearch: boolean
   prioGrouping: boolean
+  dateTag: string
+  dateGrouping: boolean
 }
 
 export const DEFAULT_SETTINGS: TodoSettings = {
@@ -51,6 +53,8 @@ export const DEFAULT_SETTINGS: TodoSettings = {
   _searchQueries: [],
   _restoreLastSearch: false,
   prioGrouping: false,
+  dateTag: 'date',
+  dateGrouping: false,
 }
 
 export class TodoSettingTab extends PluginSettingTab {
@@ -221,6 +225,22 @@ export class TodoSettingTab extends PluginSettingTab {
           .setValue(this.plugin.getSettingValue('priorityTag'))
           .onChange(async value => {
             await this.plugin.updateSettings({priorityTag: value})
+          }),
+      )
+
+    /** DATE */
+
+    this.containerEl.createEl('h2', {text: 'Date'})
+
+    new Setting(this.containerEl)
+      .setName('Date tag name')
+      .setDesc('Tag name for due dates. Tasks can use #tag/YYYY-MM-DD format (e.g., #date/2026-04-30). Leave empty to disable date features.')
+      .addText(text =>
+        text
+          .setPlaceholder('date')
+          .setValue(this.plugin.getSettingValue('dateTag'))
+          .onChange(async value => {
+            await this.plugin.updateSettings({dateTag: value})
           }),
       )
 

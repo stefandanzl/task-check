@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { App } from "obsidian"
 
-  import type { LookAndFeel, TodoGroup, PriorityGroup, TodoItem } from "src/_types"
+  import type { LookAndFeel, TodoGroup, PriorityGroup, DateGroup, TodoItem, DateCategory } from "src/_types"
   import { navToFile, setTodoPrioritiesBatch } from "src/utils"
   import ChecklistItem from "./ChecklistItem.svelte"
   import Icon from "./Icon.svelte"
@@ -38,6 +38,18 @@
   }
 
   const isGroupShowingAll = $derived(showAllMap[group.className] || false)
+
+  function getDateCategoryDisplay(category: DateCategory): { icon: string; label: string } {
+    switch (category) {
+      case 'today': return { icon: '🟡', label: 'Today' }
+      case 'tomorrow': return { icon: '🟠', label: 'Tomorrow' }
+      case 'thisWeek': return { icon: '🟢', label: 'This Week' }
+      case 'thisMonth': return { icon: '📅', label: 'This Month' }
+      case 'future': return { icon: '🔵', label: 'Future' }
+      case 'overdue': return { icon: '🔴', label: 'Overdue' }
+      default: return { icon: '📅', label: 'No Date' }
+    }
+  }
 
   function clickTitle(ev: MouseEvent) {
     if (group.type === "page") navToFile(app, group.id, ev)
@@ -257,6 +269,9 @@
     <div class="title no-select" onclick={clickTitle}>
       {#if group.type === "priority"}
         <span class="priority-label">Priority {(group as PriorityGroup).priorityValue}</span>
+      {:else if group.type === "date"}
+        {@const dateInfo = getDateCategoryDisplay((group as DateGroup).dateCategory)}
+        <span class="date-label">{dateInfo.icon} {dateInfo.label}</span>
       {:else if group.type === "page"}
         {group.pageName}
       {:else if group.mainTag}
@@ -451,6 +466,11 @@
     color: var(--checklist-tagSubColor);
   }
   .priority-label {
+    color: var(--inline-title-color);
+    font-weight: 600;
+  }
+
+  .date-label {
     color: var(--inline-title-color);
     font-weight: 600;
   }

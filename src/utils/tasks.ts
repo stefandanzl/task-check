@@ -20,6 +20,9 @@ import {
   retrieveTag,
   removeTagFromText,
   setLineTo,
+  parseDateTag,
+  getDateCategory,
+  removeDateTagFromText,
 } from './helpers'
 import { DONE_TASK_SYMBOLS } from '../constants'
 
@@ -57,6 +60,7 @@ export const parseTodos = async (
   showAllTodos: boolean,
   lastRerender: number,
   priorityTag: string,
+  dateTag: string,
   app: App,
 ): Promise<Map<TFile, TodoItem[]>> => {
   const includePattern = includeFiles.trim()
@@ -101,7 +105,7 @@ export const parseTodos = async (
           frontmatterTag: todoTags.length ? frontMatterTags[0] : undefined,
         }
 
-        let todos = findAllTodosInFile(fileInfo, priorityTag, app)
+        let todos = findAllTodosInFile(fileInfo, priorityTag, dateTag, app)
         if (!showChecked) todos = todos.filter(todo => !todo.checked)
         todosForUpdatedFiles.set(file, todos)
       })
@@ -170,9 +174,9 @@ export const setTodoPrioritiesBatch = async (
   }
 }
 
-const findAllTodosInFile = (fileInfo: FileInfo, priorityTag: string, app?: App): TodoItem[] => {
+const findAllTodosInFile = (fileInfo: FileInfo, priorityTag: string, dateTag: string, app?: App): TodoItem[] => {
   if (!fileInfo.parseEntireFile)
-    return fileInfo.validTags.flatMap(tag => findAllTodosFromTagBlock(fileInfo, tag, priorityTag, app))
+    return fileInfo.validTags.flatMap(tag => findAllTodosFromTagBlock(fileInfo, tag, priorityTag, dateTag, app))
 
   if (!fileInfo.content) return []
   const fileLines = getAllLinesFromFile(fileInfo.content)
@@ -192,13 +196,13 @@ const findAllTodosInFile = (fileInfo: FileInfo, priorityTag: string, app?: App):
     const line = fileLines[lineNum]
     if (!line) continue
 
-    todos.push(formTodo(line, fileInfo, lineNum, listItem.task, tagMeta, priorityTag, app))
+    todos.push(formTodo(line, fileInfo, lineNum, listItem.task, tagMeta, priorityTag, dateTag, app))
   }
 
   return todos
 }
 
-const findAllTodosFromTagBlock = (file: FileInfo, tag: TagCache, priorityTag: string, app?: App) => {
+const findAllTodosFromTagBlock = (file: FileInfo, tag: TagCache, priorityTag: string, dateTag: string, app?: App) => {
   if (!file.content) return []
   const fileLines = getAllLinesFromFile(file.content)
   const tagMeta = getTagMeta(tag.tag)
@@ -216,7 +220,7 @@ const findAllTodosFromTagBlock = (file: FileInfo, tag: TagCache, priorityTag: st
   if (!tagLine) return []
 
   if (sameLineItem) {
-      return [formTodo(tagLine, file, tagLineNum, sameLineItem.task, tagMeta, priorityTag, app)]
+      return [formTodo(tagLine, file, tagLineNum, sameLineItem.task, tagMeta, priorityTag, dateTag, app)]
   }
 
 
@@ -240,7 +244,7 @@ const findAllTodosFromTagBlock = (file: FileInfo, tag: TagCache, priorityTag: st
       const content = line.match(/- \[.\]\s(.*)/)?.[1];
       if (content.trim().length !== 0) {
         // Found a task - add it and continue
-        todos.push(formTodo(line, file, currentLine, taskOnLine.task, tagMeta, priorityTag, app, blockPriority, blockTagLine))
+        todos.push(formTodo(line, file, currentLine, taskOnLine.task, tagMeta, priorityTag, dateTag, app, blockPriority, blockTagLine))
       }
     } else if (line.trim().length === 0) {
       // Empty line - stop processing (end of block)
@@ -335,6 +339,7 @@ const formTodo = (
   taskStatus: string,
   tagMeta?: TagMeta,
   priorityTag?: string,
+  dateTag?: string,
   app?: App,
   blockPriority: number | undefined = undefined,
   blockTagLine: number | undefined = undefined
@@ -344,8 +349,11 @@ const formTodo = (
   const tagStripped = removeTagFromText(rawText, tagMeta?.main)
   const linePriority = priorityTag ? parsePriorityTag(rawText, priorityTag) : undefined
   const priority =  (linePriority !== undefined) ? linePriority : blockPriority
+  const lineDate = dateTag ? parseDateTag(rawText, dateTag) : undefined
+  const dateCategory = lineDate ? getDateCategory(lineDate) : undefined
   const displayText = priorityTag ? removePriorityTagFromText(tagStripped, priorityTag) : tagStripped
-  const rawHTML = app ? preprocessMarkdown(displayText, app.metadataCache, file.file.path) : displayText
+  const displayTextWithDate = dateTag ? removeDateTagFromText(displayText, dateTag) : displayText
+  const rawHTML = app ? preprocessMarkdown(displayTextWithDate, app.metadataCache, file.file.path) : displayTextWithDate
 
   // Use the task status from cache - no fallback needed since we only call this for actual tasks
   const checked = DONE_TASK_SYMBOLS.has(taskStatus)
@@ -367,7 +375,10 @@ const formTodo = (
     originalText: rawText,
     priority,
     blockPriority,
-    blockTagLine
+    blockTagLine,
+    date: lineDate,
+    dateCategory,
+    dateTag: lineDate ? rawText.match(new RegExp(`#${dateTag}/([\\d-]+)`))?.[1] : undefined
   }
 }
 

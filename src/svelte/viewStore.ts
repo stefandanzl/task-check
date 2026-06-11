@@ -15,6 +15,8 @@ export const showSettingsPanelStore = writable<boolean>(false)
 export const searchQueriesStore = writable<string[]>([])
 export const todoGroupsCountStore = writable<number>(0)
 export const prioGroupingStore = writable<boolean>(false)
+export const dateTagStore = writable<string>('')
+export const dateGroupingStore = writable<boolean>(false)
 export const dragState = writable({
   inProgress: false,
   sourcePriority: null as number | null,
