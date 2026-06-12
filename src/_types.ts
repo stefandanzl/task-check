@@ -4,7 +4,8 @@ export type DateCategory = 'overdue' | 'today' | 'tomorrow' | 'thisWeek' | 'this
 
 export type DateFilter = {
   operator: 'before' | 'after' | 'on' | '>=' | '<=' | '=' | '>' | '<'
-  dateValue: Date | 'today' | 'tomorrow' | 'overdue' | 'week' | 'month'
+  dateValue: Date | 'today' | 'tomorrow' | 'overdue' | 'week' | 'month' | { type: 'exact' | 'partial', date: Date, partialInfo?: { year: number; month?: number } }
+  partialDate?: { year: number; month?: number }  // For YYYY-MM or YYYY formats
 }
 
 export type TodoItem = {

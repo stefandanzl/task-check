@@ -343,7 +343,7 @@ export default class TodoListView extends ItemView {
     return null
   }
 
-  private parseDateValue(value: string): Date | 'today' | 'tomorrow' | 'overdue' | 'week' | 'month' | undefined {
+  private parseDateValue(value: string): { type: 'exact' | 'partial', date: Date, partialInfo?: { year: number; month?: number } } | 'today' | 'tomorrow' | 'overdue' | 'week' | 'month' | undefined {
     const lowerValue = value.toLowerCase()
 
     // Handle relative date keywords
@@ -353,17 +353,32 @@ export default class TodoListView extends ItemView {
     if (lowerValue === 'week') return 'week'
     if (lowerValue === 'month') return 'month'
 
-    // Parse ISO date format YYYY-MM-DD
-    const dateMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
-    if (dateMatch) {
-      const [, year, month, day] = dateMatch
-      return new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
+    // Parse exact date format YYYY-MM-DD
+    const exactMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
+    if (exactMatch) {
+      const [, year, month, day] = exactMatch
+      return { type: 'exact', date: new Date(parseInt(year), parseInt(month) - 1, parseInt(day)) }
+    }
+
+    // Parse partial date formats YYYY-MM or YYYY
+    const partialMatch = /^(\d{4})(?:-(\d{2}))?$/.exec(value)
+    if (partialMatch) {
+      const [, year, month] = partialMatch
+      if (month) {
+        // YYYY-MM format (month specified) - use end of month as reference date
+        const refDate = new Date(parseInt(year), parseInt(month), 0)
+        return { type: 'partial' as const, date: refDate, partialInfo: { year: parseInt(year), month: parseInt(month) } }
+      } else {
+        // YYYY format (year only) - use end of year as reference date
+        const refDate = new Date(parseInt(year), 12, 0)
+        return { type: 'partial' as const, date: refDate, partialInfo: { year: parseInt(year) } }
+      }
     }
 
     return undefined // Invalid date format - fail instead of defaulting
   }
 
-  private resolveDateValue(dateValue: Date | 'today' | 'tomorrow' | 'overdue' | 'week' | 'month'): Date {
+  private resolveDateValue(dateValue: Date | 'today' | 'tomorrow' | 'overdue' | 'week' | 'month' | { type: 'exact' | 'partial', date: Date, partialInfo?: { year: number; month?: number } }): Date {
     if (dateValue instanceof Date) return dateValue
 
     const now = new Date()
@@ -376,8 +391,46 @@ export default class TodoListView extends ItemView {
       return tomorrow
     }
     if (dateValue === 'overdue') return today // For "before" comparisons
+    if (dateValue === 'week') return today
+    if (dateValue === 'month') return today
+
+    // Handle partial dates
+    if (typeof dateValue === 'object' && 'type' in dateValue) {
+      return dateValue.date
+    }
 
     return today
+  }
+
+  private getDateBoundary(partialInfo: { year: number; month?: number }, operator: string): Date {
+    // For >= and <  → use START of period
+    // For > and <=  → use END of period
+    const useLowerBoundary = (operator === '>=' || operator === '<')
+    const useUpperBoundary = (operator === '>' || operator === '<=')
+
+    if (useLowerBoundary) {
+      // START of period
+      if (partialInfo.month !== undefined) {
+        // Start of month: June 1, 2026
+        return new Date(partialInfo.year, partialInfo.month - 1, 1)
+      } else {
+        // Start of year: Jan 1, 2026
+        return new Date(partialInfo.year, 0, 1)
+      }
+    }
+
+    if (useUpperBoundary) {
+      // END of period
+      if (partialInfo.month !== undefined) {
+        // End of month: June 30, 2026
+        return new Date(partialInfo.year, partialInfo.month, 0)
+      } else {
+        // End of year: Dec 31, 2026
+        return new Date(partialInfo.year, 11, 31)
+      }
+    }
+
+    return new Date() // Fallback
   }
 
   private itemMatchesDateFilter(item: TodoItem, filter: DateFilter): boolean {
@@ -386,8 +439,16 @@ export default class TodoListView extends ItemView {
     }
 
     const itemDate = new Date(item.date.getFullYear(), item.date.getMonth(), item.date.getDate())
-    const filterDate = this.resolveDateValue(filter.dateValue)
-    const filterDateMidnight = new Date(filterDate.getFullYear(), filterDate.getMonth(), filterDate.getDate())
+
+    // Handle partial dates (YYYY-MM or YYYY)
+    let filterDateMidnight: Date
+    if (typeof filter.dateValue === 'object' && 'partialInfo' in filter.dateValue) {
+      const boundaryDate = this.getDateBoundary((filter.dateValue as any).partialInfo, filter.operator)
+      filterDateMidnight = new Date(boundaryDate.getFullYear(), boundaryDate.getMonth(), boundaryDate.getDate())
+    } else {
+      const filterDate = this.resolveDateValue(filter.dateValue)
+      filterDateMidnight = new Date(filterDate.getFullYear(), filterDate.getMonth(), filterDate.getDate())
+    }
 
     console.log('Date comparison:', {
       itemText: item.originalText.substring(0, 30),
@@ -405,6 +466,10 @@ export default class TodoListView extends ItemView {
         return itemDate > filterDateMidnight
       case 'on':
       case '=':
+        // For partial dates with '=' operator, check if item date falls within the period
+        if (typeof filter.dateValue === 'object' && 'partialInfo' in filter.dateValue) {
+          return this.isDateInPeriod(itemDate, (filter.dateValue as any).partialInfo)
+        }
         return itemDate.getTime() === filterDateMidnight.getTime()
       case '>=':
         return itemDate >= filterDateMidnight
@@ -412,6 +477,16 @@ export default class TodoListView extends ItemView {
         return itemDate <= filterDateMidnight
       default:
         return false
+    }
+  }
+
+  private isDateInPeriod(date: Date, partialInfo: { year: number; month?: number }): boolean {
+    if (partialInfo.month !== undefined) {
+      // Check if date falls within the specified month
+      return date.getFullYear() === partialInfo.year && date.getMonth() === partialInfo.month - 1
+    } else {
+      // Check if date falls within the specified year
+      return date.getFullYear() === partialInfo.year
     }
   }
 
