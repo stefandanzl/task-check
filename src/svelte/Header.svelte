@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { getIcon, Notice } from "obsidian"
+  import { getIcon, Notice, Menu } from "obsidian"
   import type { TodoSettings } from "src/settings"
   import type { GroupMode } from "src/_types"
   import {
@@ -120,6 +120,30 @@
 
   async function toggleLimit() {
     await updateSetting({ enableLimit: !$enableLimitStore })
+  }
+
+  function openResultsMenu(e: MouseEvent) {
+    const menu = new Menu()
+    menu.addItem(item =>
+      item
+        .setTitle("Copy search results")
+        .setIcon("copy")
+        .onClick(() => handleCopy())
+    )
+    menu.addItem(item =>
+      item
+        .setTitle("Toggle list group limits")
+        .setIcon("list")
+        .setChecked($enableLimitStore)
+        .onClick(() => toggleLimit())
+    )
+    menu.addItem(item =>
+      item
+        .setTitle(allCollapsed ? "Expand all groups" : "Collapse all groups")
+        .setIcon(allCollapsed ? "chevrons-up-down" : "chevrons-down-up")
+        .onClick(() => toggleExpandCollapseAll())
+    )
+    menu.showAtMouseEvent(e)
   }
 
   let groupMode = $state<GroupMode>('tag')
@@ -248,31 +272,6 @@
 
   {#if $showSettingsPanelStore}
     <div class="settings-panel">
-      <div class="settings-controls">
-
-        <div class="toggle-switch" aria-label="Toggle limit for shown task group lenght">
-          <label class="toggle-label">
-            <input type="checkbox" class="toggle-input" checked={$enableLimitStore} onchange={toggleLimit}/>
-            <span class="toggle-slider"></span>
-            <span class="toggle-text">Limit tasks</span>
-          </label>
-        </div>
-        <div class="toggle-switch">
-        {#if allCollapsed}
-          <button class="copy-icon-button" onclick={toggleExpandCollapseAll} aria-label="Expand all">
-            {@html getIcon("chevrons-up-down")?.outerHTML}
-          </button>
-        {:else}
-          <button class="copy-icon-button" onclick={toggleExpandCollapseAll} aria-label="Collapse all">
-            {@html getIcon("chevrons-down-up")?.outerHTML}
-          </button>
-        {/if}
-          &nbsp;&nbsp;
-          <button class="copy-icon-button" onclick={handleCopy} aria-label="Copy tasks to clipboard">
-          {@html getIcon("copy")?.outerHTML}
-          </button>
-        </div>
-      </div>
        <div class="settings-controls search-results-info">
         <span class="toggle-text">Group by</span>
         <select class="dropdown" use:mouseFocus bind:value={groupMode} onchange={handleGroupChange}>
@@ -299,7 +298,8 @@
 
       
           <div class="search-results-info" style="border-top: var(--border-width) solid var(--background-modifier-border); border-bottom: none; padding: 0; margin: 4px 0 0 0;">
-            <div class="clickable-icon search-results-result-count">
+            <!-- svelte-ignore a11y_click_events_have_key_events -->
+            <div class="clickable-icon search-results-result-count" role="button" tabindex="0" onclick={openResultsMenu}>
               <span>{totalCount} tasks</span>
               <div class="more-options-icon">
                {@html getIcon("more-horizontal")?.outerHTML}
@@ -379,81 +379,9 @@
     border-bottom: 1px solid var(--background-modifier-border);
   }
 
-  .toggle-switch {
-    display: flex;
-    align-items: center;
-  }
-
-  .toggle-label {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    cursor: pointer;
-    font-size: var(--font-ui-small);
-    color: var(--text-normal);
-  }
-
-  .toggle-input {
-    display: none;
-  }
-
-  .toggle-slider {
-    position: relative;
-    width: 36px;
-    height: 20px;
-    background-color: var(--interactive-normal);
-    border-radius: 10px;
-    transition: background-color 0.2s ease;
-  }
-
-  .toggle-slider::before {
-    content: '';
-    position: absolute;
-    width: 16px;
-    height: 16px;
-    left: 2px;
-    top: 2px;
-    background-color: white;
-    border-radius: 50%;
-    transition: transform 0.2s ease;
-  }
-
-  .toggle-input:checked + .toggle-slider {
-    background-color: var(--interactive-accent);
-  }
-
-  .toggle-input:checked + .toggle-slider::before {
-    transform: translateX(16px);
-  }
-
   .toggle-text {
     font-size: var(--font-ui-small);
   }
-
-  .copy-icon-button {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 24px;
-    height: 24px;
-    padding: 2px;
-    border: none;
-    background: transparent;
-    color: var(--text-faint);
-    cursor: pointer;
-    border-radius: 4px;
-    transition: color 0.15s ease, background 0.15s ease;
-  }
-
-  .copy-icon-button:hover {
-    color: var(--text-normal);
-    background: var(--background-modifier-hover);
-  }
-/* 
-  .copy-icon-button svg {
-    width: 16px;
-    height: 16px;
-  } */
 
   .tag-checkbox-item {
     padding: 4px 0;
