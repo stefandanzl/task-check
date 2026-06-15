@@ -8,6 +8,11 @@ export type DateFilter = {
   partialDate?: { year: number; month?: number }  // For YYYY-MM or YYYY formats
 }
 
+export type PriorityFilter = {
+  operator: '>=' | '<=' | '=' | '>' | '<'
+  value: number
+}
+
 export type TodoItem = {
   checked: boolean
   taskStatus: string

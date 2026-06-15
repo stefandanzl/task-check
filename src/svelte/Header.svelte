@@ -344,8 +344,8 @@
           bind:value={groupMode}
           onchange={handleGroupChange}>
           <option value="tag">Tag</option>
-          <option value="page">Page</option>
-          {#if $dateTagStore}<option value="date">Due date</option>{/if}
+          <option value="page">Note</option>
+          {#if $dateTagStore}<option value="date">Date</option>{/if}
           {#if $priorityTagStore}<option value="priority">Priority</option>{/if}
         </select>
       </div>

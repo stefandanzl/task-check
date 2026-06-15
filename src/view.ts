@@ -21,14 +21,14 @@ import {
 
 import type {TodoSettings} from './settings'
 import type TodoPlugin from './main'
-import type {TodoGroup, TodoItem, DateFilter} from './_types'
+import type {TodoGroup, TodoItem, DateFilter, PriorityFilter} from './_types'
 
 export default class TodoListView extends ItemView {
   private _app: ReturnType<typeof mount>
   private lastRerender = 0
   public groupedItems: TodoGroup[] = []
   public itemsByFile = new Map<string, TodoItem[]>()
-  private parsedSearch: {textTerms: string[][]; dateFilters: DateFilter[]} = {textTerms: [], dateFilters: []}
+  private parsedSearch: {textTerms: string[][]; dateFilters: DateFilter[]; priorityFilters: PriorityFilter[]} = {textTerms: [], dateFilters: [], priorityFilters: []}
   private searchInputRef: HTMLInputElement | null = null
   private isRefreshing = false
 
@@ -241,26 +241,44 @@ export default class TodoListView extends ItemView {
     }
   }
 
-  private parseSearchQuery(query: string): { textTerms: string[][], dateFilters: DateFilter[] } {
-    if (!query.trim()) return { textTerms: [], dateFilters: [] }
+  private parseSearchQuery(query: string): { textTerms: string[][], dateFilters: DateFilter[], priorityFilters: PriorityFilter[] } {
+    if (!query.trim()) return { textTerms: [], dateFilters: [], priorityFilters: [] }
+
+    const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const dateTag = this.plugin.getSettingValue('dateTag')
+    const priorityTag = this.plugin.getSettingValue('priorityTag')
 
     const dateFilters: DateFilter[] = []
+    const priorityFilters: PriorityFilter[] = []
 
-    // Extract date operators BEFORE text splitting
-    // IMPORTANT: Longer patterns must come first (date>= before date=)
-    const dateRegex = /(before:|after:|on:|due:|date<=|date>=|date<|date>|date=)\s*(\S+)/gi
+    // Extract date operators BEFORE text splitting.
+    // Natural-language words stay literal; the symbol form uses the configured dateTag.
+    // IMPORTANT: Longer patterns must come first (>= before >).
+    const dateOps = ['before:', 'after:', 'on:', 'due:']
+    if (dateTag) {
+      const dt = escapeRegex(dateTag)
+      dateOps.push(`${dt}<=`, `${dt}>=`, `${dt}<`, `${dt}>`, `${dt}=`)
+    }
+    const dateRegex = new RegExp(`(${dateOps.join('|')})\\s*(\\S+)`, 'gi')
 
     console.log('Search query:', query)
-    let matchCount = 0
     let remainingQuery = query.replace(dateRegex, (match, operator, value) => {
-      matchCount++
       console.log('Date match:', match, 'Operator:', operator, 'Value:', value)
-      const filter = this.parseDateOperator(operator, value)
+      const filter = this.parseDateOperator(operator, value, dateTag)
       console.log('Parsed filter:', filter)
       if (filter) dateFilters.push(filter)
       return '' // Remove from text query
     })
-    console.log('Total matches:', matchCount)
+
+    // Extract priority operators (glued, e.g. prio>=2) using the configured priorityTag.
+    if (priorityTag) {
+      const pt = escapeRegex(priorityTag)
+      const prioRegex = new RegExp(`${pt}(<=|>=|<|>|=)\\s*(-?\\d+)`, 'gi')
+      remainingQuery = remainingQuery.replace(prioRegex, (_match, operator, value) => {
+        priorityFilters.push({operator: operator as PriorityFilter['operator'], value: parseInt(value, 10)})
+        return ''
+      })
+    }
     console.log('Remaining query:', remainingQuery)
 
     // Process remaining text search normally
@@ -289,10 +307,10 @@ export default class TodoListView extends ItemView {
       }
     }
 
-    return { textTerms: textTerms.length > 0 ? textTerms : [], dateFilters }
+    return { textTerms: textTerms.length > 0 ? textTerms : [], dateFilters, priorityFilters }
   }
 
-  private parseDateOperator(match: string, value: string): DateFilter | null {
+  private parseDateOperator(match: string, value: string, dateTag: string): DateFilter | null {
     const operator = match.toLowerCase().trim()
 
     console.log('Parsing operator:', operator, 'with value:', value)
@@ -321,30 +339,32 @@ export default class TodoListView extends ItemView {
       return dateValue ? { operator: 'on', dateValue } : null
     }
 
-    // Symbol syntax (NO spaces in operator - exact match required)
-    if (operator === 'date<') {
-      const dateValue = this.parseDateValue(value)
-      return dateValue ? { operator: '<', dateValue } : null
-    }
-    if (operator === 'date>') {
-      const dateValue = this.parseDateValue(value)
-      return dateValue ? { operator: '>', dateValue } : null
-    }
-    if (operator === 'date<=') {
-      const dateValue = this.parseDateValue(value)
-      return dateValue ? { operator: '<=', dateValue } : null
-    }
-    if (operator === 'date>=') {
-      const dateValue = this.parseDateValue(value)
-      return dateValue ? { operator: '>=', dateValue } : null
-    }
-    if (operator === 'date=') {
-      const dateValue = this.parseDateValue(value)
-      return dateValue ? { operator: '=', dateValue } : null
+    // Symbol syntax (NO spaces in operator): keyword is the configured dateTag, e.g. date>=, due<
+    const dt = dateTag.toLowerCase()
+    if (dt && operator.startsWith(dt)) {
+      const symbol = operator.slice(dt.length)
+      const symbolOps: Record<string, DateFilter['operator']> = {'<': '<', '>': '>', '<=': '<=', '>=': '>=', '=': '='}
+      const op = symbolOps[symbol]
+      if (op) {
+        const dateValue = this.parseDateValue(value)
+        return dateValue ? { operator: op, dateValue } : null
+      }
     }
 
     console.log('No matching operator found for:', operator)
     return null
+  }
+
+  private itemMatchesPriorityFilter(item: TodoItem, filter: PriorityFilter): boolean {
+    if (item.priority === undefined) return false
+    switch (filter.operator) {
+      case '<': return item.priority < filter.value
+      case '>': return item.priority > filter.value
+      case '<=': return item.priority <= filter.value
+      case '>=': return item.priority >= filter.value
+      case '=': return item.priority === filter.value
+      default: return false
+    }
   }
 
   private parseDateValue(value: string): { type: 'exact' | 'partial', date: Date, partialInfo?: { year: number; month?: number } } | 'today' | 'tomorrow' | 'overdue' | 'week' | 'month' | undefined {
@@ -521,13 +541,14 @@ export default class TodoListView extends ItemView {
       ? flattenedItems.filter(i => i.filePath === openFile.path)
       : flattenedItems
 
-    const { textTerms, dateFilters } = this.parsedSearch
-    console.log('Parsed search - textTerms:', textTerms, 'dateFilters:', dateFilters)
+    const { textTerms, dateFilters, priorityFilters } = this.parsedSearch
+    console.log('Parsed search - textTerms:', textTerms, 'dateFilters:', dateFilters, 'priorityFilters:', priorityFilters)
 
     const searchedItems = filteredItems.filter(e => {
-      if (textTerms.length === 0 && dateFilters.length === 0) return true
-      if (textTerms.length === 0) return dateFilters.every(filter => this.itemMatchesDateFilter(e, filter))
-      return textTerms.some(andTerms => this.itemMatchesSearch(e, andTerms, dateFilters))
+      if (!dateFilters.every(filter => this.itemMatchesDateFilter(e, filter))) return false
+      if (!priorityFilters.every(filter => this.itemMatchesPriorityFilter(e, filter))) return false
+      if (textTerms.length === 0) return true
+      return textTerms.some(andTerms => this.itemMatchesSearch(e, andTerms, []))
     })
 
     console.log('Search results:', searchedItems.length, 'items from', filteredItems.length)
