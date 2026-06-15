@@ -2,6 +2,20 @@ import {classifyString, sortGenericItemsInplace} from './helpers'
 
 import type {TodoItem, TodoGroup, PriorityGroup, GroupByType, SortDirection, DateCategory, DateGroup} from 'src/_types'
 
+/**
+ * Pushes an item into a list only if no item with the same filePath:line is
+ * already present. A task is uniquely identified by filePath:line, but the
+ * parser can emit it multiple times (e.g. a block-level tag plus an inline tag,
+ * or several tags that collapse to the same priority/date bucket). This keeps a
+ * task from appearing twice within one group/bucket while leaving multi-tag
+ * aggregation across *different* groups untouched.
+ */
+const pushUniqueByLocation = (list: TodoItem[], item: TodoItem) => {
+  if (!list.some(t => t.filePath === item.filePath && t.line === item.line)) {
+    list.push(item)
+  }
+}
+
 export const groupTodos = (
   items: TodoItem[],
   groupBy: GroupByType,
@@ -51,7 +65,7 @@ export const groupTodos = (
     if (group.newestModifiedItem < item.fileModifiedTs) group.newestModifiedItem = item.fileModifiedTs
     if (group.oldestModifiedItem > item.fileModifiedTs) group.oldestModifiedItem = item.fileModifiedTs
 
-    group.todos.push(item)
+    pushUniqueByLocation(group.todos, item)
   }
 
   const nonEmptyGroups = groups.filter(g => g.todos.length > 0)
@@ -103,7 +117,7 @@ export const groupTodosByPriority = (
   for (const item of withPrio) {
     const key = item.priority!
     if (!map.has(key)) map.set(key, [])
-    map.get(key)!.push(item)
+    pushUniqueByLocation(map.get(key)!, item)
   }
 
   // Sort keys numerically descending: 5, 4, 3, 2, 1, 0, -1, -2...
@@ -180,7 +194,7 @@ export const groupTodosByDate = (
   for (const item of withDate) {
     const category = item.dateCategory!
     if (!map.has(category)) map.set(category, [])
-    map.get(category)!.push(item)
+    pushUniqueByLocation(map.get(category)!, item)
   }
 
   // Define custom order for date groups

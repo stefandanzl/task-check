@@ -265,6 +265,7 @@
 <section class="group {group.className}">
   <!-- svelte-ignore a11y_click_events_have_key_events -->
   <!-- svelte-ignore a11y_no_static_element_interactions -->
+  {#if !(group.type === "priority" && group.todos.length === 0)}
   <header class={`group-header ${group.type}`} onclick={() => onToggle(group.id)} title="Toggle Group">
     <div class="title no-select" onclick={clickTitle}>
       {#if group.type === "priority"}
@@ -292,6 +293,7 @@
       <Icon name="chevron" direction={isCollapsed ? "left" : "down"} />
     </button>
   </header>
+  {/if}
   {#if !isCollapsed}
     <div transition:slide={{ duration: 100 }}>
     {#if group.type === 'priority'}
