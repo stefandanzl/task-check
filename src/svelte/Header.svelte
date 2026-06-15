@@ -330,7 +330,7 @@
         class="clickable-icon search-results-result-count"
         role="button"
         tabindex="0"
-        onclick={openResultsMenu}>
+        onclick={e => openResultsMenu(e)}>
         <span>{totalCount} tasks</span>
         <div class="more-options-icon">
           {@html getIcon('more-horizontal')?.outerHTML}

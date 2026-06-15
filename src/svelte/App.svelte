@@ -3,6 +3,7 @@
   import type { TodoSettings } from "src/settings"
   import ChecklistGroup from "./ChecklistGroup.svelte"
   import Header from "./Header.svelte"
+  import ScrollToTop from "./ScrollToTop.svelte"
   import {
     todoGroupsStore,
     todoTagsStore,
@@ -87,6 +88,8 @@
       />
     {/each}
   {/if}
+
+  <ScrollToTop />
 </div>
 
 <style>
