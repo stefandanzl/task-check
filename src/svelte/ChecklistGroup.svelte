@@ -78,44 +78,6 @@
     })
   }
 
-  // Distributes maxTasksPerGroup across all priority zones, preferring higher priorities
-  // Returns a Map of zone key -> visible items for that zone
-  function getVisibleItemsPerZone(
-    grouped: Map<number | null, TodoItem[]>,
-    keys: (number | null)[],
-    maxTasks: number | null,
-    showingAll: boolean,
-    limitEnabled: boolean
-  ): Map<number | null, TodoItem[]> {
-    const result = new Map<number | null, TodoItem[]>()
-
-    if (!grouped || grouped.size === 0) {
-      return result
-    }
-
-    if (!maxTasks || !limitEnabled || showingAll) {
-      for (const [key, items] of grouped.entries()) {
-        result.set(key, items)
-      }
-      return result
-    }
-
-    let remaining = maxTasks
-    for (const key of keys) {
-      const items = grouped.get(key) ?? []
-      if (remaining <= 0) {
-        result.set(key, [])
-      } else if (items.length <= remaining) {
-        result.set(key, items)
-        remaining -= items.length
-      } else {
-        result.set(key, items.slice(0, remaining))
-        remaining = 0
-      }
-    }
-    return result
-  }
-
   // upper/lower are the zone keys on each side of the drop position.
   // null = neutral zone key, undefined = edge of list (nothing beyond).
   function calculateNewPriority(upper: number | null | undefined, lower: number | null | undefined): number | null {
@@ -228,9 +190,15 @@
     dragState.update(s => ({ ...s, inProgress: false, sourcePriority: null, dragGroupId: null }))
   }
 
-  const groupedTodos = $derived(priorityTag ? groupTodosByPriority(group.todos) : new Map())
+  // First maxTasksPerGroup items of the (already-sorted) group. The full
+  // group.todos stays available for drag cascade lookups.
+  const visibleTodos = $derived(
+    maxTasksPerGroup && enableLimit && group.todos.length > maxTasksPerGroup && !isGroupShowingAll
+      ? group.todos.slice(0, maxTasksPerGroup)
+      : group.todos,
+  )
+  const groupedTodos = $derived(priorityTag ? groupTodosByPriority(visibleTodos) : new Map())
   const sortedKeys = $derived(groupedTodos ? getSortedPriorityKeys(groupedTodos) : [])
-  const visibleItemsPerZone = $derived(getVisibleItemsPerZone(groupedTodos, sortedKeys, maxTasksPerGroup, isGroupShowingAll, enableLimit))
   const isMyDrag = $derived($dragState.inProgress && ($dragState.dragGroupId === group.id || (group.type === 'priority' && $dragState.dragGroupId?.startsWith('priority:'))))
 
   // Check if the source priority level has only one task
@@ -310,7 +278,7 @@
       <div class="priority-group-dropzone" class:dragging={isMyDrag}>
         <PriorityDropZone
           position="into"
-          items={group.todos}
+          items={visibleTodos}
           targetPriority={(group as PriorityGroup).priorityValue}
           {app}
           isDragging={isMyDrag}
@@ -354,7 +322,7 @@
           />
           <PriorityDropZone
             position="into"
-            items={visibleItemsPerZone.get(key) ?? []}
+            items={groupedTodos.get(key) ?? []}
             targetPriority={key}
             {app}
             isDragging={isMyDrag}
@@ -386,7 +354,7 @@
       {/if}
     {:else}
       <ul>
-        {#each group.todos as item, i}
+        {#each visibleTodos as item, i}
           <ChecklistItem {item} {app} draggable={true} ondragstart={handleItemDragStart(item)} ondragend={handleItemDragEnd} />
         {/each}
       </ul>
