@@ -15,9 +15,8 @@ import {
   enableLimitStore,
   showSettingsPanelStore,
   searchQueriesStore,
-  prioGroupingStore,
   dateTagStore,
-  dateGroupingStore,
+  groupModeStore,
 } from './svelte/viewStore'
 
 import type {TodoSettings} from './settings'
@@ -29,7 +28,7 @@ export default class TodoListView extends ItemView {
   private lastRerender = 0
   public groupedItems: TodoGroup[] = []
   public itemsByFile = new Map<string, TodoItem[]>()
-  private searchTerm = ''
+  private parsedSearch: {textTerms: string[][]; dateFilters: DateFilter[]} = {textTerms: [], dateFilters: []}
   private searchInputRef: HTMLInputElement | null = null
   private isRefreshing = false
 
@@ -100,9 +99,14 @@ export default class TodoListView extends ItemView {
     enableLimitStore.set(this.plugin.getSettingValue('enableLimit'))
     showSettingsPanelStore.set(this.plugin.getSettingValue('_showSettingsPanel'))
     searchQueriesStore.set(this.plugin.getSettingValue('_searchQueries'))
-    prioGroupingStore.set(this.plugin.getSettingValue('prioGrouping'))
     dateTagStore.set(this.plugin.getSettingValue('dateTag'))
-    dateGroupingStore.set(this.plugin.getSettingValue('dateGrouping'))
+    groupModeStore.set(
+      this.plugin.getSettingValue('dateGrouping')
+        ? 'date'
+        : this.plugin.getSettingValue('prioGrouping')
+          ? 'priority'
+          : this.plugin.getSettingValue('groupBy'),
+    )
   }
 
   private renderView() {
@@ -114,7 +118,7 @@ export default class TodoListView extends ItemView {
           app: this.app,
           updateSetting: (updates: Partial<TodoSettings>) => this.plugin.updateSettings(updates),
           onSearch: (val: string) => {
-            this.searchTerm = val
+            this.parsedSearch = this.parseSearchQuery(val)
             this.groupItems()
             todoGroupsStore.set(this.groupedItems)
           },
@@ -517,7 +521,7 @@ export default class TodoListView extends ItemView {
       ? flattenedItems.filter(i => i.filePath === openFile.path)
       : flattenedItems
 
-    const { textTerms, dateFilters } = this.parseSearchQuery(this.searchTerm)
+    const { textTerms, dateFilters } = this.parsedSearch
     console.log('Parsed search - textTerms:', textTerms, 'dateFilters:', dateFilters)
 
     const searchedItems = filteredItems.filter(e => {

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { getIcon, Notice } from "obsidian"
   import type { TodoSettings } from "src/settings"
+  import type { GroupMode } from "src/_types"
   import {
     todoTagsStore,
     hiddenTagsStore,
@@ -10,9 +11,8 @@
     showSettingsPanelStore,
     searchQueriesStore,
     priorityTagStore,
-    prioGroupingStore,
     dateTagStore,
-    dateGroupingStore,
+    groupModeStore,
   } from "./viewStore"
 
   let {
@@ -122,12 +122,34 @@
     await updateSetting({ enableLimit: !$enableLimitStore })
   }
 
-  async function togglePrioGrouping() {
-    await updateSetting({ prioGrouping: !$prioGroupingStore })
+  let groupMode = $state<GroupMode>('tag')
+  $effect(() => {
+    groupMode = $groupModeStore
+  })
+
+  async function handleGroupChange() {
+    if (groupMode === 'priority') {
+      await updateSetting({ prioGrouping: true, dateGrouping: false })
+    } else if (groupMode === 'date') {
+      await updateSetting({ dateGrouping: true, prioGrouping: false })
+    } else {
+      await updateSetting({ groupBy: groupMode, prioGrouping: false, dateGrouping: false })
+    }
   }
 
-  async function toggleDateGrouping() {
-    await updateSetting({ dateGrouping: !$dateGroupingStore })
+  // Replicates Obsidian's mouse-focus marker (added on pointer focus, removed on
+  // blur, absent on keyboard focus) so the native .dropdown focus styling applies.
+  function mouseFocus(node: HTMLElement) {
+    const add = () => node.classList.add('mouse-focus')
+    const remove = () => node.classList.remove('mouse-focus')
+    node.addEventListener('pointerdown', add)
+    node.addEventListener('blur', remove)
+    return {
+      destroy() {
+        node.removeEventListener('pointerdown', add)
+        node.removeEventListener('blur', remove)
+      },
+    }
   }
 
   async function toggleSettingsPanel() {
@@ -251,25 +273,14 @@
           </button>
         </div>
       </div>
-       <div class="settings-controls">
-        {#if $priorityTagStore}
-          <div class="toggle-switch" aria-label={"Toggle priority groups mode\nOnly tasks with a set priority level will be shown"}>
-            <label class="toggle-label">
-              <input type="checkbox" class="toggle-input" checked={$prioGroupingStore} onchange={togglePrioGrouping}/>
-              <span class="toggle-slider"></span>
-              <span class="toggle-text">Show priority groups only</span>
-            </label>
-          </div>
-        {/if}
-        {#if $dateTagStore}
-          <div class="toggle-switch" aria-label={"Toggle date groups mode\nOnly tasks with due dates will be shown"}>
-            <label class="toggle-label">
-              <input type="checkbox" class="toggle-input" checked={$dateGroupingStore} onchange={toggleDateGrouping}/>
-              <span class="toggle-slider"></span>
-              <span class="toggle-text">Show date groups only</span>
-            </label>
-          </div>
-        {/if}
+       <div class="settings-controls search-results-info">
+        <span class="toggle-text">Group by</span>
+        <select class="dropdown" use:mouseFocus bind:value={groupMode} onchange={handleGroupChange}>
+          <option value="tag">Tag</option>
+          <option value="page">Page</option>
+          {#if $dateTagStore}<option value="date">Due date</option>{/if}
+          {#if $priorityTagStore}<option value="priority">Priority</option>{/if}
+        </select>
        </div>
       <div class="settings-title">
         <span class="settings-title-span">Show Tags</span>

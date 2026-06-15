@@ -1,6 +1,6 @@
 import {writable} from 'svelte/store'
 import type {TodoGroup} from '../_types'
-import type {LookAndFeel, GroupByType} from '../_types'
+import type {LookAndFeel, GroupMode} from '../_types'
 import type {TodoItem} from '../_types'
 
 export const todoGroupsStore = writable<TodoGroup[]>([])
@@ -14,9 +14,8 @@ export const enableLimitStore = writable<boolean>(true)
 export const showSettingsPanelStore = writable<boolean>(false)
 export const searchQueriesStore = writable<string[]>([])
 export const todoGroupsCountStore = writable<number>(0)
-export const prioGroupingStore = writable<boolean>(false)
 export const dateTagStore = writable<string>('')
-export const dateGroupingStore = writable<boolean>(false)
+export const groupModeStore = writable<GroupMode>('tag')
 export const dragState = writable({
   inProgress: false,
   sourcePriority: null as number | null,

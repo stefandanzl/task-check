@@ -80,6 +80,7 @@ export type TagMeta = {main: string; sub: string}
 export type LinkMeta = {filePath: string; linkName: string}
 
 export type GroupByType = 'page' | 'tag'
+export type GroupMode = GroupByType | 'priority' | 'date'
 export type SortDirection =
   | 'created: new->old'
   | 'created: old->new'
