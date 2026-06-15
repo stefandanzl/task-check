@@ -1,11 +1,10 @@
 import {writable} from 'svelte/store'
 import type {TodoGroup} from '../_types'
-import type {LookAndFeel, GroupMode} from '../_types'
+import type {GroupMode} from '../_types'
 import type {TodoItem} from '../_types'
 
 export const todoGroupsStore = writable<TodoGroup[]>([])
 export const todoTagsStore = writable<string[]>([])
-export const lookAndFeelStore = writable<LookAndFeel>('classic')
 export const collapsedSectionsStore = writable<string[]>([])
 export const hiddenTagsStore = writable<string[]>([])
 export const priorityTagStore = writable<string>('')

@@ -7,7 +7,7 @@ import type {TodoGroup, TodoItem} from './_types'
 import {toggleTodoItem} from './utils'
 
 export default class TodoPlugin extends Plugin {
-  private settings: TodoSettings
+  settings!: TodoSettings
 
   get view() {
     return this.app.workspace.getLeavesOfType(TODO_VIEW_TYPE)[0]
@@ -102,7 +102,7 @@ export default class TodoPlugin extends Plugin {
         if (!editor) return
 
         // Get the first tag only
-        const firstTag = this.settings.todoPageName.split('\n')[0].trim()
+        const firstTag = this.settings.todoPageName[0]?.trim() ?? ''
         editor.replaceSelection(`#${firstTag}/`)
 
         const handleEnter = (event: KeyboardEvent) => {
@@ -154,6 +154,14 @@ export default class TodoPlugin extends Plugin {
   async loadSettings() {
     const loadedData = await this.loadData()
     this.settings = {...DEFAULT_SETTINGS, ...loadedData}
+    // Settings Migration: Older versions stored todoPageName as a newline-separated string; coerce to array.
+    const rawTodoPageName = (loadedData as {todoPageName?: unknown}).todoPageName
+    if (typeof rawTodoPageName === 'string') {
+      this.settings.todoPageName = rawTodoPageName
+        .split('\n')
+        .map(e => e.trim())
+        .filter(Boolean)
+    }
   }
 
   async updateSettings(updates: Partial<TodoSettings>) {
@@ -161,7 +169,6 @@ export default class TodoPlugin extends Plugin {
     await this.saveData(this.settings)
     const onlyRepaintWhenChanges = [
       'autoRefresh',
-      'lookAndFeel',
       '_collapsedSections',
       '_showSettingsPanel',
     ]

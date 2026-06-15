@@ -1,10 +1,11 @@
-import {App, PluginSettingTab, Setting} from 'obsidian'
+import {App, PluginSettingTab, type SettingDefinitionItem} from 'obsidian'
 
 import type TodoPlugin from './main'
-import type {GroupByType, LookAndFeel, SortDirection} from './_types'
+import {TagModal} from './addTagModal'
+import type {GroupByType, SortDirection} from './_types'
 
 export interface TodoSettings {
-  todoPageName: string
+  todoPageName: string[]
   showChecked: boolean
   showAllTodos: boolean
   showOnlyActiveFile: boolean
@@ -15,7 +16,6 @@ export interface TodoSettings {
   sortDirectionGroups: SortDirection
   sortDirectionSubGroups: SortDirection
   includeFiles: string
-  lookAndFeel: LookAndFeel
   _collapsedSections: string[]
   _hiddenTags: string[]
   baseTagFirst: boolean
@@ -31,7 +31,7 @@ export interface TodoSettings {
 }
 
 export const DEFAULT_SETTINGS: TodoSettings = {
-  todoPageName: 'todo',
+  todoPageName: ['todo'],
   showChecked: false,
   showAllTodos: false,
   showOnlyActiveFile: false,
@@ -42,7 +42,6 @@ export const DEFAULT_SETTINGS: TodoSettings = {
   sortDirectionGroups: 'created: new->old',
   sortDirectionSubGroups: 'created: new->old',
   includeFiles: '',
-  lookAndFeel: 'classic',
   _collapsedSections: [],
   _hiddenTags: [],
   baseTagFirst: true,
@@ -57,6 +56,15 @@ export const DEFAULT_SETTINGS: TodoSettings = {
   dateGrouping: false,
 }
 
+const SORT_OPTIONS: Record<string, string> = {
+  'created: new->old': 'Created: New → Old',
+  'created: old->new': 'Created: Old → New',
+  'a->z': 'Alphabet: A → Z',
+  'z->a': 'Alphabet: Z → A',
+  'modified: new->old': 'Modified: New → Old',
+  'modified: old->new': 'Modified: Old → New',
+}
+
 export class TodoSettingTab extends PluginSettingTab {
   constructor(
     app: App,
@@ -65,228 +73,185 @@ export class TodoSettingTab extends PluginSettingTab {
     super(app, plugin)
   }
 
-  display(): void {
-    this.containerEl.empty()
-
-    this.containerEl.createEl('h2', {
-      text: 'General',
-    })
-
-    this.buildSettings()
+  /**
+   * Route declarative control writes through the plugin's updateSettings so the
+   * existing regroup/repaint logic runs after each change. (List mutations go
+   * through updateSettings directly in their callbacks.)
+   */
+  async setControlValue(key: string, value: unknown): Promise<void> {
+    await this.plugin.updateSettings({[key]: value} as Partial<TodoSettings>)
   }
 
-  private buildSettings() {
-    /** GENERAL */
+  private get tags(): string[] {
+    return this.plugin.getSettingValue('todoPageName')
+  }
 
-    new Setting(this.containerEl)
-      .setName('Tag name')
-      .setDesc(
-        'e.g. "todo" will match #todo. You may add mutliple tags separated by a newline. Leave empty to capture all',
-      )
-      .addTextArea(text =>
-        text
-          .setPlaceholder('todo')
-          .setValue(this.plugin.getSettingValue('todoPageName'))
-          .onChange(async value => {
-            await this.plugin.updateSettings({
-              todoPageName: value,
-            })
-          }),
-      )
+  private openAddTagModal(): void {
+    new TagModal(this.app, {
+      title: 'Add tag',
+      ctaLabel: 'Add',
+      onSubmit: async value => {
+        const tags = [...this.tags]
+        if (!tags.includes(value)) tags.push(value)
+        await this.plugin.updateSettings({todoPageName: tags})
+        this.update()
+      },
+    }).open()
+  }
 
-    new Setting(this.containerEl)
-      .setName('Show Completed?')
-      .addToggle(toggle => {
-        toggle.setValue(this.plugin.getSettingValue('showChecked'))
-        toggle.onChange(async value => {
-          await this.plugin.updateSettings({showChecked: value})
-        })
-      })
+  private openEditTagModal(index: number): void {
+    new TagModal(this.app, {
+      title: 'Edit tag',
+      ctaLabel: 'Save',
+      initialValue: this.tags[index],
+      onSubmit: async value => {
+        const tags = [...this.tags]
+        tags[index] = value
+        await this.plugin.updateSettings({todoPageName: tags})
+        this.update()
+      },
+    }).open()
+  }
 
-    new Setting(this.containerEl)
-      .setName('Show All Todos In File?')
-      .setDesc(
-        'Show all items in file if tag is present, or only items attached to the block where the tag is located. Only has an effect if Tag Name is not empty',
-      )
-      .addToggle(toggle => {
-        toggle.setValue(this.plugin.getSettingValue('showAllTodos'))
-        toggle.onChange(async value => {
-          await this.plugin.updateSettings({showAllTodos: value})
-        })
-      })
-
-    new Setting(this.containerEl)
-      .setName('Show only in currently active file?')
-      .setDesc('Show only todos present in currently active file?')
-      .addToggle(toggle => {
-        toggle.setValue(this.plugin.getSettingValue('showOnlyActiveFile'))
-        toggle.onChange(async value => {
-          await this.plugin.updateSettings({showOnlyActiveFile: value})
-        })
-      })
-
-
-    /** GROUPING & SORTING */
-
-    this.containerEl.createEl('h2', {text: 'Grouping & Sorting'})
-
-    new Setting(this.containerEl).setName('Group By').addDropdown(dropdown => {
-      dropdown.addOption('tag', 'Tag')
-      dropdown.addOption('page', 'Page')
-      dropdown.setValue(this.plugin.getSettingValue('groupBy'))
-      dropdown.onChange(async (value: GroupByType) => {
-        await this.plugin.updateSettings({groupBy: value})
-      })
-    })
-
-    new Setting(this.containerEl)
-      .setName('Item Sort')
-      .addDropdown(dropdown => {
-        dropdown.addOption('created: new->old', 'Created: New -> Old')
-        dropdown.addOption('created: old->new', 'Created: Old -> New')
-        dropdown.addOption('a->z', 'A -> Z')
-        dropdown.addOption('z->a', 'Z -> A')
-        dropdown.addOption('modified: new->old', 'Modified: New -> Old')
-        dropdown.addOption('modified: old->new', 'Modified: Old -> New')
-        dropdown.setValue(this.plugin.getSettingValue('sortDirectionItems'))
-        dropdown.onChange(async (value: SortDirection) => {
-          await this.plugin.updateSettings({
-            sortDirectionItems: value,
-          })
-        })
-      })
-      .setDesc(
-        'Time sorts are based on when files were created (Created) or last modified (Modified)',
-      )
-
-    new Setting(this.containerEl)
-      .setName('Group Sort')
-      .addDropdown(dropdown => {
-        dropdown.addOption('created: new->old', 'Created: New -> Old')
-        dropdown.addOption('created: old->new', 'Created: Old -> New')
-        dropdown.addOption('a->z', 'A -> Z')
-        dropdown.addOption('z->a', 'Z -> A')
-        dropdown.addOption('modified: new->old', 'Modified: New -> Old')
-        dropdown.addOption('modified: old->new', 'Modified: Old -> New')
-        dropdown.setValue(this.plugin.getSettingValue('sortDirectionGroups'))
-        dropdown.onChange(async (value: SortDirection) => {
-          await this.plugin.updateSettings({
-            sortDirectionGroups: value,
-          })
-        })
-      })
-      .setDesc(
-        'Time sorts are based on when files were created (Created) or last modified (Modified)',
-      )
-
-    new Setting(this.containerEl)
-      .setName('Base tag first')
-      .setDesc('Put base tag first when sorting by tags?')
-      .addToggle(toggle => {
-        toggle.setValue(this.plugin.getSettingValue('baseTagFirst'))
-        toggle.onChange(async value => {
-          await this.plugin.updateSettings({baseTagFirst: value})
-        })
-      })
-
-    new Setting(this.containerEl)
-      .setName('Max tasks per group')
-      .setDesc('Maximum number of tasks to show per group before having to expand with button. Leave empty or 0 to show all tasks.')
-      .addText(text =>
-        text
-          .setPlaceholder('5')
-          .setValue(this.plugin.getSettingValue('maxTasksPerGroup')?.toString() ?? '')
-          .onChange(async value => {
-            const num = value === '' ? null : parseInt(value, 10)
-            await this.plugin.updateSettings({maxTasksPerGroup: isNaN(num ?? NaN) ? null : num ?? null})
-          }),
-      )
-
-    new Setting(this.containerEl)
-      .setName('Enable task limit')
-      .setDesc('Toggle the task limit feature on or off.')
-      .addToggle(toggle => {
-        toggle.setValue(this.plugin.getSettingValue('enableLimit'))
-        toggle.onChange(async value => {
-          await this.plugin.updateSettings({enableLimit: value})
-        })
-      })
-
-    /** PRIORITY */
-
-    this.containerEl.createEl('h2', {text: 'Priority'})
-
-    new Setting(this.containerEl)
-      .setName('Priority tag name')
-      .setDesc('Tag name for priority values. Tasks can use #tag/N format (e.g., #prio/2). Leave empty to disable priority sorting.')
-      .addText(text =>
-        text
-          .setPlaceholder('prio')
-          .setValue(this.plugin.getSettingValue('priorityTag'))
-          .onChange(async value => {
-            await this.plugin.updateSettings({priorityTag: value})
-          }),
-      )
-
-    /** DATE */
-
-    this.containerEl.createEl('h2', {text: 'Date'})
-
-    new Setting(this.containerEl)
-      .setName('Date tag name')
-      .setDesc('Tag name for due dates. Tasks can use #tag/YYYY-MM-DD format (e.g., #date/2026-04-30). Leave empty to disable date features.')
-      .addText(text =>
-        text
-          .setPlaceholder('date')
-          .setValue(this.plugin.getSettingValue('dateTag'))
-          .onChange(async value => {
-            await this.plugin.updateSettings({dateTag: value})
-          }),
-      )
-
-    /** STYLING */
-
-    this.containerEl.createEl('h2', {text: 'Styling'})
-
-    new Setting(this.containerEl)
-      .setName('Look and Feel')
-      .addDropdown(dropdown => {
-        dropdown.addOption('classic', 'Classic')
-        dropdown.addOption('compact', 'Compact')
-        dropdown.setValue(this.plugin.getSettingValue('lookAndFeel'))
-        dropdown.onChange(async (value: LookAndFeel) => {
-          await this.plugin.updateSettings({lookAndFeel: value})
-        })
-      })
-
-    /** ADVANCED */
-
-    new Setting(this.containerEl)
-      .setName('Include Files')
-      .setDesc(
-        'Include all files that match this glob pattern. Examples on plugin page/github readme. Leave empty to check all files.',
-      )
-      .setTooltip('**/*')
-      .addText(text =>
-        text
-          .setValue(this.plugin.getSettingValue('includeFiles'))
-          .onChange(async value => {
-            await this.plugin.updateSettings({
-              includeFiles: value,
-            })
-          }),
-      )
-
-    new Setting(this.containerEl)
-      .setName('Auto Refresh List?')
-      .addToggle(toggle => {
-        toggle.setValue(this.plugin.getSettingValue('autoRefresh'))
-        toggle.onChange(async value => {
-          await this.plugin.updateSettings({autoRefresh: value})
-        })
-      })
-      .setDesc(
-        'It\'s recommended to leave this on unless you are expereince performance issues due to a large vault. You can then reload manually using the "Checklist: refresh" command',
-      )
+  getSettingDefinitions(): SettingDefinitionItem[] {
+    return [
+      {
+        type: 'list',
+        heading: 'Tags to track',
+        desc: 'Tags whose checklist items are collected into the sidebar. Sub-tags work too (e.g. todo/work). Click a tag to rename it. Leave the list empty to capture every checklist item in the vault.',
+        emptyState:
+          'No tags configured — every checklist item in the vault is captured.',
+        addItem: {
+          name: 'Add tag',
+          action: () => this.openAddTagModal(),
+        },
+        onReorder: async (oldIndex, newIndex) => {
+          const tags = [...this.tags]
+          const [moved] = tags.splice(oldIndex, 1)
+          tags.splice(newIndex, 0, moved)
+          await this.plugin.updateSettings({todoPageName: tags})
+          this.update()
+        },
+        onDelete: async idx => {
+          const tags = [...this.tags]
+          tags.splice(idx, 1)
+          await this.plugin.updateSettings({todoPageName: tags})
+          this.update()
+        },
+        items: this.tags.map(tag => ({
+          name: `#${tag}`,
+          searchable: false,
+          action: (_el: HTMLElement, index: number) =>
+            this.openEditTagModal(index),
+        })),
+      },
+      {
+        name: 'Show completed',
+        desc: 'If enabled will show completed todos too.',
+        control: {type: 'toggle', key: 'showChecked'},
+      },
+      {
+        name: 'Show all todos in file',
+        desc: 'Show all items in a file if the tag is present, or only items attached to the block where the tag is located. Only has an effect when tags are configured.',
+        control: {type: 'toggle', key: 'showAllTodos'},
+      },
+      {
+        name: 'Show only in active file',
+        desc: 'Show only todos present in the currently active file.',
+        control: {type: 'toggle', key: 'showOnlyActiveFile'},
+      },
+      {
+        type: 'group',
+        heading: 'Grouping & sorting',
+        items: [
+          {
+            name: 'Group by',
+            control: {
+              type: 'dropdown',
+              key: 'groupBy',
+              options: {tag: 'Tag', page: 'Page'},
+            },
+          },
+          {
+            name: 'Item sort',
+            desc: 'Time sorts are based on when files were created (Created) or last modified (Modified).',
+            control: {
+              type: 'dropdown',
+              key: 'sortDirectionItems',
+              options: SORT_OPTIONS,
+            },
+          },
+          {
+            name: 'Group sort',
+            desc: 'Time sorts are based on when files were created (Created) or last modified (Modified).',
+            control: {
+              type: 'dropdown',
+              key: 'sortDirectionGroups',
+              options: SORT_OPTIONS,
+            },
+          },
+          {
+            name: 'Base tag first',
+            desc: 'Only applies when grouping by tag. If enabled base tags (e.g. #home) list before all its subtags (e.g. #home/kitchen) → (eg. #home, #work, #home/kitchen, #work/dev). \nIf disabled, sorting order will behave naturally without overriding the position of base tag item group to be at the top (eg. #home/kitchen, #work, #home, #work/dev).',
+            control: {type: 'toggle', key: 'baseTagFirst'},
+          },
+          {
+            name: 'Max tasks per group when limit activated',
+            desc: 'Maximum tasks shown per group before the "Show all" button appears. 0 shows all tasks. Only takes effect when the limit is toggled on in the sidebar.',
+            control: {type: 'number', key: 'maxTasksPerGroup', min: 0},
+          },
+        ],
+      },
+      {
+        type: 'group',
+        heading: 'Priority',
+        items: [
+          {
+            name: 'Priority tag name',
+            desc: 'Tag name for priority values. Tasks can use #tag/N format (e.g., #prio/2). Leave empty to disable priority sorting.',
+            control: {
+              type: 'text',
+              key: 'priorityTag',
+              placeholder: 'prio',
+            },
+          },
+        ],
+      },
+      {
+        type: 'group',
+        heading: 'Date',
+        items: [
+          {
+            name: 'Date tag name',
+            desc: 'Tag name for due dates. Tasks can use #tag/YYYY-MM-DD format (e.g., #date/2026-04-30). Leave empty to disable date features.',
+            control: {
+              type: 'text',
+              key: 'dateTag',
+              placeholder: 'date',
+            },
+          },
+        ],
+      },
+      {
+        type: 'group',
+        heading: 'Advanced',
+        items: [
+          {
+            name: 'Include files',
+            desc: 'Include all files that match this glob pattern. Examples on the plugin page/github readme. Leave empty to check all files.',
+            control: {
+              type: 'text',
+              key: 'includeFiles',
+              placeholder: '**/*',
+            },
+          },
+          {
+            name: 'Auto refresh list',
+            desc: 'Recommended to leave on unless you experience performance issues with a large vault. You can then reload manually using the "Checklist: refresh" command.',
+            control: {type: 'toggle', key: 'autoRefresh'},
+          },
+        ],
+      },
+    ]
   }
 }

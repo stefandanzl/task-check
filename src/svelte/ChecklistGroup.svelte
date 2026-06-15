@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { App } from "obsidian"
 
-  import type { LookAndFeel, TodoGroup, PriorityGroup, DateGroup, TodoItem, DateCategory } from "src/_types"
+  import type { TodoGroup, PriorityGroup, DateGroup, TodoItem, DateCategory } from "src/_types"
   import { navToFile, setTodoPrioritiesBatch } from "src/utils"
   import ChecklistItem from "./ChecklistItem.svelte"
   import Icon from "./Icon.svelte"
@@ -12,7 +12,6 @@
   let {
     group,
     isCollapsed,
-    lookAndFeel,
     app,
     onToggle,
     priorityTag = '',
@@ -23,7 +22,6 @@
   }: {
     group: TodoGroup
     isCollapsed: boolean
-    lookAndFeel: LookAndFeel
     app: App
     onToggle: (id: string) => void
     priorityTag?: string
@@ -302,7 +300,6 @@
         <PriorityDropZone
           position="above"
           targetPriority={(group as PriorityGroup).priorityValue}
-          {lookAndFeel}
           {app}
           isDragging={isMyDrag}
           ondrop={handleDropPosition}
@@ -315,7 +312,6 @@
           position="into"
           items={group.todos}
           targetPriority={(group as PriorityGroup).priorityValue}
-          {lookAndFeel}
           {app}
           isDragging={isMyDrag}
           ondrop={handleDropPosition}
@@ -328,7 +324,6 @@
         <PriorityDropZone
           position="below"
           targetPriority={(group as PriorityGroup).priorityValue}
-          {lookAndFeel}
           {app}
           isDragging={isMyDrag}
           ondrop={handleDropPosition}
@@ -361,7 +356,6 @@
             position="into"
             items={visibleItemsPerZone.get(key) ?? []}
             targetPriority={key}
-            {lookAndFeel}
             {app}
             isDragging={isMyDrag}
             ondrop={handleDropPosition}
@@ -393,7 +387,7 @@
     {:else}
       <ul>
         {#each group.todos as item, i}
-          <ChecklistItem {item} {lookAndFeel} {app} draggable={true} ondragstart={handleItemDragStart(item)} ondragend={handleItemDragEnd} />
+          <ChecklistItem {item} {app} draggable={true} ondragstart={handleItemDragStart(item)} ondragend={handleItemDragEnd} />
         {/each}
       </ul>
       {#if maxTasksPerGroup && enableLimit && group.todos.length > maxTasksPerGroup && !isGroupShowingAll}

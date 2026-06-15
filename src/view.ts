@@ -7,7 +7,6 @@ import {groupTodos, groupTodosByPriority, groupTodosByDate, parseTodos} from './
 import {
   todoGroupsStore,
   todoTagsStore,
-  lookAndFeelStore,
   collapsedSectionsStore,
   hiddenTagsStore,
   priorityTagStore,
@@ -54,8 +53,6 @@ export default class TodoListView extends ItemView {
   get todoTagArray() {
     return this.plugin
       .getSettingValue('todoPageName')
-      .trim()
-      .split('\n')
       .map(e => e.toLowerCase())
       .filter(e => e)
   }
@@ -91,7 +88,6 @@ export default class TodoListView extends ItemView {
   private updateStores() {
     todoGroupsStore.set(this.groupedItems)
     todoTagsStore.set(this.todoTagArray)
-    lookAndFeelStore.set(this.plugin.getSettingValue('lookAndFeel'))
     collapsedSectionsStore.set(this.plugin.getSettingValue('_collapsedSections'))
     hiddenTagsStore.set(this.plugin.getSettingValue('_hiddenTags'))
     priorityTagStore.set(this.plugin.getSettingValue('priorityTag'))

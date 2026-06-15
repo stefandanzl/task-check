@@ -5,7 +5,9 @@
       "Bash(npm run *)",
       "mcp__plugin_svelte_svelte__svelte-autofixer",
       "mcp__plugin_svelte_svelte__get-documentation",
-      "Bash(git show *)"
+      "Bash(git show *)",
+      "WebFetch(domain:docs.obsidian.md)",
+      "WebSearch"
     ]
   }
 }

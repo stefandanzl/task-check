@@ -6,7 +6,6 @@
   import {
     todoGroupsStore,
     todoTagsStore,
-    lookAndFeelStore,
     collapsedSectionsStore,
     hiddenTagsStore,
     priorityTagStore,
@@ -78,7 +77,6 @@
       <ChecklistGroup
         {group}
         {app}
-        lookAndFeel={$lookAndFeelStore}
         priorityTag={$priorityTagStore ?? ''}
         maxTasksPerGroup={$maxTasksPerGroupStore ?? null}
         enableLimit={$enableLimitStore ?? true}

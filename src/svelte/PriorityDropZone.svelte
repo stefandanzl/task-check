@@ -1,13 +1,12 @@
 <script lang="ts">
   import type { App } from 'obsidian'
-  import type { LookAndFeel, TodoItem } from 'src/_types'
+  import type { TodoItem } from 'src/_types'
   import ChecklistItem from './ChecklistItem.svelte'
 
   let {
     position,
     items = [],
     targetPriority = null,
-    lookAndFeel = 'classic',
     app,
     isDragging = false,
     shouldHide = false,
@@ -18,7 +17,6 @@
     position: 'above' | 'below' | 'into'
     items?: TodoItem[]
     targetPriority?: number | null
-    lookAndFeel?: LookAndFeel
     app?: App
     isDragging?: boolean
     shouldHide?: boolean
@@ -104,7 +102,6 @@
           {#each items as item (item.filePath + ':' + item.line)}
             <ChecklistItem
               {item}
-              lookAndFeel={lookAndFeel ?? 'classic'}
               {app}
               draggable={true}
               ondragstart={forwardDragStart(item)}
@@ -137,7 +134,6 @@
           {#each items as item (item.filePath + ':' + item.line)}
             <ChecklistItem
               {item}
-              lookAndFeel={lookAndFeel ?? 'classic'}
               {app}
               draggable={true}
               ondragstart={forwardDragStart(item)}

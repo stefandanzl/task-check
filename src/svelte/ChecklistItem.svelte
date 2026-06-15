@@ -1,11 +1,10 @@
 <script lang="ts">
   import type {App} from 'obsidian'
-  import type {LookAndFeel, TodoItem} from 'src/_types'
+  import type {TodoItem} from 'src/_types'
   import {navToFile, toggleTodoItem} from 'src/utils'
 
   let {
     item,
-    lookAndFeel,
     app,
     draggable = false,
     targetPriority = null,
@@ -13,7 +12,6 @@
     ondragend = () => {},
   }: {
     item: TodoItem
-    lookAndFeel: LookAndFeel
     app: App
     draggable?: boolean
     targetPriority?: number | null
@@ -48,7 +46,7 @@
 
 <!-- svelte-ignore a11y_click_events_have_key_events -->
 <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-<li class="checklist-item {lookAndFeel}" onclick={handleClick}>
+<li class="checklist-item" onclick={handleClick}>
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <div
     class="cm-active HyperMD-list-line HyperMD-list-line-{level} cm-line task-list-item-line"
@@ -102,11 +100,6 @@
 
   li.checklist-item:hover {
     background-color: var(--checklist-listItemBackground--hover);
-  }
-
-  /* let Obsidian's theme handle the inside of cm-line; only override what you must */
-  .compact :global(.HyperMD-list-line) {
-    padding-block: 2px;
   }
 
   .prio-level {

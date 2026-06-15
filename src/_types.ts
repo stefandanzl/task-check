@@ -93,8 +93,6 @@ export type SortDirection =
   | 'modified: old->new'
   | 'a->z'
   | 'z->a'
-export type LookAndFeel = 'compact' | 'classic'
-
 export type Icon = 'chevron' | 'settings'
 
 export type KeysOfType<T, V> = {
