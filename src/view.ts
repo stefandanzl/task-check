@@ -266,7 +266,8 @@ export default class TodoListView extends ItemView {
       console.log('Date match:', match, 'Operator:', operator, 'Value:', value)
       const filter = this.parseDateOperator(operator, value, dateTag)
       console.log('Parsed filter:', filter)
-      if (filter) dateFilters.push(filter)
+      if (!filter) return match // invalid value → keep as plain text (consistent with priority)
+      dateFilters.push(filter)
       return '' // Remove from text query
     })
 
@@ -542,7 +543,7 @@ export default class TodoListView extends ItemView {
       : flattenedItems
 
     const { textTerms, dateFilters, priorityFilters } = this.parsedSearch
-    console.log('Parsed search - textTerms:', textTerms, 'dateFilters:', dateFilters, 'priorityFilters:', priorityFilters)
+    // console.log('Parsed search - textTerms:', textTerms, 'dateFilters:', dateFilters, 'priorityFilters:', priorityFilters)
 
     const searchedItems = filteredItems.filter(e => {
       if (!dateFilters.every(filter => this.itemMatchesDateFilter(e, filter))) return false
@@ -551,7 +552,7 @@ export default class TodoListView extends ItemView {
       return textTerms.some(andTerms => this.itemMatchesSearch(e, andTerms, []))
     })
 
-    console.log('Search results:', searchedItems.length, 'items from', filteredItems.length)
+    // console.log('Search results:', searchedItems.length, 'items from', filteredItems.length)
     const prioGrouping = this.plugin.getSettingValue('prioGrouping')
     const priorityTag = this.plugin.getSettingValue('priorityTag')
     const dateGrouping = this.plugin.getSettingValue('dateGrouping')
