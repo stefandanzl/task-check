@@ -1,7 +1,7 @@
 <script lang="ts">
-  import { getIcon, Notice, Menu } from "obsidian"
-  import type { TodoSettings } from "src/settings"
-  import type { GroupMode } from "src/_types"
+  import {getIcon, Notice, Menu} from 'obsidian'
+  import type {TodoSettings} from 'src/settings'
+  import type {GroupMode} from 'src/_types'
   import {
     todoTagsStore,
     hiddenTagsStore,
@@ -13,7 +13,7 @@
     priorityTagStore,
     dateTagStore,
     groupModeStore,
-  } from "./viewStore"
+  } from './viewStore'
 
   let {
     onTagStatusChange,
@@ -33,7 +33,7 @@
     lastSearchQuery: string
   } = $props()
 
-  let search = $state("")
+  let search = $state('')
   let searchInput: HTMLInputElement
   let inputRegistered = false
   let showRecentDropdown = $state(false)
@@ -43,44 +43,49 @@
 
   const searchQueries = $derived($searchQueriesStore)
 
-  const totalCount = $derived($todoGroupsStore.reduce((sum, g) => sum + g.todos.length, 0))
+  const totalCount = $derived(
+    $todoGroupsStore.reduce((sum, g) => sum + g.todos.length, 0),
+  )
 
   const allCollapsed = $derived(
-    $todoGroupsStore.length > 0 && $collapsedSectionsStore.length === $todoGroupsStore.length
+    $todoGroupsStore.length > 0 &&
+      $collapsedSectionsStore.length === $todoGroupsStore.length,
   )
 
   async function toggleExpandCollapseAll() {
     if (allCollapsed) {
-      await updateSetting({ _collapsedSections: [] })
+      await updateSetting({_collapsedSections: []})
     } else {
-      await updateSetting({ _collapsedSections: $todoGroupsStore.map(g => g.id) })
+      await updateSetting({_collapsedSections: $todoGroupsStore.map(g => g.id)})
     }
   }
 
   const portal = (node: HTMLElement, target: HTMLElement = document.body) => {
     target.appendChild(node)
     return {
-      destroy() { node.parentNode?.removeChild(node) }
+      destroy() {
+        node.parentNode?.removeChild(node)
+      },
     }
   }
 
   $effect(() => {
     if (!showRecentDropdown || !searchInput) return
     const updatePosition = () => {
-      const r = searchInput!.getBoundingClientRect();
+      const r = searchInput!.getBoundingClientRect()
       dropdownStyle = `position: fixed; top: ${r.bottom}px; left: ${r.left}px; width: ${r.width}px; z-index: var(--layer-popover);`
-    };
+    }
 
     // 1. Initial position
-    updatePosition();
+    updatePosition()
 
     // 2. Obsidan Sidepanel Support:
     // ResizeObserver catches the sidebar being dragged
-    const observer = new ResizeObserver(updatePosition);
-    observer.observe(searchInput);
+    const observer = new ResizeObserver(updatePosition)
+    observer.observe(searchInput)
 
     // 3. Cleanup: Stop observing when dropdown closes
-    return () => observer.disconnect();
+    return () => observer.disconnect()
   })
 
   $effect(() => {
@@ -92,20 +97,25 @@
 
   // Restore last search on mount if flag is set
   $effect(() => {
-    if (!hasRestoredSearch && restoreLastSearch && lastSearchQuery && search === '') {
+    if (
+      !hasRestoredSearch &&
+      restoreLastSearch &&
+      lastSearchQuery &&
+      search === ''
+    ) {
       search = lastSearchQuery
       onSearch(lastSearchQuery)
       hasRestoredSearch = true
       // Reset the flag so it doesn't keep restoring
-      updateSetting({ _restoreLastSearch: false })
+      updateSetting({_restoreLastSearch: false})
     }
   })
 
   function clearSearch() {
-    search = ""
-    onSearch("")
+    search = ''
+    onSearch('')
     searchInput?.focus()
-    updateSetting({ _restoreLastSearch: false })
+    updateSetting({_restoreLastSearch: false})
   }
 
   function toggleTag(tag: string) {
@@ -115,33 +125,33 @@
   async function handleCopy() {
     const markdown = onCopyTasks()
     await navigator.clipboard.writeText(markdown)
-    new Notice("Tasks copied to clipboard")
+    new Notice('Tasks copied to clipboard')
   }
 
   async function toggleLimit() {
-    await updateSetting({ enableLimit: !$enableLimitStore })
+    await updateSetting({enableLimit: !$enableLimitStore})
   }
 
   function openResultsMenu(e: MouseEvent) {
     const menu = new Menu()
     menu.addItem(item =>
       item
-        .setTitle("Copy search results")
-        .setIcon("copy")
-        .onClick(() => handleCopy())
+        .setTitle('Copy search results')
+        .setIcon('copy')
+        .onClick(() => handleCopy()),
     )
     menu.addItem(item =>
       item
-        .setTitle("Toggle list group limits")
-        .setIcon("list")
+        .setTitle('Toggle list group limits')
+        .setIcon('list')
         .setChecked($enableLimitStore)
-        .onClick(() => toggleLimit())
+        .onClick(() => toggleLimit()),
     )
     menu.addItem(item =>
       item
-        .setTitle(allCollapsed ? "Expand all groups" : "Collapse all groups")
-        .setIcon(allCollapsed ? "chevrons-up-down" : "chevrons-down-up")
-        .onClick(() => toggleExpandCollapseAll())
+        .setTitle(allCollapsed ? 'Expand all groups' : 'Collapse all groups')
+        .setIcon(allCollapsed ? 'chevrons-up-down' : 'chevrons-down-up')
+        .onClick(() => toggleExpandCollapseAll()),
     )
     menu.showAtMouseEvent(e)
   }
@@ -153,11 +163,15 @@
 
   async function handleGroupChange() {
     if (groupMode === 'priority') {
-      await updateSetting({ prioGrouping: true, dateGrouping: false })
+      await updateSetting({prioGrouping: true, dateGrouping: false})
     } else if (groupMode === 'date') {
-      await updateSetting({ dateGrouping: true, prioGrouping: false })
+      await updateSetting({dateGrouping: true, prioGrouping: false})
     } else {
-      await updateSetting({ groupBy: groupMode, prioGrouping: false, dateGrouping: false })
+      await updateSetting({
+        groupBy: groupMode,
+        prioGrouping: false,
+        dateGrouping: false,
+      })
     }
   }
 
@@ -177,26 +191,26 @@
   }
 
   async function toggleSettingsPanel() {
-    await updateSetting({ _showSettingsPanel: !$showSettingsPanelStore })
+    await updateSetting({_showSettingsPanel: !$showSettingsPanelStore})
   }
 
   $effect(() => {
-    search;
+    search
     scheduleSaveSearch()
   })
 
   function scheduleSaveSearch() {
     if (saveTimeout) clearTimeout(saveTimeout)
     saveTimeout = setTimeout(() => {
-      if (search.trim() && search !== "") {
+      if (search.trim() && search !== '') {
         const queries = [...searchQueries].filter(q => q !== search)
         updateSetting({
           _searchQueries: [search, ...queries].slice(0, 10),
-          _restoreLastSearch: true
+          _restoreLastSearch: true,
         })
-      } else if (search === "") {
+      } else if (search === '') {
         // Search was cleared, don't restore on next load
-        updateSetting({ _restoreLastSearch: false })
+        updateSetting({_restoreLastSearch: false})
       }
     }, 1000)
   }
@@ -206,12 +220,12 @@
   }
 
   function handleSearchBlur(ev: FocusEvent) {
-    const historyDiv = document.getElementById('task-search-history');
+    const historyDiv = document.getElementById('task-search-history')
     if (historyDiv) {
-      const isClickInside = historyDiv.contains(ev.relatedTarget as Node);
+      const isClickInside = historyDiv.contains(ev.relatedTarget as Node)
       if (isClickInside) return
-    }  
-      showRecentDropdown = false
+    }
+    showRecentDropdown = false
   }
 
   function selectRecentQuery(query: string) {
@@ -235,59 +249,71 @@
         oninput={() => onSearch(search)}
         onfocus={handleSearchFocus}
         onblur={handleSearchBlur}
-        onkeydown={(e) => {
+        onkeydown={e => {
           if (e.key === 'Escape') {
-            search = ""
-            onSearch("")
-            updateSetting({ _restoreLastSearch: false })
+            search = ''
+            onSearch('')
+            updateSetting({_restoreLastSearch: false})
           }
-        }}
-      />
+        }} />
       {#if showRecentDropdown && search.length === 0 && searchQueries.length > 0 && dropdownStyle}
         {#key dropdownStyle}
-        <div class="recent-searches suggestion-container mod-search-suggestion" id="task-search-history" use:portal style={dropdownStyle}>
-          {#each searchQueries as query}
-            <div class="recent-item" onclick={() => selectRecentQuery(query)} onkeydown={(e) => e.key === 'Enter' && selectRecentQuery(query)} role="option" aria-selected="false" tabindex="0">{query}</div>
-          {/each}
-        </div>
+          <div
+            class="recent-searches suggestion-container mod-search-suggestion"
+            id="task-search-history"
+            use:portal
+            style={dropdownStyle}>
+            {#each searchQueries as query}
+              <div
+                class="recent-item"
+                onclick={() => selectRecentQuery(query)}
+                onkeydown={e => e.key === 'Enter' && selectRecentQuery(query)}
+                role="option"
+                aria-selected="false"
+                tabindex="0">
+                {query}
+              </div>
+            {/each}
+          </div>
         {/key}
       {/if}
       {#if search}
         <!-- svelte-ignore a11y_click_events_have_key_events -->
-        <div class="search-input-clear-button" onclick={clearSearch} role="button" tabindex="0" aria-label="Clear search">
+        <div
+          class="search-input-clear-button"
+          onclick={clearSearch}
+          role="button"
+          tabindex="0"
+          aria-label="Clear search">
         </div>
       {/if}
     </div>
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <div
-      class="settings-button clickable-icon {$showSettingsPanelStore ? 'is-active' : ''}"
+      class="settings-button clickable-icon {$showSettingsPanelStore
+        ? 'is-active'
+        : ''}"
       role="button"
       tabindex="0"
       onclick={toggleSettingsPanel}
-      aria-label="Settings panel"
-    >
-      {@html getIcon("sliders-horizontal")?.outerHTML}
+      aria-label="Settings panel">
+      {@html getIcon('sliders-horizontal')?.outerHTML}
     </div>
   </div>
 
-  {#if $showSettingsPanelStore}
-    <div class="settings-panel">
-       <div class="settings-controls search-results-info">
-        <span class="toggle-text">Group by</span>
-        <select class="dropdown" use:mouseFocus bind:value={groupMode} onchange={handleGroupChange}>
-          <option value="tag">Tag</option>
-          <option value="page">Page</option>
-          {#if $dateTagStore}<option value="date">Due date</option>{/if}
-          {#if $priorityTagStore}<option value="priority">Priority</option>{/if}
-        </select>
-       </div>
+  <div class="settings-panel">
+    {#if $showSettingsPanelStore}
       <div class="settings-title">
         <span class="settings-title-span">Show Tags</span>
       </div>
       {#each $todoTagsStore as tag}
         <div class="tag-checkbox-item">
           <label class="task-list-label">
-            <input class="task-list-item-checkbox" type="checkbox" checked={!$hiddenTagsStore.includes(tag)} onchange={() => toggleTag(tag)} />
+            <input
+              class="task-list-item-checkbox"
+              type="checkbox"
+              checked={!$hiddenTagsStore.includes(tag)}
+              onchange={() => toggleTag(tag)} />
             <span><span class="hash">#</span>{tag}</span>
           </label>
         </div>
@@ -295,17 +321,35 @@
       {#if $todoTagsStore.length === 0}
         <div class="empty">No tags specified</div>
       {/if}
-
-      
-          <div class="search-results-info" style="border-top: var(--border-width) solid var(--background-modifier-border); border-bottom: none; padding: 0; margin: 4px 0 0 0;">
-            <!-- svelte-ignore a11y_click_events_have_key_events -->
-            <div class="clickable-icon search-results-result-count" role="button" tabindex="0" onclick={openResultsMenu}>
-              <span>{totalCount} tasks</span>
-              <div class="more-options-icon">
-               {@html getIcon("more-horizontal")?.outerHTML}
-            </div>
-          </div>
-          <!-- <select 
+    {/if}
+    <div
+      class="search-results-info settings-controls"
+      style="border-top: var(--border-width) solid var(--background-modifier-border); border-bottom: none; padding: 0; margin: 4px 0 0 0;">
+      <!-- svelte-ignore a11y_click_events_have_key_events -->
+      <div
+        class="clickable-icon search-results-result-count"
+        role="button"
+        tabindex="0"
+        onclick={openResultsMenu}>
+        <span>{totalCount} tasks</span>
+        <div class="more-options-icon">
+          {@html getIcon('more-horizontal')?.outerHTML}
+        </div>
+      </div>
+      <div class="group-by">
+        <span class="group-by-label">Group by:</span>
+        <select
+          class="dropdown"
+          use:mouseFocus
+          bind:value={groupMode}
+          onchange={handleGroupChange}>
+          <option value="tag">Tag</option>
+          <option value="page">Page</option>
+          {#if $dateTagStore}<option value="date">Due date</option>{/if}
+          {#if $priorityTagStore}<option value="priority">Priority</option>{/if}
+        </select>
+      </div>
+      <!-- <select 
             class="dropdown" 
             bind:value={sortMethod} 
             onchange={handleSortChange}
@@ -317,9 +361,8 @@
             <option value="byCreatedTime">Created time (new to old)</option>
             <option value="byCreatedTimeReverse">Created time (old to new)</option>
           </select> -->
-        </div>
-      </div>
-    {/if}
+    </div>
+  </div>
 </div>
 
 <style>
@@ -355,7 +398,7 @@
     background: var(--background-secondary);
     border: 1px solid var(--background-modifier-border);
     border-radius: 6px;
-    padding: 12px;
+    padding: 0 12px 12px 12px;
     max-height: 300px;
     overflow-y: auto;
   }
@@ -371,16 +414,40 @@
   }
 
   .settings-controls {
+    container-type: inline-size;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 6px 0;
-    margin-bottom: 8px;
-    border-bottom: 1px solid var(--background-modifier-border);
+    flex-wrap: wrap;
+    gap: 8px;
+    border-top: var(--border-width) solid var(--background-modifier-border);
+    padding-top: 4px;
+    margin-top: 4px;
   }
 
-  .toggle-text {
-    font-size: var(--font-ui-small);
+  .group-by {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  .group-by select {
+    width: max-content;
+    max-width: none;
+    text-overflow: clip;
+  }
+
+  .group-by-label {
+    display: none;
+    white-space: nowrap;
+    font-size: var(--font-ui-smaller);
+  }
+
+  @container (min-width: 240px) {
+    .group-by-label {
+      display: inline;
+    }
   }
 
   .tag-checkbox-item {
@@ -410,8 +477,6 @@
   .clickable-icon {
     cursor: pointer;
   }
-
-
 
   .recent-item {
     padding: 6px 12px;
