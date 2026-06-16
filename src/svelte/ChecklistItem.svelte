@@ -1,7 +1,7 @@
 <script lang="ts">
   import type {App} from 'obsidian'
   import type {TodoItem} from 'src/_types'
-  import {navToFile, toggleTodoItem} from 'src/utils'
+  import {navToFile, renderTaskHTML, toggleTodoItem} from 'src/utils'
   import {priorityTagStore, dateTagStore} from './viewStore'
   import {openTaskContextMenu} from './taskMenu'
 
@@ -24,6 +24,10 @@
   const handleContextMenu = (e: MouseEvent) => {
     openTaskContextMenu(item, app, e, $priorityTagStore, $dateTagStore)
   }
+
+  // Render the task HTML lazily (only for mounted tasks), so the markdown
+  // pipeline doesn't run for filtered-out / collapsed / limit-hidden tasks.
+  const taskHTML = $derived(renderTaskHTML(item, app, $priorityTagStore, $dateTagStore))
 
   // 1 = top-level, 2 = once-indented, ...
   const level = $derived(item.spacesIndented + 1)
@@ -85,7 +89,7 @@
     <!-- </div> -->
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <span class="cm-list-{level} task-list-item-text"
-      >{@html item.rawHTML}</span>
+      >{@html taskHTML}</span>
   </div>
   <span class="prio-level no-select">{targetPriority ?? '\u2007'}</span>
 </li>

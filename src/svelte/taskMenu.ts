@@ -3,7 +3,9 @@ import {Menu, Notice, TFile, type App} from 'obsidian'
 import type {TodoItem} from 'src/_types'
 import {
   ensureTaskBlockRef,
+  getTaskDisplayText,
   navToFile,
+  renderTaskHTML,
   setTodoDate,
   setTodoPriority,
   toggleTodoItem,
@@ -40,13 +42,14 @@ export const openTaskContextMenu = (
 ) => {
   e.preventDefault()
   const menu = new Menu()
-  const plainText = cleanTaskAlias(item.rawHTML) || item.displayText
+  const displayText = getTaskDisplayText(item, priorityTag, dateTag)
+  const plainText = cleanTaskAlias(renderTaskHTML(item, app, priorityTag, dateTag)) || displayText
 
   menu.addItem(i =>
     i
       .setTitle('Copy task text')
       .setIcon('copy')
-      .onClick(() => copyToClipboard(item.displayText)),
+      .onClick(() => copyToClipboard(displayText)),
   )
   menu.addItem(i =>
     i
@@ -59,7 +62,7 @@ export const openTaskContextMenu = (
       .setTitle('Copy as markdown')
       .setIcon('clipboard-list')
       .onClick(() =>
-        copyToClipboard(`- [${item.checked ? 'x' : ' '}] ${item.originalText}`, 'Markdown copied'),
+        copyToClipboard(`- [${item.taskStatus}] ${item.originalText}`, 'Markdown copied'),
       ),
   )
   menu.addItem(i =>

@@ -27,10 +27,6 @@ export type TodoItem = {
   spacesIndented: number
   fileInfo: FileInfo
   originalText: string
-  rawHTML: string
-  // Plain markdown text as shown in the panel: checkbox marker, block ref,
-  // priority tag, date tag and the main todo tag stripped; other tags + formatting kept.
-  displayText: string
   priority?: number
   blockPriority?: number
   blockTagLine?: number

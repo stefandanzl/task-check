@@ -63,7 +63,6 @@ export const parseTodos = async (
   lastRerender: number,
   priorityTag: string,
   dateTag: string,
-  app: App,
 ): Promise<Map<TFile, TodoItem[]>> => {
   const includePattern = includeFiles.trim()
     ? includeFiles.trim().split('\n')
@@ -107,7 +106,7 @@ export const parseTodos = async (
           frontmatterTag: todoTags.length ? frontMatterTags[0] : undefined,
         }
 
-        let todos = findAllTodosInFile(fileInfo, priorityTag, dateTag, app)
+        let todos = findAllTodosInFile(fileInfo, priorityTag, dateTag)
         if (!showChecked) todos = todos.filter(todo => !todo.checked)
         todosForUpdatedFiles.set(file, todos)
       })
@@ -218,9 +217,9 @@ export const ensureTaskBlockRef = async (item: TodoItem, app: App): Promise<stri
   return id
 }
 
-const findAllTodosInFile = (fileInfo: FileInfo, priorityTag: string, dateTag: string, app?: App): TodoItem[] => {
+const findAllTodosInFile = (fileInfo: FileInfo, priorityTag: string, dateTag: string): TodoItem[] => {
   if (!fileInfo.parseEntireFile)
-    return fileInfo.validTags.flatMap(tag => findAllTodosFromTagBlock(fileInfo, tag, priorityTag, dateTag, app))
+    return fileInfo.validTags.flatMap(tag => findAllTodosFromTagBlock(fileInfo, tag, priorityTag, dateTag))
 
   if (!fileInfo.content) return []
   const fileLines = getAllLinesFromFile(fileInfo.content)
@@ -240,13 +239,13 @@ const findAllTodosInFile = (fileInfo: FileInfo, priorityTag: string, dateTag: st
     const line = fileLines[lineNum]
     if (!line) continue
 
-    todos.push(formTodo(line, fileInfo, lineNum, listItem.task, tagMeta, priorityTag, dateTag, app))
+    todos.push(formTodo(line, fileInfo, lineNum, listItem.task, tagMeta, priorityTag, dateTag))
   }
 
   return todos
 }
 
-const findAllTodosFromTagBlock = (file: FileInfo, tag: TagCache, priorityTag: string, dateTag: string, app?: App) => {
+const findAllTodosFromTagBlock = (file: FileInfo, tag: TagCache, priorityTag: string, dateTag: string) => {
   if (!file.content) return []
   const fileLines = getAllLinesFromFile(file.content)
   const tagMeta = getTagMeta(tag.tag)
@@ -264,7 +263,7 @@ const findAllTodosFromTagBlock = (file: FileInfo, tag: TagCache, priorityTag: st
   if (!tagLine) return []
 
   if (sameLineItem) {
-      return [formTodo(tagLine, file, tagLineNum, sameLineItem.task, tagMeta, priorityTag, dateTag, app)]
+      return [formTodo(tagLine, file, tagLineNum, sameLineItem.task, tagMeta, priorityTag, dateTag)]
   }
 
 
@@ -288,7 +287,7 @@ const findAllTodosFromTagBlock = (file: FileInfo, tag: TagCache, priorityTag: st
       const content = line.match(/- \[.\]\s(.*)/)?.[1];
       if (content.trim().length !== 0) {
         // Found a task - add it and continue
-        todos.push(formTodo(line, file, currentLine, taskOnLine.task, tagMeta, priorityTag, dateTag, app, blockPriority, blockTagLine))
+        todos.push(formTodo(line, file, currentLine, taskOnLine.task, tagMeta, priorityTag, dateTag, blockPriority, blockTagLine))
       }
     } else if (line.trim().length === 0) {
       // Empty line - stop processing (end of block)
@@ -376,6 +375,25 @@ processed = processed.replace(/^\s*<p>([\s\S]*)<\/p>\s*$/, "$1")
   return processed
 }
 
+/**
+ * The task text as shown in the panel: the main todo tag, priority tag, date
+ * tag and any trailing block reference stripped; other tags + markdown
+ * formatting kept. Computed on demand (not at parse time) so the markdown
+ * pipeline only runs for tasks that are actually displayed or copied.
+ */
+export const getTaskDisplayText = (item: TodoItem, priorityTag: string, dateTag: string): string => {
+  let text = item.originalText
+  if (item.mainTag) text = removeTagFromText(text, item.mainTag)
+  if (priorityTag) text = removePriorityTagFromText(text, priorityTag)
+  if (dateTag) text = removeDateTagFromText(text, dateTag)
+  return splitBlockRef(text).body
+}
+
+/** Full HTML rendering of a task's display text (runs preprocessMarkdown + marked). */
+export const renderTaskHTML = (item: TodoItem, app: App, priorityTag: string, dateTag: string): string => {
+  return preprocessMarkdown(getTaskDisplayText(item, priorityTag, dateTag), app.metadataCache, item.filePath)
+}
+
 const formTodo = (
   line: string,
   file: FileInfo,
@@ -384,22 +402,15 @@ const formTodo = (
   tagMeta?: TagMeta,
   priorityTag?: string,
   dateTag?: string,
-  app?: App,
   blockPriority: number | undefined = undefined,
   blockTagLine: number | undefined = undefined
 ): TodoItem => {
   const rawText = extractTextFromTodoLine(line)
   const spacesIndented = getIndentationSpacesFromTodoLine(line)
-  const tagStripped = removeTagFromText(rawText, tagMeta?.main)
   const linePriority = priorityTag ? parsePriorityTag(rawText, priorityTag) : undefined
   const priority =  (linePriority !== undefined) ? linePriority : blockPriority
   const lineDate = dateTag ? parseDateTag(rawText, dateTag) : undefined
   const dateCategory = lineDate ? getDateCategory(lineDate) : undefined
-  const displayText = priorityTag ? removePriorityTagFromText(tagStripped, priorityTag) : tagStripped
-  const displayTextWithDate = dateTag ? removeDateTagFromText(displayText, dateTag) : displayText
-  // Hide any trailing block reference (^id) from the rendered text.
-  const displayTextNoRef = splitBlockRef(displayTextWithDate).body
-  const rawHTML = app ? preprocessMarkdown(displayTextNoRef, app.metadataCache, file.file.path) : displayTextNoRef
 
   // Use the task status from cache - no fallback needed since we only call this for actual tasks
   const checked = DONE_TASK_SYMBOLS.has(taskStatus)
@@ -414,8 +425,6 @@ const formTodo = (
     fileLabel: getFileLabelFromName(file.file.name),
     fileCreatedTs: file.file.stat.ctime,
     fileModifiedTs: file.file.stat.mtime,
-    rawHTML,
-    displayText: displayTextNoRef,
     line: lineNum,
     spacesIndented,
     fileInfo: file,

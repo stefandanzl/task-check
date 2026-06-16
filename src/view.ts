@@ -230,7 +230,6 @@ export default class TodoListView extends ItemView {
       this.lastRerender,
       this.plugin.getSettingValue('priorityTag'),
       this.plugin.getSettingValue('dateTag'),
-      this.app,
     )
     for (const [file, todos] of todosForUpdatedFiles) {
       this.itemsByFile.set(file.path, todos)
