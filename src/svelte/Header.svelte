@@ -133,6 +133,9 @@
   }
 
   function openResultsMenu(e: MouseEvent) {
+    e.stopPropagation()
+    e.stopImmediatePropagation()
+
     const menu = new Menu()
     menu.addItem(item =>
       item

@@ -27,7 +27,7 @@ export default class TodoListView extends ItemView {
   private lastRerender = 0
   public groupedItems: TodoGroup[] = []
   public itemsByFile = new Map<string, TodoItem[]>()
-  private parsedSearch: {textTerms: string[][]; dateFilters: DateFilter[]; priorityFilters: PriorityFilter[]} = {textTerms: [], dateFilters: [], priorityFilters: []}
+  private parsedSearch: {textTerms: string[][]; negatedTerms: string[]; dateFilters: DateFilter[]; priorityFilters: PriorityFilter[]} = {textTerms: [], negatedTerms: [], dateFilters: [], priorityFilters: []}
   private searchInputRef: HTMLInputElement | null = null
   private isRefreshing = false
 
@@ -237,8 +237,8 @@ export default class TodoListView extends ItemView {
     }
   }
 
-  private parseSearchQuery(query: string): { textTerms: string[][], dateFilters: DateFilter[], priorityFilters: PriorityFilter[] } {
-    if (!query.trim()) return { textTerms: [], dateFilters: [], priorityFilters: [] }
+  private parseSearchQuery(query: string): { textTerms: string[][], negatedTerms: string[], dateFilters: DateFilter[], priorityFilters: PriorityFilter[] } {
+    if (!query.trim()) return { textTerms: [], negatedTerms: [], dateFilters: [], priorityFilters: [] }
 
     const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
     const dateTag = this.plugin.getSettingValue('dateTag')
@@ -278,25 +278,33 @@ export default class TodoListView extends ItemView {
     }
     console.log('Remaining query:', remainingQuery)
 
-    // Process remaining text search normally
+    // Process remaining text search normally. A leading "-" negates a term:
+    // "-foo" and -"foo bar" exclude items that contain that term/phrase.
     const textTerms: string[][] = []
+    const negatedTerms: string[] = []
     const orGroups = remainingQuery.split(/\s+OR\s+/i)
 
     for (const group of orGroups) {
       const andTerms: string[] = []
 
-      const quotedRegex = /"([^"]+)"/g
+      const quotedRegex = /(-?)"([^"]+)"/g
       let match: RegExpExecArray | null
       let remaining = group
 
       while ((match = quotedRegex.exec(group)) !== null) {
-        andTerms.push(match[1].toLowerCase())
+        const phrase = match[2].toLowerCase()
+        if (match[1] === '-') negatedTerms.push(phrase)
+        else andTerms.push(phrase)
         remaining = remaining.replace(match[0], '')
       }
 
       const remainingTerms = remaining.split(/\s+AND\s+|\s+/i).filter(t => t.trim())
       for (const term of remainingTerms) {
-        andTerms.push(term.toLowerCase())
+        if (term.startsWith('-') && term.length > 1) {
+          negatedTerms.push(term.slice(1).toLowerCase())
+        } else {
+          andTerms.push(term.toLowerCase())
+        }
       }
 
       if (andTerms.length > 0) {
@@ -304,7 +312,7 @@ export default class TodoListView extends ItemView {
       }
     }
 
-    return { textTerms: textTerms.length > 0 ? textTerms : [], dateFilters, priorityFilters }
+    return {textTerms: textTerms.length > 0 ? textTerms : [], negatedTerms, dateFilters, priorityFilters}
   }
 
   private parseDateOperator(match: string, value: string, dateTag: string): DateFilter | null {
@@ -511,20 +519,21 @@ export default class TodoListView extends ItemView {
     }
   }
 
-  private itemMatchesSearch(item: TodoItem, searchTerms: string[], dateFilters: DateFilter[]): boolean {
+  private itemContainsText(item: TodoItem, term: string): boolean {
     const lowerText = item.originalText.toLowerCase()
     const lowerMainTag = item.mainTag?.toLowerCase() ?? ''
     const lowerSubTag = item.subTag?.toLowerCase() ?? ''
     const combined = item.mainTag && item.subTag ? `#${item.mainTag}/${item.subTag}`.toLowerCase() : ''
-
-    const textMatch = searchTerms.every(
-      term =>
-        lowerText.includes(term) ||
-        lowerMainTag.includes(term) ||
-        lowerSubTag.includes(term) ||
-        combined.includes(term),
+    return (
+      lowerText.includes(term) ||
+      lowerMainTag.includes(term) ||
+      lowerSubTag.includes(term) ||
+      combined.includes(term)
     )
+  }
 
+  private itemMatchesSearch(item: TodoItem, searchTerms: string[], dateFilters: DateFilter[]): boolean {
+    const textMatch = searchTerms.every(term => this.itemContainsText(item, term))
     const dateMatch = dateFilters.every(filter => this.itemMatchesDateFilter(item, filter))
 
     return textMatch && dateMatch
@@ -538,12 +547,13 @@ export default class TodoListView extends ItemView {
       ? flattenedItems.filter(i => i.filePath === openFile.path)
       : flattenedItems
 
-    const { textTerms, dateFilters, priorityFilters } = this.parsedSearch
+    const { textTerms, negatedTerms, dateFilters, priorityFilters } = this.parsedSearch
     // console.log('Parsed search - textTerms:', textTerms, 'dateFilters:', dateFilters, 'priorityFilters:', priorityFilters)
 
     const searchedItems = filteredItems.filter(e => {
       if (!dateFilters.every(filter => this.itemMatchesDateFilter(e, filter))) return false
       if (!priorityFilters.every(filter => this.itemMatchesPriorityFilter(e, filter))) return false
+      if (negatedTerms.some(term => this.itemContainsText(e, term))) return false
       if (textTerms.length === 0) return true
       return textTerms.some(andTerms => this.itemMatchesSearch(e, andTerms, []))
     })
