@@ -25,7 +25,6 @@ export type TodoItem = {
   subTag?: string
   line: number
   spacesIndented: number
-  fileInfo: FileInfo
   originalText: string
   priority?: number
   blockPriority?: number

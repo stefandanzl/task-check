@@ -150,8 +150,6 @@ export const getIndentationSpacesFromTodoLine = (line: string) =>
   /^(\s*)([\-\*]|[0-9]+\.)\s\[(.{1})\]\s{1,4}(\S+)/.exec(line)?.[1]?.length ?? 0
 export const todoLineIsChecked = (line: string) =>
   /^(\s|\>)*([\-\*]|[0-9]+\.)\s\[(\S{1})\]/.test(line)
-export const getFileLabelFromName = (filename: string) =>
-  /^(.+)\.md$/.exec(filename)?.[1]
 
 export const sortGenericItemsInplace = <
   T extends TodoItem | TodoGroup,
