@@ -204,8 +204,10 @@
   // Check if the source priority level has only one task
   const sourceHasSingleTask = $derived((() => {
     if (!$dragState.inProgress || $dragState.sourcePriority === null) return false
-    const sourceKey = $dragState.sourcePriority === 0 ? null : $dragState.sourcePriority
-    const items = groupedTodos?.get(sourceKey)
+    // Neutral (prio 0) keeps its upper/lower drop zones visible even when it's
+    // the only item, so you can still drop it into a positive/negative zone.
+    if ($dragState.sourcePriority === 0) return false
+    const items = groupedTodos?.get($dragState.sourcePriority)
     return items?.length === 1
   })())
 
@@ -216,10 +218,30 @@
     return sortedKeys.indexOf(sourceKey)
   })())
 
+  // True when there's at least one unoccupied priority level strictly between
+  // the source priority and 0. In that case dropping adjacent to the lone item
+  // is a meaningful move (not a redundant same-priority drop), so we keep the
+  // adjacent drop zones visible.
+  const hasEmptySlotToNeutral = $derived((() => {
+    const sp = $dragState.sourcePriority
+    if (!sp) return false
+    const occupied = new Set<number>()
+    for (const t of group.todos) {
+      const p = t.priority ?? 0
+      if (p !== 0) occupied.add(p)
+    }
+    if (sp > 0) {
+      for (let p = 1; p < sp; p++) if (!occupied.has(p)) return true
+    } else {
+      for (let p = -1; p > sp; p--) if (!occupied.has(p)) return true
+    }
+    return false
+  })())
+
   // Create an array indicating whether each gap should be hidden
   // Gap i is between sortedKeys[i-1] and sortedKeys[i] (or above sortedKeys[0] if i=0)
   const hiddenGaps = $derived((() => {
-    if (!sourceHasSingleTask || sourceIndex === -1) return []
+    if (!sourceHasSingleTask || hasEmptySlotToNeutral || sourceIndex === -1) return []
     const result: boolean[] = []
     for (let i = 0; i <= sortedKeys.length; i++) {
       result.push(i === sourceIndex || i === sourceIndex + 1)
