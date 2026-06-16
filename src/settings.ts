@@ -1,7 +1,7 @@
 import {App, PluginSettingTab, type SettingDefinitionItem} from 'obsidian'
 
 import type TodoPlugin from './main'
-import {TagModal} from './addTagModal'
+import {InputModal} from './InputModal'
 import type {GroupByType, SortDirection} from './_types'
 
 export interface TodoSettings {
@@ -87,9 +87,10 @@ export class TodoSettingTab extends PluginSettingTab {
   }
 
   private openAddTagModal(): void {
-    new TagModal(this.app, {
+    new InputModal(this.app, {
       title: 'Add tag',
       ctaLabel: 'Add',
+      type: 'text',
       onSubmit: async value => {
         const tags = [...this.tags]
         if (!tags.includes(value)) tags.push(value)
@@ -100,9 +101,10 @@ export class TodoSettingTab extends PluginSettingTab {
   }
 
   private openEditTagModal(index: number): void {
-    new TagModal(this.app, {
+    new InputModal(this.app, {
       title: 'Edit tag',
       ctaLabel: 'Save',
+      type: 'text',
       initialValue: this.tags[index],
       onSubmit: async value => {
         const tags = [...this.tags]

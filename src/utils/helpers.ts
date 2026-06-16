@@ -22,6 +22,15 @@ export const removeTagFromText = (text: string, tag: string) => {
   return text.replace(new RegExp(`\\s?\\#${tag}[^\\s]*`, 'g'), '').trim()
 }
 
+// Splits a trailing Obsidian block reference (^id) off a line's text so tag
+// add/remove can operate on the body and re-append the ref (block refs must
+// stay at the very end of the line).
+export const splitBlockRef = (text: string): {body: string; ref: string} => {
+  if (!text) return {body: '', ref: ''}
+  const m = text.match(/^([\s\S]*?)(\s*\^[A-Za-z0-9_-]+)\s*$/)
+  return m ? {body: m[1], ref: m[2]} : {body: text, ref: ''}
+}
+
 export const parsePriorityTag = (text: string, priorityTagName: string): number | undefined => {
   if (!text || !priorityTagName) return undefined
   const priorityRegex = new RegExp(`\\s#${priorityTagName}/(-?\\d+)`)
@@ -36,13 +45,15 @@ export const parsePriorityTag = (text: string, priorityTagName: string): number 
 
 export const removePriorityTagFromText = (text: string, priorityTagName: string): string => {
   if (!text || !priorityTagName) return text
-  return text.replace(new RegExp(`\\s+#${priorityTagName}/-?\\d+`), '').trim()
+  const {body, ref} = splitBlockRef(text)
+  return `${body.replace(new RegExp(`\\s+#${priorityTagName}/-?\\d+`), '').trim()}${ref}`
 }
 
 export const addPriorityTagToText = (text: string, priorityTagName: string, priority: number): string => {
   if (!text || !priorityTagName) return text
-  const cleanedText = removePriorityTagFromText(text, priorityTagName)
-  return `${cleanedText} #${priorityTagName}/${priority}`
+  const {body, ref} = splitBlockRef(text)
+  const cleanedText = removePriorityTagFromText(body, priorityTagName)
+  return `${cleanedText} #${priorityTagName}/${priority}${ref}`
 }
 
 // Date parsing functions
@@ -60,14 +71,16 @@ export const parseDateTag = (text: string, dateTagName: string): Date | undefine
 
 export const removeDateTagFromText = (text: string, dateTagName: string): string => {
   if (!text || !dateTagName) return text
-  return text.replace(new RegExp(`\\s+#${dateTagName}/\\d{4}-\\d{2}-\\d{2}`), '').trim()
+  const {body, ref} = splitBlockRef(text)
+  return `${body.replace(new RegExp(`\\s+#${dateTagName}/\\d{4}-\\d{2}-\\d{2}`), '').trim()}${ref}`
 }
 
 export const addDateTagToText = (text: string, dateTagName: string, date: Date): string => {
   if (!text || !dateTagName) return text
-  const cleanedText = removeDateTagFromText(text, dateTagName)
+  const {body, ref} = splitBlockRef(text)
+  const cleanedText = removeDateTagFromText(body, dateTagName)
   const dateStr = date.toISOString().split('T')[0] // YYYY-MM-DD format
-  return `${cleanedText} #${dateTagName}/${dateStr}`
+  return `${cleanedText} #${dateTagName}/${dateStr}${ref}`
 }
 
 export const getDateCategory = (date: Date): DateCategory => {

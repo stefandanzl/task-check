@@ -20,9 +20,11 @@ import {
   retrieveTag,
   removeTagFromText,
   setLineTo,
+  splitBlockRef,
   parseDateTag,
   getDateCategory,
   removeDateTagFromText,
+  addDateTagToText,
 } from './helpers'
 import { DONE_TASK_SYMBOLS } from '../constants'
 
@@ -172,6 +174,48 @@ export const setTodoPrioritiesBatch = async (
 
     await app.vault.modify(file, combineFileLines(lines))
   }
+}
+
+export const setTodoDate = async (
+  item: TodoItem,
+  newDate: Date | null,
+  dateTag: string,
+  app: App,
+) => {
+  const file = getFileFromPath(app.vault, item.filePath)
+  if (!file) return
+  const lines = getAllLinesFromFile(await app.vault.cachedRead(file))
+  const currentLine = lines[item.line]
+  if (!currentLine || !currentLine.includes(item.originalText)) return
+  const rawText = extractTextFromTodoLine(currentLine)
+  const newText =
+    newDate === null ? removeDateTagFromText(rawText, dateTag) : addDateTagToText(rawText, dateTag, newDate)
+  lines[item.line] = currentLine.replace(rawText, newText)
+  item.date = newDate ?? undefined
+  await app.vault.modify(file, combineFileLines(lines))
+}
+
+const BLOCK_ID_CHARS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+const generateBlockId = (len = 6): string => {
+  let s = ''
+  for (let i = 0; i < len; i++) s += BLOCK_ID_CHARS[Math.floor(Math.random() * BLOCK_ID_CHARS.length)]
+  return s
+}
+
+// Ensures the task's line has a trailing ^blockId (generating one if missing,
+// which writes to the file) and returns the id, for building block-reference links.
+export const ensureTaskBlockRef = async (item: TodoItem, app: App): Promise<string | null> => {
+  const file = getFileFromPath(app.vault, item.filePath)
+  if (!file) return null
+  const lines = getAllLinesFromFile(await app.vault.read(file))
+  const line = lines[item.line]
+  if (!line) return null
+  const existing = line.match(/\s\^([A-Za-z0-9_-]+)\s*$/)
+  if (existing) return existing[1]
+  const id = generateBlockId()
+  lines[item.line] = `${line.replace(/\s+$/, '')} ^${id}`
+  await app.vault.modify(file, combineFileLines(lines))
+  return id
 }
 
 const findAllTodosInFile = (fileInfo: FileInfo, priorityTag: string, dateTag: string, app?: App): TodoItem[] => {
@@ -353,7 +397,9 @@ const formTodo = (
   const dateCategory = lineDate ? getDateCategory(lineDate) : undefined
   const displayText = priorityTag ? removePriorityTagFromText(tagStripped, priorityTag) : tagStripped
   const displayTextWithDate = dateTag ? removeDateTagFromText(displayText, dateTag) : displayText
-  const rawHTML = app ? preprocessMarkdown(displayTextWithDate, app.metadataCache, file.file.path) : displayTextWithDate
+  // Hide any trailing block reference (^id) from the rendered text.
+  const displayTextNoRef = splitBlockRef(displayTextWithDate).body
+  const rawHTML = app ? preprocessMarkdown(displayTextNoRef, app.metadataCache, file.file.path) : displayTextNoRef
 
   // Use the task status from cache - no fallback needed since we only call this for actual tasks
   const checked = DONE_TASK_SYMBOLS.has(taskStatus)

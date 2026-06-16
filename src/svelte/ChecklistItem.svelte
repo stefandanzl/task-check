@@ -2,6 +2,8 @@
   import type {App} from 'obsidian'
   import type {TodoItem} from 'src/_types'
   import {navToFile, toggleTodoItem} from 'src/utils'
+  import {priorityTagStore, dateTagStore} from './viewStore'
+  import {openTaskContextMenu} from './taskMenu'
 
   let {
     item,
@@ -18,6 +20,10 @@
     ondragstart?: (e: DragEvent) => void
     ondragend?: (e: DragEvent) => void
   } = $props()
+
+  const handleContextMenu = (e: MouseEvent) => {
+    openTaskContextMenu(item, app, e, $priorityTagStore, $dateTagStore)
+  }
 
   // 1 = top-level, 2 = once-indented, ...
   const level = $derived(item.spacesIndented + 1)
@@ -46,7 +52,7 @@
 
 <!-- svelte-ignore a11y_click_events_have_key_events -->
 <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-<li class="checklist-item" onclick={handleClick}>
+<li class="checklist-item" onclick={handleClick} oncontextmenu={handleContextMenu}>
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <div
     class="cm-active HyperMD-list-line HyperMD-list-line-{level} cm-line task-list-item-line"

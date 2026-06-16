@@ -55,3 +55,17 @@
   user-select: none;
   -webkit-user-select: none;
 }
+
+/* Show spinner arrows on the priority modal's number input */
+.taskcheck-number-input::-webkit-outer-spin-button,
+.taskcheck-number-input::-webkit-inner-spin-button {
+  -webkit-appearance: auto !important;
+  opacity: 0.4 !important;
+  display: block !important;
+  height: auto !important;
+}
+.taskcheck-number-input {
+  -moz-appearance: auto !important;
+  -webkit-appearance: auto !important;
+  appearance: auto !important;
+}
