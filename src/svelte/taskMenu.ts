@@ -1,4 +1,4 @@
-import {Menu, Notice, type App} from 'obsidian'
+import {Menu, Notice, TFile, type App} from 'obsidian'
 
 import type {TodoItem} from 'src/_types'
 import {
@@ -8,12 +8,22 @@ import {
   setTodoPriority,
   toggleTodoItem,
 } from 'src/utils'
-import {splitBlockRef} from 'src/utils/helpers'
 import {InputModal} from '../InputModal'
 
 const copyToClipboard = async (text: string, msg = 'Copied') => {
   await navigator.clipboard.writeText(text)
   new Notice(msg)
+}
+
+// Plain readable text for a wikilink alias: rendered text with tags and any
+// link-breaking symbols ([, ], |) stripped, whitespace collapsed.
+const cleanTaskAlias = (html: string): string => {
+  const text = new DOMParser().parseFromString(html, 'text/html').body.textContent ?? ''
+  return text
+    .replace(/#[^\s#]+/g, '')
+    .replace(/[\[\]|]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
 }
 
 /**
@@ -30,12 +40,19 @@ export const openTaskContextMenu = (
 ) => {
   e.preventDefault()
   const menu = new Menu()
+  const plainText = cleanTaskAlias(item.rawHTML) || item.displayText
 
   menu.addItem(i =>
     i
       .setTitle('Copy task text')
       .setIcon('copy')
-      .onClick(() => copyToClipboard(splitBlockRef(item.originalText).body)),
+      .onClick(() => copyToClipboard(item.displayText)),
+  )
+  menu.addItem(i =>
+    i
+      .setTitle('Copy as plain text')
+      .setIcon('text')
+      .onClick(() => copyToClipboard(plainText, 'Plain text copied')),
   )
   menu.addItem(i =>
     i
@@ -52,8 +69,16 @@ export const openTaskContextMenu = (
       .onClick(async () => {
         const id = await ensureTaskBlockRef(item, app)
         if (!id) return
-        const alias = splitBlockRef(item.originalText).body
-        await copyToClipboard(`[[${item.fileLabel}^${id}|${alias}]]`, 'Task link copied')
+        const file = app.vault.getAbstractFileByPath(item.filePath)
+        if (!(file instanceof TFile)) return
+        // sourcePath: the note the link is "stored in". For a clipboard copy we
+        // don't know the destination, so use the active note when it differs
+        // from the target (correct relative links), else the vault root. Never
+        // the target's own path — that would collapse to [[#^id]].
+        const activePath = app.workspace.getActiveFile()?.path
+        const sourcePath = activePath && activePath !== item.filePath ? activePath : ''
+        const link = app.fileManager.generateMarkdownLink(file, sourcePath, `#^${id}`, plainText)
+        await copyToClipboard(link, 'Task link copied')
       }),
   )
 

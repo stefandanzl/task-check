@@ -415,6 +415,7 @@ const formTodo = (
     fileCreatedTs: file.file.stat.ctime,
     fileModifiedTs: file.file.stat.mtime,
     rawHTML,
+    displayText: displayTextNoRef,
     line: lineNum,
     spacesIndented,
     fileInfo: file,
