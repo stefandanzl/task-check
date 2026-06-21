@@ -88,6 +88,15 @@ Based on:
 This snippet combines both of the above snippets and irons out some inconsistencies.
 */
 
+/* State colors — tweak these to recolor the alternate-checkbox states. */
+:root {
+  --taskcheck-state-question: #a99400;
+  --taskcheck-state-important: #e73c4c;
+  --taskcheck-state-information: #3c56e7;
+  --taskcheck-state-forwarded: #e93e7a;
+  --taskcheck-state-scheduled: #4dcc91;
+}
+
 /* Hide a weird tick overlay */
 input[type='checkbox']:checked::after {
   display: none !important;
@@ -144,7 +153,7 @@ input[type='checkbox']:checked::after {
   content: '';
   top: 2px;
   bottom: 2px;
-  background-color: white;
+  background-color: var(--checkbox-marker-color);
   -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 14'%3E%3Cpolygon points='5.5 11.9993304 14 3.49933039 12.5 2 5.5 8.99933039 1.5 4.9968652 0 6.49933039'%3E%3C/polygon%3E%3C/svg%3E");
 }
 /* strikethrough for done tasks */
@@ -154,23 +163,51 @@ input[type='checkbox']:checked::after {
   text-decoration: var(--checklist-done-decoration);
 }
 
-/* SVG chevron right for deferred/scheduled ('- [>]') */
-/* '-' icon */
+/* forwarded ('- [>]') — teal box, chevron right */
+.HyperMD-list-line input[data-task='>']:checked,
+.markdown-preview-view li[data-task='>'] > input[type='checkbox']:checked,
+.checklist-plugin-main input[type='checkbox'][data-task='>']:checked {
+  background-color: var(--taskcheck-state-forwarded);
+}
 .HyperMD-list-line input[data-task='>']:checked::before,
 .markdown-preview-view
   li[data-task='>']
-  > input[type='checkbox']:checked::before {
+  > input[type='checkbox']:checked::before,
+.checklist-plugin-main input[type='checkbox'][data-task='>']:checked::before {
   content: '';
   top: 2px;
   bottom: 2px;
-  background-color: white;
+  background-color: var(--checkbox-marker-color);
   -webkit-mask-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 14 14' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M8.12 7L3.26667 11.76L4.57333 13.0667L10.7333 7L4.57333 0.933332L3.26667 2.24L8.12 7Z'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 14 14' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M8.12 7L3.26667 11.76L4.57333 13.0667L10.7333 7L4.57333 0.933332L3.26667 2.24L8.12 7Z'/%3E%3C/svg%3E");
 }
-/* strikethrough for deferred/scheduled tasks */
 .HyperMD-task-line[data-task='>'],
 .markdown-preview-view ul > li[data-task='>'] {
   color: var(--checklist-done-color);
   text-decoration: var(--checklist-done-decoration);
+}
+
+/* scheduled ('- [<]') — purple box, chevron left */
+.HyperMD-list-line input[data-task='<']:checked,
+.markdown-preview-view li[data-task='<'] > input[type='checkbox']:checked,
+.checklist-plugin-main input[type='checkbox'][data-task='<']:checked {
+  background-color: var(--taskcheck-state-scheduled);
+}
+.HyperMD-list-line input[data-task='<']:checked::before,
+.markdown-preview-view
+  li[data-task='<']
+  > input[type='checkbox']:checked::before,
+.checklist-plugin-main input[type='checkbox'][data-task='<']:checked::before {
+  content: '';
+  top: 2px;
+  bottom: 2px;
+  background-color: var(--checkbox-marker-color);
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 14 14' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M5.88 7L10.73333 11.76L9.42667 13.0667L3.2667 7L9.42667 0.933332L10.73333 2.24L5.88 7Z'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 14 14' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M5.88 7L10.73333 11.76L9.42667 13.0667L3.2667 7L9.42667 0.933332L10.73333 2.24L5.88 7Z'/%3E%3C/svg%3E");
+}
+.HyperMD-task-line[data-task='<'],
+.markdown-preview-view ul > li[data-task='<'] {
+  color: var(--checklist-done-color);
 }
 
 /* SVG line for cancelled/non-task ('- [-]') */
@@ -187,7 +224,7 @@ input[type='checkbox']:checked::after {
   content: '';
   top: 2px;
   bottom: 2px;
-  background-color: white;
+  background-color: var(--checkbox-marker-color);
   -webkit-mask-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 14 14' xmlns='http://www.w3.org/2000/svg'%3E%3Crect x='0.5' y='6.5' width='13' height='1'/%3E%3C/svg%3E");
 }
 /* strikethrough for cancelled tasks */
@@ -201,7 +238,7 @@ input[type='checkbox']:checked::after {
 /* yellow background */
 .HyperMD-list-line input[data-task='?']:checked,
 .markdown-preview-view li[data-task='?'] > input[type='checkbox']:checked {
-  background-color: #a99400;
+  background-color: var(--taskcheck-state-question);
 }
 /* '?' icon */
 .HyperMD-list-line input[data-task='?']:checked::before,
@@ -211,7 +248,7 @@ input[type='checkbox']:checked::after {
   content: '?';
   -webkit-mask-image: none !important;
   mask-image: none !important;
-  background-color: #a99400 !important;
+  background-color: var(--taskcheck-state-question) !important;
 }
 /* normal text */
 .HyperMD-list-line[data-task='?'] span,
@@ -224,7 +261,7 @@ input[type='checkbox']:checked::after {
 /* red background */
 .HyperMD-list-line input[data-task='!']:checked,
 .markdown-preview-view li[data-task='!'] > input[type='checkbox']:checked {
-  background-color: #e73c4c !important;
+  background-color: var(--taskcheck-state-important) !important;
 }
 /* '!' icon */
 .HyperMD-list-line input[data-task='!']:checked::before,
@@ -234,7 +271,7 @@ input[type='checkbox']:checked::after {
   content: '!';
   -webkit-mask-image: none !important;
   mask-image: none !important;
-  background-color: #e73c4c !important;
+  background-color: var(--taskcheck-state-important) !important;
 }
 /* bold text */
 .HyperMD-list-line[data-task='!'] span,
@@ -249,7 +286,7 @@ input[type='checkbox']:checked::after {
 /* blue background */
 .HyperMD-list-line input[data-task='i']:checked,
 .markdown-preview-view li[data-task='i'] > input[type='checkbox']:checked {
-  background-color: #3c56e7 !important;
+  background-color: var(--taskcheck-state-information) !important;
 }
 /* 'i' icon */
 .HyperMD-list-line input[data-task='i']:checked::before,
@@ -259,13 +296,11 @@ input[type='checkbox']:checked::after {
   content: 'i';
   -webkit-mask-image: none !important;
   mask-image: none !important;
-  background-color: #3c56e7 !important;
+  background-color: var(--taskcheck-state-information) !important;
 }
-/* bold text */
+/* normal text */
 .HyperMD-list-line[data-task='i'] span,
 .markdown-preview-view ul > li[data-task='i'] {
   color: var(--text-normal);
   text-decoration: none;
-  font-weight: var(--bold-weight);
-  color: var(--bold-color);
 }
