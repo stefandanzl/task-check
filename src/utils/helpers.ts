@@ -1,6 +1,6 @@
-import {type CachedMetadata, parseFrontMatterTags, TFile, Vault} from 'obsidian'
+import {addIcon, type CachedMetadata, parseFrontMatterTags, TFile, Vault} from 'obsidian'
 
-import {LOCAL_SORT_OPT} from '../constants'
+import {ICON_FRAGMENTS, LOCAL_SORT_OPT, TASK_STATES} from '../constants'
 
 import type {SortDirection, TagMeta, KeysOfType, TodoItem, TodoGroup, DateCategory} from 'src/_types'
 export const isMacOS = () => window.navigator.userAgent.includes('Macintosh')
@@ -139,6 +139,13 @@ export const setLineTo = (line: string, setTo: boolean) =>
     `$1${setTo ? 'x' : ' '}$5`,
   )
 
+/** Set the checkbox marker of a task line to an arbitrary single character. */
+export const setTaskStatusChar = (line: string, char: string) =>
+  line.replace(
+    /^((\s|\>)*([\-\*]|[0-9]+\.)\s\[)([^\]]+)(\].*$)/,
+    (_m, pre: string, _a: string, _b: string, _status: string, post: string) => `${pre}${char}${post}`,
+  )
+
 export const getAllLinesFromFile = (cache: string) => cache.split(/\r?\n/)
 export const combineFileLines = (lines: string[]) => lines.join('\n')
 export const lineIsValidTodo = (line: string) => {
@@ -240,4 +247,14 @@ export const getFileFromPath = (vault: Vault, path: string) => {
   const files = vault.getMarkdownFiles()
   file = files.find(e => e.name === path)
   if (file instanceof TFile) return file
+}
+
+export function buildIcons() {
+  for (const {symbol, label, icon, fragments} of TASK_STATES) {
+    let svgContent = ICON_FRAGMENTS.BRACKETS
+    svgContent += fragments.join('\n  ')
+    // Scale from lucide 24x24 to Obsidian 100x100 
+    svgContent = `<g transform="scale(4.1666)">${svgContent}</g>`;
+    addIcon(icon, svgContent)
+  }
 }

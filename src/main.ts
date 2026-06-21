@@ -5,6 +5,7 @@ import {DEFAULT_SETTINGS, type TodoSettings, TodoSettingTab} from './settings'
 import TodoListView from './view'
 import type {TodoGroup, TodoItem} from './_types'
 import {toggleTodoItem} from './utils'
+import { buildIcons } from './utils/helpers'
 
 export default class TodoPlugin extends Plugin {
   settings!: TodoSettings
@@ -53,6 +54,7 @@ export default class TodoPlugin extends Plugin {
 
   async onload() {
     await this.loadSettings()
+    buildIcons()
 
     this.addSettingTab(new TodoSettingTab(this.app, this))
     this.addCommand({

@@ -8,8 +8,9 @@ import {
   renderTaskHTML,
   setTodoDate,
   setTodoPriority,
-  toggleTodoItem,
+  setTodoStatus,
 } from 'src/utils'
+import {TASK_STATES} from '../constants'
 import {InputModal} from '../InputModal'
 
 const copyToClipboard = async (text: string, msg = 'Copied') => {
@@ -140,12 +141,23 @@ export const openTaskContextMenu = (
   }
 
   menu.addSeparator()
-  menu.addItem(i =>
-    i
-      .setTitle(item.checked ? 'Mark incomplete' : 'Mark complete')
-      .setIcon(item.checked ? 'circle' : 'check-circle')
-      .onClick(() => toggleTodoItem(item, app)),
-  )
+  menu.addItem(i => {
+    i.setTitle('Set state').setIcon('square-check-big')
+    // MenuItem.setSubmenu() exists at runtime but isn't in the typings.
+    const sub = (i as unknown as {setSubmenu: () => Menu}).setSubmenu()
+    for (const state of TASK_STATES) {
+      sub.addItem(si =>
+        si
+          // .setTitle(`[${state.symbol}] ${state.label}`)
+          .setTitle(`${state.label}`)
+          .setIcon(state.icon)
+          .setChecked(item.taskStatus === state.symbol)
+          .onClick(() => setTodoStatus(item, state.symbol, app)),
+      )
+    }
+  })
+
+  menu.addSeparator()
   menu.addItem(i =>
     i
       .setTitle('Open in file')

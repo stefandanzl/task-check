@@ -19,6 +19,7 @@ import {
   retrieveTag,
   removeTagFromText,
   setLineTo,
+  setTaskStatusChar,
   splitBlockRef,
   parseDateTag,
   getDateCategory,
@@ -127,6 +128,19 @@ export const toggleTodoItem = async (item: TodoItem, app: App) => {
   )
   app.vault.modify(file, newData)
   item.checked = !item.checked
+}
+
+// Set a task's checkbox marker to an arbitrary single character (e.g. !, ?, >).
+export const setTodoStatus = async (item: TodoItem, status: string, app: App) => {
+  const file = getFileFromPath(app.vault, item.filePath)
+  if (!file) return
+  const lines = getAllLinesFromFile(await app.vault.cachedRead(file))
+  const currentLine = lines[item.line]
+  if (!currentLine || !currentLine.includes(item.originalText)) return
+  lines[item.line] = setTaskStatusChar(currentLine, status)
+  item.taskStatus = status
+  item.checked = DONE_TASK_SYMBOLS.has(status)
+  await app.vault.modify(file, combineFileLines(lines))
 }
 
 export const setTodoPriority = async (

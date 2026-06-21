@@ -97,8 +97,8 @@
 
   .scroll-top-button {
     position: fixed;
-    width: 34px;
-    height: 34px;
+    width: 42px;
+    height: 42px;
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -120,7 +120,7 @@
   }
 
   .scroll-top-button svg {
-    width: 18px;
-    height: 18px;
+    width: 24px;
+    height: 24px;
   }
 </style>
