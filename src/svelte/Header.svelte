@@ -1,5 +1,5 @@
 <script lang="ts">
-  import {getIcon, Notice, Menu} from 'obsidian'
+  import {getIcon, Menu, Notice, type App} from 'obsidian'
   import type {TodoSettings} from 'src/settings'
   import type {GroupMode} from 'src/_types'
   import {
@@ -14,8 +14,10 @@
     dateTagStore,
     groupModeStore,
   } from './viewStore'
+  import {undoLast, undoState} from '../undo'
 
   let {
+    app,
     onTagStatusChange,
     onSearch,
     onCopyTasks = () => '',
@@ -24,6 +26,7 @@
     restoreLastSearch,
     lastSearchQuery,
   }: {
+    app: App
     onTagStatusChange: (tag: string, status: boolean) => void
     onSearch: (str: string) => void
     onCopyTasks?: () => string
@@ -290,6 +293,16 @@
           aria-label="Clear search">
         </div>
       {/if}
+    </div>
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <div
+      class="clickable-icon {$undoState.count ? '' : 'is-disabled'}"
+      role="button"
+      tabindex="{$undoState.count ? 0 : -1}"
+      aria-label={`Undo${$undoState.label ? ' · ' + $undoState.label : ''}`}
+      aria-disabled={!$undoState.count}
+      onclick={() => $undoState.count && undoLast(app, true)}>
+      {@html getIcon('undo-2')?.outerHTML}
     </div>
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <div

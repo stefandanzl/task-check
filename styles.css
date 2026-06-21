@@ -56,6 +56,13 @@
   -webkit-user-select: none;
 }
 
+/* Greyed-out / non-interactive undo button when there's nothing to undo */
+.checklist-plugin-main .clickable-icon.is-disabled {
+  opacity: 0.4;
+  cursor: default;
+  pointer-events: none;
+}
+
 /* Show spinner arrows on the priority modal's number input */
 .taskcheck-number-input::-webkit-outer-spin-button,
 .taskcheck-number-input::-webkit-inner-spin-button {

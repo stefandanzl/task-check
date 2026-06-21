@@ -27,6 +27,7 @@ import {
   addDateTagToText,
 } from './helpers'
 import { DONE_TASK_SYMBOLS } from '../constants'
+import { pushUndo, type UndoChange } from '../undo'
 
 import type {
   App,
@@ -121,6 +122,7 @@ export const toggleTodoItem = async (item: TodoItem, app: App) => {
   const currentFileContents = await app.vault.read(file)
   const currentFileLines = getAllLinesFromFile(currentFileContents)
   if (!currentFileLines[item.line].includes(item.originalText)) return
+  const before = currentFileLines[item.line]
   const newData = setTodoStatusAtLineTo(
     currentFileLines,
     item.line,
@@ -128,6 +130,7 @@ export const toggleTodoItem = async (item: TodoItem, app: App) => {
   )
   app.vault.modify(file, newData)
   item.checked = !item.checked
+  pushUndo({label: 'toggle complete', changes: [{filePath: file.path, line: item.line, before, after: currentFileLines[item.line]}]})
 }
 
 // Set a task's checkbox marker to an arbitrary single character (e.g. !, ?, >).
@@ -137,10 +140,12 @@ export const setTodoStatus = async (item: TodoItem, status: string, app: App) =>
   const lines = getAllLinesFromFile(await app.vault.cachedRead(file))
   const currentLine = lines[item.line]
   if (!currentLine || !currentLine.includes(item.originalText)) return
+  const before = currentLine
   lines[item.line] = setTaskStatusChar(currentLine, status)
   item.taskStatus = status
   item.checked = DONE_TASK_SYMBOLS.has(status)
   await app.vault.modify(file, combineFileLines(lines))
+  pushUndo({label: 'set state', changes: [{filePath: file.path, line: item.line, before, after: lines[item.line]}]})
 }
 
 export const setTodoPriority = async (
@@ -163,6 +168,7 @@ export const setTodoPrioritiesBatch = async (
     byFile.get(u.item.filePath)!.push(u)
   }
 
+  const changes: UndoChange[] = []
   for (const [, fileUpdates] of byFile) {
     const file = getFileFromPath(app.vault, fileUpdates[0].item.filePath)
     if (!file) continue
@@ -175,7 +181,9 @@ export const setTodoPrioritiesBatch = async (
       const newText = newPriority === null
         ? removePriorityTagFromText(rawText, priorityTag)
         : addPriorityTagToText(rawText, priorityTag, newPriority)
+      const before = currentLine
       lines[item.line] = currentLine.replace(rawText, newText)
+      changes.push({filePath: file.path, line: item.line, before, after: lines[item.line]})
       item.priority = newPriority ?? undefined
       item.originalText = newText
 
@@ -186,6 +194,8 @@ export const setTodoPrioritiesBatch = async (
 
     await app.vault.modify(file, combineFileLines(lines))
   }
+
+  if (changes.length) pushUndo({label: 'set priority', changes})
 }
 
 export const setTodoDate = async (
@@ -202,9 +212,11 @@ export const setTodoDate = async (
   const rawText = extractTextFromTodoLine(currentLine)
   const newText =
     newDate === null ? removeDateTagFromText(rawText, dateTag) : addDateTagToText(rawText, dateTag, newDate)
+  const before = currentLine
   lines[item.line] = currentLine.replace(rawText, newText)
   item.date = newDate ?? undefined
   await app.vault.modify(file, combineFileLines(lines))
+  pushUndo({label: 'set due date', changes: [{filePath: file.path, line: item.line, before, after: lines[item.line]}]})
 }
 
 const BLOCK_ID_CHARS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
@@ -225,8 +237,10 @@ export const ensureTaskBlockRef = async (item: TodoItem, app: App): Promise<stri
   const existing = line.match(/\s\^([A-Za-z0-9_-]+)\s*$/)
   if (existing) return existing[1]
   const id = generateBlockId()
+  const before = line
   lines[item.line] = `${line.replace(/\s+$/, '')} ^${id}`
   await app.vault.modify(file, combineFileLines(lines))
+  pushUndo({label: 'copy link (add block id)', changes: [{filePath: file.path, line: item.line, before, after: lines[item.line]}]})
   return id
 }
 

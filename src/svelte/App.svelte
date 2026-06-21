@@ -55,6 +55,7 @@
 
 <div class="checklist-plugin-main markdown-preview-view markdown-source-view is-live-preview mod-cm6 cm-s-obsidian">
   <Header
+    {app}
     onTagStatusChange={updateTagStatus}
     {onSearch}
     onCopyTasks={onCopyTasks || (() => '')}

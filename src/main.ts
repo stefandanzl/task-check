@@ -5,6 +5,7 @@ import {DEFAULT_SETTINGS, type TodoSettings, TodoSettingTab} from './settings'
 import TodoListView from './view'
 import type {TodoGroup, TodoItem} from './_types'
 import {toggleTodoItem} from './utils'
+import {undoLast} from './undo'
 import { buildIcons } from './utils/helpers'
 
 export default class TodoPlugin extends Plugin {
@@ -90,6 +91,14 @@ export default class TodoPlugin extends Plugin {
       name: 'Refresh List',
       callback: () => {
         this.view.refresh()
+      },
+    })
+
+    this.addCommand({
+      id: 'undo-last-task-action',
+      name: 'Undo last task action',
+      callback: () => {
+        void undoLast(this.app, true)
       },
     })
 
