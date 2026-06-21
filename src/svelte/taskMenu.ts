@@ -10,7 +10,7 @@ import {
   setTodoPriority,
   setTodoStatus,
 } from 'src/utils'
-import {TASK_STATES} from '../constants'
+import {DONE_TASK_SYMBOLS, TASK_STATES} from '../constants'
 import {InputModal} from '../InputModal'
 
 const copyToClipboard = async (text: string, msg = 'Copied') => {
@@ -46,44 +46,93 @@ export const openTaskContextMenu = (
   const displayText = getTaskDisplayText(item, priorityTag, dateTag)
   const plainText = cleanTaskAlias(renderTaskHTML(item, app, priorityTag, dateTag)) || displayText
 
+  menu.addItem(i => {
+    i.setTitle('Copy…').setIcon('square-check-big')
+    // MenuItem.setSubmenu() exists at runtime but isn't in the typings.
+    const sub = (i as unknown as {setSubmenu: () => Menu}).setSubmenu()
+
+    sub.addItem(i =>
+      i
+        .setTitle('Copy task text')
+        .setIcon('copy')
+        .onClick(() => copyToClipboard(displayText)),
+    )
+    sub.addItem(i =>
+      i
+        .setTitle('Copy as plain text')
+        .setIcon('text')
+        .onClick(() => copyToClipboard(plainText, 'Plain text copied')),
+    )
+    sub.addItem(i =>
+      i
+        .setTitle('Copy as markdown')
+        .setIcon('clipboard-list')
+        .onClick(() =>
+          copyToClipboard(`- [${item.taskStatus}] ${item.originalText}`, 'Markdown copied'),
+        ),
+    )
+    sub.addItem(i =>
+      i
+        .setTitle('Copy link to task')
+        .setIcon('link')
+        .onClick(async () => {
+          const id = await ensureTaskBlockRef(item, app)
+          if (!id) return
+          const file = app.vault.getAbstractFileByPath(item.filePath)
+          if (!(file instanceof TFile)) return
+          // sourcePath: the note the link is "stored in". For a clipboard copy we
+          // don't know the destination, so use the active note when it differs
+          // from the target (correct relative links), else the vault root. Never
+          // the target's own path — that would collapse to [[#^id]].
+          const activePath = app.workspace.getActiveFile()?.path
+          const sourcePath = activePath && activePath !== item.filePath ? activePath : ''
+          const link = app.fileManager.generateMarkdownLink(file, sourcePath, `#^${id}`, plainText)
+          await copyToClipboard(link, 'Task link copied')
+        }),
+    )
+  })
+
+
+
+
+
+  menu.addSeparator()
+  menu.addItem(i => {
+    i.setTitle('Set state').setIcon('square-check-big')
+    // MenuItem.setSubmenu() exists at runtime but isn't in the typings.
+    const sub = (i as unknown as {setSubmenu: () => Menu}).setSubmenu()
+    for (const state of TASK_STATES) {
+      if (!DONE_TASK_SYMBOLS.has(state.symbol)){
+        sub.addItem(si =>
+          si
+            // .setTitle(`[${state.symbol}] ${state.label}`)
+            .setTitle(`${state.label}`)
+            .setIcon(state.icon)
+            .setChecked(item.taskStatus === state.symbol)
+            .onClick(() => setTodoStatus(item, state.symbol, app)),
+        )
+      }
+    }
+    sub.addSeparator()
+    for (const state of TASK_STATES) {
+      if (DONE_TASK_SYMBOLS.has(state.symbol)){
+        sub.addItem(si =>
+          si
+            // .setTitle(`[${state.symbol}] ${state.label}`)
+            .setTitle(`${state.label}`)
+            .setIcon(state.icon)
+            .setChecked(item.taskStatus === state.symbol)
+            .onClick(() => setTodoStatus(item, state.symbol, app)),
+        )
+      }
+    }
+  })
+
   menu.addItem(i =>
     i
-      .setTitle('Copy task text')
-      .setIcon('copy')
-      .onClick(() => copyToClipboard(displayText)),
-  )
-  menu.addItem(i =>
-    i
-      .setTitle('Copy as plain text')
-      .setIcon('text')
-      .onClick(() => copyToClipboard(plainText, 'Plain text copied')),
-  )
-  menu.addItem(i =>
-    i
-      .setTitle('Copy as markdown')
-      .setIcon('clipboard-list')
-      .onClick(() =>
-        copyToClipboard(`- [${item.taskStatus}] ${item.originalText}`, 'Markdown copied'),
-      ),
-  )
-  menu.addItem(i =>
-    i
-      .setTitle('Copy link to task')
-      .setIcon('link')
-      .onClick(async () => {
-        const id = await ensureTaskBlockRef(item, app)
-        if (!id) return
-        const file = app.vault.getAbstractFileByPath(item.filePath)
-        if (!(file instanceof TFile)) return
-        // sourcePath: the note the link is "stored in". For a clipboard copy we
-        // don't know the destination, so use the active note when it differs
-        // from the target (correct relative links), else the vault root. Never
-        // the target's own path — that would collapse to [[#^id]].
-        const activePath = app.workspace.getActiveFile()?.path
-        const sourcePath = activePath && activePath !== item.filePath ? activePath : ''
-        const link = app.fileManager.generateMarkdownLink(file, sourcePath, `#^${id}`, plainText)
-        await copyToClipboard(link, 'Task link copied')
-      }),
+      .setTitle('Clear state')
+      .setIcon('square') // alternative: task-open
+      .onClick(() => setTodoStatus(item, ' ' , app)),
   )
 
   if (priorityTag) {
@@ -140,22 +189,7 @@ export const openTaskContextMenu = (
     )
   }
 
-  menu.addSeparator()
-  menu.addItem(i => {
-    i.setTitle('Set state').setIcon('square-check-big')
-    // MenuItem.setSubmenu() exists at runtime but isn't in the typings.
-    const sub = (i as unknown as {setSubmenu: () => Menu}).setSubmenu()
-    for (const state of TASK_STATES) {
-      sub.addItem(si =>
-        si
-          // .setTitle(`[${state.symbol}] ${state.label}`)
-          .setTitle(`${state.label}`)
-          .setIcon(state.icon)
-          .setChecked(item.taskStatus === state.symbol)
-          .onClick(() => setTodoStatus(item, state.symbol, app)),
-      )
-    }
-  })
+
 
   menu.addSeparator()
   menu.addItem(i =>

@@ -10,7 +10,7 @@ export type TaskState = {
 }
 
 export const ICON_FRAGMENTS = {
-  DONE: `<path d="M 8,16 16,8 fill="none" stroke="currentColor" /><path d="M 16,16 8,8 fill="none" stroke="currentColor" />`,
+  DONE: `<path d="M 8,16 16,8" fill="none" stroke="currentColor" /><path d="M 16,16 8,8" fill="none" stroke="currentColor" />`,
   EXCLAMATION: `<path d="M12 6v9" fill="none" stroke="currentColor" />`,
   QUESTION: `<path d="M9 9c0-3 3-3 3-3s3 0 3 3-3 3-3 6" fill="none" stroke="currentColor"/>`,
   INFORMATION: `<path d="M 12,18 V 9" fill="none" stroke="currentColor"/>`,
