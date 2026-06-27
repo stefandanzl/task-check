@@ -47,7 +47,7 @@ export const openTaskContextMenu = (
   const plainText = cleanTaskAlias(renderTaskHTML(item, app, priorityTag, dateTag)) || displayText
 
   menu.addItem(i => {
-    i.setTitle('Copy…').setIcon('square-check-big')
+    i.setTitle('Copy…').setIcon('copy-plus')
     // MenuItem.setSubmenu() exists at runtime but isn't in the typings.
     const sub = (i as unknown as {setSubmenu: () => Menu}).setSubmenu()
 

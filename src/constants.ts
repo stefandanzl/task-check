@@ -18,6 +18,7 @@ export const ICON_FRAGMENTS = {
   RIGHT: `<path d="m 8,7 8,5 -8,5" fill="none" stroke="currentColor" />`,
   SLASH: `<path d="M 10,18 14,6" fill="none" stroke="currentColor" />`,
   DASH: `<path d="M8 12h8" fill="none" stroke="currentColor" />`,
+  TODAY: `<path d="M7 6h10" fill="none" stroke="currentColor" /><path d="M12 18V6" fill="none" stroke="currentColor" />`,
   BRACKETS: `<path d="M18 21h3v-18h-3" fill="none" stroke="currentColor" />\n  <path d="M6 3h-3v18h3" fill="none" stroke="currentColor" />`,
   DOT_BOTTOM: `<circle cx="12" cy="18" r="1" fill="currentColor" stroke="none" />`,
   DOT_TOP: `<circle cx="12" cy="6" r="1" fill="currentColor" stroke="none" />`,
@@ -31,6 +32,7 @@ export const ICON_FRAGMENTS = {
 export const TASK_STATES: TaskState[] = [
   {symbol: 'x', label: 'Done', icon: 'task-done', fragments: [ICON_FRAGMENTS.DONE]},
   {symbol: ' ', label: 'Open', icon: 'task-open', fragments: []},
+  {symbol: 'T', label: 'Today', icon: 'task-today', fragments: [ICON_FRAGMENTS.TODAY]},
   {symbol: '!', label: 'Important', icon: 'task-exclamation', fragments: [ICON_FRAGMENTS.EXCLAMATION, ICON_FRAGMENTS.DOT_BOTTOM]},
   {symbol: '?', label: 'Question', icon: 'task-question', fragments: [ICON_FRAGMENTS.QUESTION, ICON_FRAGMENTS.DOT_BOTTOM]},
   {symbol: 'i', label: 'Information', icon: 'task-information', fragments: [ICON_FRAGMENTS.INFORMATION, ICON_FRAGMENTS.DOT_TOP]},

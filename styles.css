@@ -95,6 +95,7 @@ This snippet combines both of the above snippets and irons out some inconsistenc
   --taskcheck-state-information: #3c56e7;
   --taskcheck-state-forwarded: #e93e7a;
   --taskcheck-state-scheduled: #4dcc91;
+  --taskcheck-state-today: #ff7e00;
 }
 
 /* Hide a weird tick overlay */
@@ -301,6 +302,37 @@ input[type='checkbox']:checked::after {
 /* normal text */
 .HyperMD-list-line[data-task='i'] span,
 .markdown-preview-view ul > li[data-task='i'] {
+  color: var(--text-normal);
+  text-decoration: none;
+}
+
+.HyperMD-list-line input[data-task='T']:checked,
+.markdown-preview-view li[data-task='T'] > input[type='checkbox']:checked,
+.HyperMD-list-line input[data-task='t']:checked,
+.markdown-preview-view li[data-task='t'] > input[type='checkbox']:checked {
+  background-color: var(--taskcheck-state-today) !important;
+}
+
+.HyperMD-list-line input[data-task='T']:checked::before,
+.markdown-preview-view
+  li[data-task='T']
+  > input[type='checkbox']:checked::before,
+.HyperMD-list-line input[data-task='t']:checked::before,
+.markdown-preview-view
+  li[data-task='t']
+  > input[type='checkbox']:checked::before {
+  content: '';
+  top: 2px;
+  bottom: 2px;
+  background-color: var(--checkbox-marker-color);
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M 4,3 6,2.6666667 H 18 L 20,3 V 5.3333333 H 13.333333 V 19 L 12,21.333333 10.666667,19 V 5.3333333 H 4 Z'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M 4,3 6,2.6666667 H 18 L 20,3 V 5.3333333 H 13.333333 V 19 L 12,21.333333 10.666667,19 V 5.3333333 H 4 Z'/%3E%3C/svg%3E");
+}
+
+.HyperMD-list-line[data-task='T'] span,
+.markdown-preview-view ul > li[data-task='T'],
+.HyperMD-list-line[data-task='t'] span,
+.markdown-preview-view ul > li[data-task='t'] {
   color: var(--text-normal);
   text-decoration: none;
 }
