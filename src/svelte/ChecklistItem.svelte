@@ -1,6 +1,6 @@
 <script lang="ts">
   import type {App} from 'obsidian'
-  import type {TodoItem} from 'src/_types'
+  import type {TodoItem, DateCategory} from 'src/_types'
   import {navToFile, renderTaskHTML, toggleTodoItem} from 'src/utils'
   import {priorityTagStore, dateTagStore} from './viewStore'
   import {openTaskContextMenu} from './taskMenu'
@@ -32,6 +32,21 @@
   // 1 = top-level, 2 = once-indented, ...
   const level = $derived(item.spacesIndented + 1)
   const indent = $derived(level === 1 ? 31 : 31 + (level - 1) * 36)
+
+  // Due-date pill: shows the urgency category (reused everywhere), colored by
+  // category. The literal date is exposed via aria-label for screen readers.
+  const DATE_CATEGORY_LABEL: Record<DateCategory, string> = {
+    today: 'Today',
+    tomorrow: 'Tomorrow',
+    thisWeek: 'This Week',
+    thisMonth: 'This Month',
+    future: 'Later',
+    overdue: 'Overdue',
+    noDate: '',
+  }
+  const showDatePill = $derived(!!item.date && !!item.dateCategory && item.dateCategory !== 'noDate')
+  const datePillLabel = $derived(item.dateCategory ? DATE_CATEGORY_LABEL[item.dateCategory] : '')
+  const datePillAria = $derived(item.dateTag ?? '')
 
   const handleClick = (ev: MouseEvent) => {
     const t = ev.target as HTMLElement
@@ -91,6 +106,9 @@
     <span class="cm-list-{level} task-list-item-text"
       >{@html taskHTML}</span>
   </div>
+  {#if showDatePill}
+    <span class="date-pill no-select" data-cat={item.dateCategory} aria-label={datePillAria}>{datePillLabel}</span>
+  {/if}
   <span class="prio-level no-select">{targetPriority ?? '\u2007'}</span>
 </li>
 
@@ -118,6 +136,26 @@
     color: var(--color-accent);
     border-radius: 50%;
   }
+
+  /* Due-date urgency pill. Background is driven by [data-cat] so the same
+     category→color mapping can be reused elsewhere. */
+  .date-pill {
+    padding: 1px 6px;
+    margin-inline-end: 2px;
+    font-size: var(--font-smallest);
+    font-weight: 600;
+    line-height: 1.4;
+    color: #fff;
+    border-radius: 999px;
+    white-space: nowrap;
+    background-color: var(--text-faint);
+  }
+  .date-pill[data-cat='overdue'] { background-color: var(--taskcheck-date-overdue); }
+  .date-pill[data-cat='today'] { background-color: var(--taskcheck-date-today); }
+  .date-pill[data-cat='tomorrow'] { background-color: var(--taskcheck-date-tomorrow); }
+  .date-pill[data-cat='thisWeek'] { background-color: var(--taskcheck-date-week); }
+  .date-pill[data-cat='thisMonth'] { background-color: var(--taskcheck-date-month); }
+  .date-pill[data-cat='future'] { background-color: var(--taskcheck-date-future); }
 
   li > .HyperMD-list-line {
     flex: 1;

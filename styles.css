@@ -96,6 +96,17 @@ This snippet combines both of the above snippets and irons out some inconsistenc
   --taskcheck-state-forwarded: #e93e7a;
   --taskcheck-state-scheduled: #4dcc91;
   --taskcheck-state-today: #ff7e00;
+
+  /* Date urgency palette — one base hue per DateCategory, forming a warm→cool
+     urgency ramp (red→orange→yellow→green→blue→gray). Reused by the date pill
+     (ChecklistItem) and the date group headers (ChecklistGroup). Soft tints for
+     backgrounds are derived from these via color-mix so surfaces stay cohesive. */
+  --taskcheck-date-overdue: var(--taskcheck-state-important);
+  --taskcheck-date-today: var(--taskcheck-state-today);
+  --taskcheck-date-tomorrow: var(--taskcheck-state-question);
+  --taskcheck-date-week: var(--taskcheck-state-scheduled);
+  --taskcheck-date-month: var(--taskcheck-state-information);
+  --taskcheck-date-future: var(--taskcheck-state-scheduled);
 }
 
 /* Hide a weird tick overlay */

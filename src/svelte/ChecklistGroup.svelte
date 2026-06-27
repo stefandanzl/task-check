@@ -254,7 +254,7 @@
   <!-- svelte-ignore a11y_click_events_have_key_events -->
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   {#if !(group.type === "priority" && group.todos.length === 0)}
-  <header class={`group-header ${group.type}`} onclick={() => onToggle(group.id)} title="Toggle Group">
+  <header class={`group-header ${group.type}`} data-cat={group.type === 'date' ? (group as DateGroup).dateCategory : undefined} onclick={() => onToggle(group.id)} title="Toggle Group">
     <div class="title no-select" onclick={clickTitle}>
       {#if group.type === "priority"}
         <span class="priority-label">Priority {(group as PriorityGroup).priorityValue}</span>
@@ -460,6 +460,22 @@
     color: var(--inline-title-color);
     font-weight: 600;
   }
+
+  /* Color the date group header by urgency category, using the shared palette.
+     A faint background tint is derived from the same hue via color-mix. */
+  .group-header.date[data-cat='overdue'] .date-label { color: var(--taskcheck-date-overdue); }
+  .group-header.date[data-cat='today'] .date-label { color: var(--taskcheck-date-today); }
+  .group-header.date[data-cat='tomorrow'] .date-label { color: var(--taskcheck-date-tomorrow); }
+  .group-header.date[data-cat='thisWeek'] .date-label { color: var(--taskcheck-date-week); }
+  .group-header.date[data-cat='thisMonth'] .date-label { color: var(--taskcheck-date-month); }
+  .group-header.date[data-cat='future'] .date-label { color: var(--taskcheck-date-future); }
+
+  .group-header.date[data-cat='overdue'] { background-color: color-mix(in srgb, var(--taskcheck-date-overdue) 12%, transparent); }
+  .group-header.date[data-cat='today'] { background-color: color-mix(in srgb, var(--taskcheck-date-today) 12%, transparent); }
+  .group-header.date[data-cat='tomorrow'] { background-color: color-mix(in srgb, var(--taskcheck-date-tomorrow) 12%, transparent); }
+  .group-header.date[data-cat='thisWeek'] { background-color: color-mix(in srgb, var(--taskcheck-date-week) 12%, transparent); }
+  .group-header.date[data-cat='thisMonth'] { background-color: color-mix(in srgb, var(--taskcheck-date-month) 12%, transparent); }
+  .group-header.date[data-cat='future'] { background-color: color-mix(in srgb, var(--taskcheck-date-future) 12%, transparent); }
 
   ul {
     list-style: none;
