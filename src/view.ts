@@ -20,14 +20,14 @@ import {
 
 import type {TodoSettings} from './settings'
 import type TodoPlugin from './main'
-import type {TodoGroup, TodoItem, DateFilter, PriorityFilter} from './_types'
+import type {TodoGroup, TodoItem, DateFilter, PriorityFilter, StatusFilter} from './_types'
 
 export default class TodoListView extends ItemView {
   private _app: ReturnType<typeof mount>
   private lastRerender = 0
   public groupedItems: TodoGroup[] = []
   public itemsByFile = new Map<string, TodoItem[]>()
-  private parsedSearch: {textTerms: string[][]; negatedTerms: string[]; dateFilters: DateFilter[]; priorityFilters: PriorityFilter[]} = {textTerms: [], negatedTerms: [], dateFilters: [], priorityFilters: []}
+  private parsedSearch: {textTerms: string[][]; negatedTerms: string[]; dateFilters: DateFilter[]; priorityFilters: PriorityFilter[]; statusFilters: StatusFilter[]} = {textTerms: [], negatedTerms: [], dateFilters: [], priorityFilters: [], statusFilters: []}
   private searchInputRef: HTMLInputElement | null = null
   private isRefreshing = false
 
@@ -236,8 +236,8 @@ export default class TodoListView extends ItemView {
     }
   }
 
-  private parseSearchQuery(query: string): { textTerms: string[][], negatedTerms: string[], dateFilters: DateFilter[], priorityFilters: PriorityFilter[] } {
-    if (!query.trim()) return { textTerms: [], negatedTerms: [], dateFilters: [], priorityFilters: [] }
+  private parseSearchQuery(query: string): { textTerms: string[][], negatedTerms: string[], dateFilters: DateFilter[], priorityFilters: PriorityFilter[], statusFilters: StatusFilter[] } {
+    if (!query.trim()) return { textTerms: [], negatedTerms: [], dateFilters: [], priorityFilters: [], statusFilters: [] }
 
     const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
     const dateTag = this.plugin.getSettingValue('dateTag')
@@ -245,6 +245,16 @@ export default class TodoListView extends ItemView {
 
     const dateFilters: DateFilter[] = []
     const priorityFilters: PriorityFilter[] = []
+    const statusFilters: StatusFilter[] = []
+
+    // Extract task-status tokens like [!], [x], [ ], [T] (exactly one char inside brackets).
+    // Done FIRST so the space inside "[ ]" survives intact (the text split below runs on whitespace).
+    // A leading "-" negates: -[x] excludes done tasks. Positive tokens combine as OR.
+    const statusRegex = /(-?)\[(.)\]/g
+    let remainingQuery = query.replace(statusRegex, (_match, neg: string, ch: string) => {
+      statusFilters.push({status: ch.toLowerCase(), negated: neg === '-'})
+      return ''
+    })
 
     // Extract date operators BEFORE text splitting.
     // Natural-language words stay literal; the symbol form uses the configured dateTag.
@@ -257,7 +267,7 @@ export default class TodoListView extends ItemView {
     const dateRegex = new RegExp(`(${dateOps.join('|')})\\s*(\\S+)`, 'gi')
 
     console.log('Search query:', query)
-    let remainingQuery = query.replace(dateRegex, (match, operator, value) => {
+    remainingQuery = remainingQuery.replace(dateRegex, (match, operator, value) => {
       console.log('Date match:', match, 'Operator:', operator, 'Value:', value)
       const filter = this.parseDateOperator(operator, value, dateTag)
       console.log('Parsed filter:', filter)
@@ -311,7 +321,7 @@ export default class TodoListView extends ItemView {
       }
     }
 
-    return {textTerms: textTerms.length > 0 ? textTerms : [], negatedTerms, dateFilters, priorityFilters}
+    return {textTerms: textTerms.length > 0 ? textTerms : [], negatedTerms, dateFilters, priorityFilters, statusFilters}
   }
 
   private parseDateOperator(match: string, value: string, dateTag: string): DateFilter | null {
@@ -546,12 +556,19 @@ export default class TodoListView extends ItemView {
       ? flattenedItems.filter(i => i.filePath === openFile.path)
       : flattenedItems
 
-    const { textTerms, negatedTerms, dateFilters, priorityFilters } = this.parsedSearch
+    const { textTerms, negatedTerms, dateFilters, priorityFilters, statusFilters } = this.parsedSearch
     // console.log('Parsed search - textTerms:', textTerms, 'dateFilters:', dateFilters, 'priorityFilters:', priorityFilters)
+
+    const positiveStatusFilters = statusFilters.filter(f => !f.negated)
+    const negatedStatusFilters = statusFilters.filter(f => f.negated)
 
     const searchedItems = filteredItems.filter(e => {
       if (!dateFilters.every(filter => this.itemMatchesDateFilter(e, filter))) return false
       if (!priorityFilters.every(filter => this.itemMatchesPriorityFilter(e, filter))) return false
+      // Positive status filters combine as OR (a task has exactly one status);
+      // negated filters (-[x]) exclude. Comparison is case-insensitive.
+      if (positiveStatusFilters.length > 0 && !positiveStatusFilters.some(f => e.taskStatus.toLowerCase() === f.status)) return false
+      if (negatedStatusFilters.some(f => e.taskStatus.toLowerCase() === f.status)) return false
       if (negatedTerms.some(term => this.itemContainsText(e, term))) return false
       if (textTerms.length === 0) return true
       return textTerms.some(andTerms => this.itemMatchesSearch(e, andTerms, []))

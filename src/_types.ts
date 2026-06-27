@@ -13,6 +13,11 @@ export type PriorityFilter = {
   value: number
 }
 
+export type StatusFilter = {
+  status: string
+  negated: boolean
+}
+
 export type TodoItem = {
   checked: boolean
   taskStatus: string
