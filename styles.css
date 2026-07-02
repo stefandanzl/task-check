@@ -262,12 +262,6 @@ input[type='checkbox']:checked::after {
   mask-image: none !important;
   background-color: var(--taskcheck-state-question) !important;
 }
-/* normal text */
-.HyperMD-list-line[data-task='?'] span,
-.markdown-preview-view ul > li[data-task='?'] {
-  color: var(--text-normal);
-  text-decoration: none;
-}
 
 /* important task ('- [!]') */
 /* red background */
@@ -288,10 +282,7 @@ input[type='checkbox']:checked::after {
 /* bold text */
 .HyperMD-list-line[data-task='!'] span,
 .markdown-preview-view ul > li[data-task='!'] {
-  color: var(--text-normal);
-  text-decoration: none;
   font-weight: var(--bold-weight);
-  color: var(--bold-color);
 }
 
 /* information task ('- [i]') */
@@ -309,12 +300,6 @@ input[type='checkbox']:checked::after {
   -webkit-mask-image: none !important;
   mask-image: none !important;
   background-color: var(--taskcheck-state-information) !important;
-}
-/* normal text */
-.HyperMD-list-line[data-task='i'] span,
-.markdown-preview-view ul > li[data-task='i'] {
-  color: var(--text-normal);
-  text-decoration: none;
 }
 
 .HyperMD-list-line input[data-task='T']:checked,
@@ -338,12 +323,4 @@ input[type='checkbox']:checked::after {
   background-color: var(--checkbox-marker-color);
   -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M 4,3 6,2.6666667 H 18 L 20,3 V 5.3333333 H 13.333333 V 19 L 12,21.333333 10.666667,19 V 5.3333333 H 4 Z'/%3E%3C/svg%3E");
   mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M 4,3 6,2.6666667 H 18 L 20,3 V 5.3333333 H 13.333333 V 19 L 12,21.333333 10.666667,19 V 5.3333333 H 4 Z'/%3E%3C/svg%3E");
-}
-
-.HyperMD-list-line[data-task='T'] span,
-.markdown-preview-view ul > li[data-task='T'],
-.HyperMD-list-line[data-task='t'] span,
-.markdown-preview-view ul > li[data-task='t'] {
-  color: var(--text-normal);
-  text-decoration: none;
 }
