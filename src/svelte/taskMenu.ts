@@ -108,7 +108,7 @@ export const openTaskContextMenu = (
             // .setTitle(`[${state.symbol}] ${state.label}`)
             .setTitle(`${state.label}`)
             .setIcon(state.icon)
-            .setChecked(item.taskStatus === state.symbol)
+            .setChecked(item.taskStatus.toLowerCase() === state.symbol.toLowerCase())
             .onClick(() => setTodoStatus(item, state.symbol, app)),
         )
       }
@@ -121,7 +121,7 @@ export const openTaskContextMenu = (
             // .setTitle(`[${state.symbol}] ${state.label}`)
             .setTitle(`${state.label}`)
             .setIcon(state.icon)
-            .setChecked(item.taskStatus === state.symbol)
+            .setChecked(item.taskStatus.toLowerCase() === state.symbol.toLowerCase())
             .onClick(() => setTodoStatus(item, state.symbol, app)),
         )
       }
