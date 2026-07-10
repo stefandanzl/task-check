@@ -134,6 +134,12 @@ export const openTaskContextMenu = (
       .setIcon('square') // alternative: task-open
       .onClick(() => setTodoStatus(item, ' ' , app)),
   )
+  menu.addItem(i =>
+    i
+      .setTitle('Set done')
+      .setIcon('check')
+      .onClick(() => setTodoStatus(item, 'x', app)),
+  )
 
   if (priorityTag) {
     menu.addSeparator()

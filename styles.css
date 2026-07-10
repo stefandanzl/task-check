@@ -96,6 +96,7 @@ This snippet combines both of the above snippets and irons out some inconsistenc
   --taskcheck-state-forwarded: #e93e7a;
   --taskcheck-state-scheduled: #4dcc91;
   --taskcheck-state-today: #ff7e00;
+  --taskcheck-state-active: #8957e5;
 
   /* Date urgency palette — one base hue per DateCategory, forming a warm→cool
      urgency ramp (red→orange→yellow→green→blue→gray). Reused by the date pill
@@ -331,5 +332,23 @@ body:not(.tasks) .markdown-preview-view ul > li[data-task='-'] {
     background-color: var(--checkbox-marker-color);
     -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M 4,3 6,2.6666667 H 18 L 20,3 V 5.3333333 H 13.333333 V 19 L 12,21.333333 10.666667,19 V 5.3333333 H 4 Z'/%3E%3C/svg%3E");
     mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M 4,3 6,2.6666667 H 18 L 20,3 V 5.3333333 H 13.333333 V 19 L 12,21.333333 10.666667,19 V 5.3333333 H 4 Z'/%3E%3C/svg%3E");
+  }
+}
+
+/* active ('- [*]') — purple, filled cog glyph with a center hole. The gear
+   outline (lucide-settings) and a center circle are combined as two subpaths in
+   one path with fill-rule=evenodd, so the inner circle cuts a hole instead of
+   filling the middle. Read better than a stroke at 16px. */
+.HyperMD-list-line input[data-task='*'],
+.markdown-preview-view li[data-task='*'] > input[type='checkbox'],
+.markdown-preview-view li[data-task='*'] > p > input[type='checkbox'] {
+  &:checked { background-color: var(--taskcheck-state-active) !important; }
+  &:checked::before {
+    content: '';
+    top: 2px;
+    bottom: 2px;
+    background-color: var(--checkbox-marker-color);
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill-rule='evenodd'%3E%3Cpath d='M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z'/%3E%3C/svg%3E");
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill-rule='evenodd'%3E%3Cpath d='M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z'/%3E%3C/svg%3E");
   }
 }
