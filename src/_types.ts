@@ -26,8 +26,7 @@ export type TodoItem = {
   fileLabel: string
   fileCreatedTs: number
   fileModifiedTs: number
-  mainTag?: string
-  subTag?: string
+  taskTags: TagMeta[]
   line: number
   spacesIndented: number
   originalText: string

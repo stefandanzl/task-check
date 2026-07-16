@@ -27,45 +27,62 @@ export const groupTodos = (
   priorityTag: string = '',
 ): TodoGroup[] => {
   const groups: TodoGroup[] = []
+
+  // In tag mode a multi-tag item fans out: one group per registered tag it
+  // carries (so it appears under each of its tags). In page mode it lands in a
+  // single group. Untagged items under tag mode collapse to one '#' group,
+  // matching the previous single-tag behavior.
+  type GroupSpec = {id: string; mainTag?: string; subTag?: string}
+  const specsForItem = (item: TodoItem): GroupSpec[] => {
+    if (groupBy === 'page') return [{id: item.filePath}]
+    if (item.taskTags.length === 0) return [{id: '#'}]
+    return item.taskTags.map(t => ({
+      id: `#${[t.main, t.sub].filter(e => e != null).join('/')}`,
+      mainTag: t.main,
+      subTag: t.sub,
+    }))
+  }
+
   for (const item of items) {
-    const itemKey = groupBy === 'page' ? item.filePath : `#${[item.mainTag, item.subTag].filter(e => e != null).join('/')}`
-    let group = groups.find(g => g.id === itemKey)
-    if (!group) {
-      const newGroup: TodoGroup = {
-        id: itemKey,
-        sortName: '',
-        className: '',
-        type: groupBy,
-        todos: [],
-        oldestCreatedItem: Infinity,
-        newestCreatedItem: 0,
-        oldestModifiedItem: Infinity,
-        newestModifiedItem: 0,
-      }
-
-      if (newGroup.type === 'page') {
-        newGroup.pageName = item.fileLabel
-        newGroup.sortName = item.fileLabel
-        newGroup.className = classifyString(item.fileLabel)
-      } else if (newGroup.type === 'tag') {
-        newGroup.mainTag = item.mainTag
-        newGroup.subTags = item.subTag
-        if (baseTagFirst && !item.subTag) {
-          newGroup.sortName = `0_${item.mainTag}`
-        } else {
-          newGroup.sortName = item.mainTag + (item.subTag ?? '0')
+    for (const spec of specsForItem(item)) {
+      let group = groups.find(g => g.id === spec.id)
+      if (!group) {
+        const newGroup: TodoGroup = {
+          id: spec.id,
+          sortName: '',
+          className: '',
+          type: groupBy,
+          todos: [],
+          oldestCreatedItem: Infinity,
+          newestCreatedItem: 0,
+          oldestModifiedItem: Infinity,
+          newestModifiedItem: 0,
         }
-        newGroup.className = classifyString((newGroup.mainTag ?? '') + (newGroup.subTags ?? ''))
-      }
-      groups.push(newGroup)
-      group = newGroup
-    }
-    if (group.newestCreatedItem < item.fileCreatedTs) group.newestCreatedItem = item.fileCreatedTs
-    if (group.oldestCreatedItem > item.fileCreatedTs) group.oldestCreatedItem = item.fileCreatedTs
-    if (group.newestModifiedItem < item.fileModifiedTs) group.newestModifiedItem = item.fileModifiedTs
-    if (group.oldestModifiedItem > item.fileModifiedTs) group.oldestModifiedItem = item.fileModifiedTs
 
-    pushUniqueByLocation(group.todos, item)
+        if (newGroup.type === 'page') {
+          newGroup.pageName = item.fileLabel
+          newGroup.sortName = item.fileLabel
+          newGroup.className = classifyString(item.fileLabel)
+        } else if (newGroup.type === 'tag') {
+          newGroup.mainTag = spec.mainTag
+          newGroup.subTags = spec.subTag
+          if (baseTagFirst && !spec.subTag) {
+            newGroup.sortName = `0_${spec.mainTag}`
+          } else {
+            newGroup.sortName = spec.mainTag + (spec.subTag ?? '0')
+          }
+          newGroup.className = classifyString((newGroup.mainTag ?? '') + (newGroup.subTags ?? ''))
+        }
+        groups.push(newGroup)
+        group = newGroup
+      }
+      if (group.newestCreatedItem < item.fileCreatedTs) group.newestCreatedItem = item.fileCreatedTs
+      if (group.oldestCreatedItem > item.fileCreatedTs) group.oldestCreatedItem = item.fileCreatedTs
+      if (group.newestModifiedItem < item.fileModifiedTs) group.newestModifiedItem = item.fileModifiedTs
+      if (group.oldestModifiedItem > item.fileModifiedTs) group.oldestModifiedItem = item.fileModifiedTs
+
+      pushUniqueByLocation(group.todos, item)
+    }
   }
 
   const nonEmptyGroups = groups.filter(g => g.todos.length > 0)

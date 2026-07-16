@@ -245,31 +245,59 @@ export const ensureTaskBlockRef = async (item: TodoItem, app: App): Promise<stri
 }
 
 const findAllTodosInFile = (fileInfo: FileInfo, priorityTag: string, dateTag: string): TodoItem[] => {
-  if (!fileInfo.parseEntireFile)
-    return fileInfo.validTags.flatMap(tag => findAllTodosFromTagBlock(fileInfo, tag, priorityTag, dateTag))
+  let todos: TodoItem[]
+  if (!fileInfo.parseEntireFile) {
+    // A task within reach of several registered tag-blocks is emitted once per
+    // tag; dedupeByLine below merges those into one item carrying all its tags.
+    todos = fileInfo.validTags.flatMap(tag => findAllTodosFromTagBlock(fileInfo, tag, priorityTag, dateTag))
+  } else {
+    todos = []
+    if (!fileInfo.content) return todos
+    const fileLines = getAllLinesFromFile(fileInfo.content)
+    const tagMeta = fileInfo.frontmatterTag
+      ? getTagMeta(fileInfo.frontmatterTag)
+      : undefined
 
-  if (!fileInfo.content) return []
-  const fileLines = getAllLinesFromFile(fileInfo.content)
-  const tagMeta = fileInfo.frontmatterTag
-    ? getTagMeta(fileInfo.frontmatterTag)
-    : undefined
+    // Use cached listItems instead of parsing all lines
+    const listItems = fileInfo.cache.listItems ?? []
 
-  // Use cached listItems instead of parsing all lines
-  const listItems = fileInfo.cache.listItems ?? []
-  const todos: TodoItem[] = []
+    for (const listItem of listItems) {
+      // Only process items that have a task property (are tasks)
+      if (listItem.task === undefined) continue
 
-  for (const listItem of listItems) {
-    // Only process items that have a task property (are tasks)
-    if (listItem.task === undefined) continue
+      const lineNum = listItem.position.start.line
+      const line = fileLines[lineNum]
+      if (!line) continue
 
-    const lineNum = listItem.position.start.line
-    const line = fileLines[lineNum]
-    if (!line) continue
-
-    todos.push(formTodo(line, fileInfo, lineNum, listItem.task, tagMeta, priorityTag, dateTag))
+      todos.push(formTodo(line, fileInfo, lineNum, listItem.task, tagMeta, priorityTag, dateTag))
+    }
   }
 
-  return todos
+  return dedupeByLine(todos)
+}
+
+/**
+ * Collapses parser duplicates: one TodoItem per (filePath, line), unioning the
+ * taskTags of every emit that resolved to the same physical task. Other fields
+ * are identical across emits of the same line, so first-wins. This is the fix
+ * for "task shows multiple times when several registered TODO tags match it".
+ */
+const dedupeByLine = (items: TodoItem[]): TodoItem[] => {
+  const byLocation = new Map<string, TodoItem>()
+  for (const item of items) {
+    const key = `${item.filePath}:${item.line}`
+    const existing = byLocation.get(key)
+    if (!existing) {
+      byLocation.set(key, {...item, taskTags: [...item.taskTags]})
+    } else {
+      for (const tag of item.taskTags) {
+        if (!existing.taskTags.some(t => t.main === tag.main && t.sub === tag.sub)) {
+          existing.taskTags.push(tag)
+        }
+      }
+    }
+  }
+  return [...byLocation.values()]
 }
 
 const findAllTodosFromTagBlock = (file: FileInfo, tag: TagCache, priorityTag: string, dateTag: string) => {
@@ -410,7 +438,12 @@ processed = processed.replace(/^\s*<p>([\s\S]*)<\/p>\s*$/, "$1")
  */
 export const getTaskDisplayText = (item: TodoItem, priorityTag: string, dateTag: string): string => {
   let text = item.originalText
-  if (item.mainTag) text = removeTagFromText(text, item.mainTag)
+  // Strip every task tag this item carries. removeTagFromText matches `#main`
+  // followed by any non-space chars, so passing `main` alone also removes the
+  // `/sub` portion. Dedupe mains so shared-main tags don't re-scan.
+  for (const main of new Set(item.taskTags.map(t => t.main).filter(Boolean))) {
+    text = removeTagFromText(text, main)
+  }
   if (priorityTag) text = removePriorityTagFromText(text, priorityTag)
   if (dateTag) text = removeDateTagFromText(text, dateTag)
   return splitBlockRef(text).body
@@ -443,8 +476,7 @@ const formTodo = (
   const checked = DONE_TASK_SYMBOLS.has(taskStatus)
 
   return {
-    mainTag: tagMeta?.main,
-    subTag: tagMeta?.sub,
+    taskTags: tagMeta ? [tagMeta] : [],
     checked,
     taskStatus,
     filePath: file.file.path,

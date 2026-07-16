@@ -530,15 +530,14 @@ export default class TodoListView extends ItemView {
 
   private itemContainsText(item: TodoItem, term: string): boolean {
     const lowerText = item.originalText.toLowerCase()
-    const lowerMainTag = item.mainTag?.toLowerCase() ?? ''
-    const lowerSubTag = item.subTag?.toLowerCase() ?? ''
-    const combined = item.mainTag && item.subTag ? `#${item.mainTag}/${item.subTag}`.toLowerCase() : ''
-    return (
-      lowerText.includes(term) ||
-      lowerMainTag.includes(term) ||
-      lowerSubTag.includes(term) ||
-      combined.includes(term)
-    )
+    if (lowerText.includes(term)) return true
+    for (const t of item.taskTags) {
+      const lowerMainTag = t.main?.toLowerCase() ?? ''
+      const lowerSubTag = t.sub?.toLowerCase() ?? ''
+      const combined = t.main && t.sub ? `#${t.main}/${t.sub}`.toLowerCase() : ''
+      if (lowerMainTag.includes(term) || lowerSubTag.includes(term) || combined.includes(term)) return true
+    }
+    return false
   }
 
   private itemMatchesSearch(item: TodoItem, searchTerms: string[], dateFilters: DateFilter[]): boolean {
