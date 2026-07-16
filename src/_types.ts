@@ -27,6 +27,8 @@ export type TodoItem = {
   fileCreatedTs: number
   fileModifiedTs: number
   taskTags: TagMeta[]
+  auxTags: {inline: string[]; block: string[]; inherited: string[]}
+  family?: Family | null
   line: number
   spacesIndented: number
   originalText: string
@@ -84,6 +86,7 @@ export type FileInfo = {
 }
 
 export type TagMeta = {main: string; sub: string}
+export type Family = {parent?: TodoItem; children?: TodoItem[]}
 export type LinkMeta = {filePath: string; linkName: string}
 
 export type GroupByType = 'page' | 'tag'

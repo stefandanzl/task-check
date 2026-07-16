@@ -59,7 +59,6 @@ export const parseTodos = async (
   cache: MetadataCache,
   vault: Vault,
   includeFiles: string,
-  showChecked: boolean,
   showAllTodos: boolean,
   lastRerender: number,
   priorityTag: string,
@@ -107,8 +106,16 @@ export const parseTodos = async (
           frontmatterTag: todoTags.length ? frontMatterTags[0] : undefined,
         }
 
-        let todos = findAllTodosInFile(fileInfo, priorityTag, dateTag)
-        if (!showChecked) todos = todos.filter(todo => !todo.checked)
+        // Namespaces reserved for task/priority/date tags — everything else on a
+        // line or block tag line is an auxiliary tag. Built per file (cheap).
+        const excludeMains = new Set<string>()
+        for (const t of todoTags) if (t !== '*') excludeMains.add(getTagMeta(t).main)
+        if (priorityTag) excludeMains.add(priorityTag)
+        if (dateTag) excludeMains.add(dateTag)
+
+        // Done tasks are kept here (full set); showChecked filtering happens at
+        // display time so done family members stay reachable for inheritance/context.
+        const todos = findAllTodosInFile(fileInfo, priorityTag, dateTag, excludeMains)
         todosForUpdatedFiles.set(file, todos)
       })
   )
@@ -244,12 +251,12 @@ export const ensureTaskBlockRef = async (item: TodoItem, app: App): Promise<stri
   return id
 }
 
-const findAllTodosInFile = (fileInfo: FileInfo, priorityTag: string, dateTag: string): TodoItem[] => {
+const findAllTodosInFile = (fileInfo: FileInfo, priorityTag: string, dateTag: string, excludeMains: Set<string>): TodoItem[] => {
   let todos: TodoItem[]
   if (!fileInfo.parseEntireFile) {
     // A task within reach of several registered tag-blocks is emitted once per
     // tag; dedupeByLine below merges those into one item carrying all its tags.
-    todos = fileInfo.validTags.flatMap(tag => findAllTodosFromTagBlock(fileInfo, tag, priorityTag, dateTag))
+    todos = fileInfo.validTags.flatMap(tag => findAllTodosFromTagBlock(fileInfo, tag, priorityTag, dateTag, excludeMains))
   } else {
     todos = []
     if (!fileInfo.content) return todos
@@ -269,7 +276,7 @@ const findAllTodosInFile = (fileInfo: FileInfo, priorityTag: string, dateTag: st
       const line = fileLines[lineNum]
       if (!line) continue
 
-      todos.push(formTodo(line, fileInfo, lineNum, listItem.task, tagMeta, priorityTag, dateTag))
+      todos.push(formTodo(line, fileInfo, lineNum, listItem.task, tagMeta, priorityTag, dateTag, undefined, undefined, excludeMains))
     }
   }
 
@@ -288,19 +295,27 @@ const dedupeByLine = (items: TodoItem[]): TodoItem[] => {
     const key = `${item.filePath}:${item.line}`
     const existing = byLocation.get(key)
     if (!existing) {
-      byLocation.set(key, {...item, taskTags: [...item.taskTags]})
+      byLocation.set(key, {
+        ...item,
+        taskTags: [...item.taskTags],
+        auxTags: {inline: [...item.auxTags.inline], block: [...item.auxTags.block], inherited: []},
+      })
     } else {
       for (const tag of item.taskTags) {
         if (!existing.taskTags.some(t => t.main === tag.main && t.sub === tag.sub)) {
           existing.taskTags.push(tag)
         }
       }
+      // auxTags.block can differ across blocks the task belongs to → union.
+      for (const t of item.auxTags.block) {
+        if (!existing.auxTags.block.includes(t)) existing.auxTags.block.push(t)
+      }
     }
   }
   return [...byLocation.values()]
 }
 
-const findAllTodosFromTagBlock = (file: FileInfo, tag: TagCache, priorityTag: string, dateTag: string) => {
+const findAllTodosFromTagBlock = (file: FileInfo, tag: TagCache, priorityTag: string, dateTag: string, excludeMains: Set<string>) => {
   if (!file.content) return []
   const fileLines = getAllLinesFromFile(file.content)
   const tagMeta = getTagMeta(tag.tag)
@@ -318,12 +333,16 @@ const findAllTodosFromTagBlock = (file: FileInfo, tag: TagCache, priorityTag: st
   if (!tagLine) return []
 
   if (sameLineItem) {
-      return [formTodo(tagLine, file, tagLineNum, sameLineItem.task, tagMeta, priorityTag, dateTag)]
+      // Tag sits on the task line itself — its tags are captured as auxTags.inline,
+      // there is no separate block line, so auxBlock stays empty.
+      return [formTodo(tagLine, file, tagLineNum, sameLineItem.task, tagMeta, priorityTag, dateTag, undefined, undefined, excludeMains)]
   }
 
 
   const blockPriority = priorityTag ? parsePriorityTag(tagLine, priorityTag) : undefined
   const blockTagLine = tagLineNum
+  // Non-task/prio/date tags on the block's tag line apply to every task in the block.
+  const auxBlock = extractAuxTags(tagLine, excludeMains)
 
 
   // Step 2: Walk line by line from tagLineNum + 1 (block mode)
@@ -342,7 +361,7 @@ const findAllTodosFromTagBlock = (file: FileInfo, tag: TagCache, priorityTag: st
       const content = line.match(/- \[.\]\s(.*)/)?.[1];
       if (content.trim().length !== 0) {
         // Found a task - add it and continue
-        todos.push(formTodo(line, file, currentLine, taskOnLine.task, tagMeta, priorityTag, dateTag, blockPriority, blockTagLine))
+        todos.push(formTodo(line, file, currentLine, taskOnLine.task, tagMeta, priorityTag, dateTag, blockPriority, blockTagLine, excludeMains, auxBlock))
       }
     } else if (line.trim().length === 0) {
       // Empty line - stop processing (end of block)
@@ -454,6 +473,22 @@ export const renderTaskHTML = (item: TodoItem, app: App, priorityTag: string, da
   return preprocessMarkdown(getTaskDisplayText(item, priorityTag, dateTag), app.metadataCache, item.filePath)
 }
 
+/**
+ * Extracts auxiliary tags from a line: every `#ns/value` token whose namespace
+ * (the part before `/`) is NOT a task/priority/date tag. Lowercased, deduped.
+ * `excludeMains` is the set of reserved namespaces (registered todo-tag mains +
+ * priorityTag + dateTag) built once per parse.
+ */
+const extractAuxTags = (line: string, excludeMains: Set<string>): string[] => {
+  const matches = line.match(/#[a-z0-9][a-z0-9/-]*/gi) ?? []
+  const out: string[] = []
+  for (const m of matches) {
+    const tag = m.slice(1).toLowerCase()
+    if (!excludeMains.has(tag.split('/')[0]) && !out.includes(tag)) out.push(tag)
+  }
+  return out
+}
+
 const formTodo = (
   line: string,
   file: FileInfo,
@@ -463,7 +498,9 @@ const formTodo = (
   priorityTag?: string,
   dateTag?: string,
   blockPriority: number | undefined = undefined,
-  blockTagLine: number | undefined = undefined
+  blockTagLine: number | undefined = undefined,
+  excludeMains: Set<string> = new Set(),
+  auxBlock: string[] = [],
 ): TodoItem => {
   const rawText = extractTextFromTodoLine(line)
   const spacesIndented = getIndentationSpacesFromTodoLine(line)
@@ -477,6 +514,8 @@ const formTodo = (
 
   return {
     taskTags: tagMeta ? [tagMeta] : [],
+    auxTags: {inline: extractAuxTags(rawText, excludeMains), block: [...auxBlock], inherited: []},
+    family: undefined,
     checked,
     taskStatus,
     filePath: file.file.path,

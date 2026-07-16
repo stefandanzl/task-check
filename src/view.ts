@@ -3,7 +3,7 @@ import {mount, unmount} from 'svelte'
 
 import {TODO_VIEW_TYPE} from './constants'
 import App from './svelte/App.svelte'
-import {groupTodos, groupTodosByPriority, groupTodosByDate, parseTodos} from './utils'
+import {groupTodos, groupTodosByPriority, groupTodosByDate, parseTodos, wireFamilyAndInherited} from './utils'
 import {
   todoGroupsStore,
   todoTagsStore,
@@ -225,13 +225,16 @@ export default class TodoListView extends ItemView {
       this.app.metadataCache,
       this.app.vault,
       this.plugin.getSettingValue('includeFiles'),
-      this.plugin.getSettingValue('showChecked'),
       this.plugin.getSettingValue('showAllTodos'),
       this.lastRerender,
       this.plugin.getSettingValue('priorityTag'),
       this.plugin.getSettingValue('dateTag'),
     )
     for (const [file, todos] of todosForUpdatedFiles) {
+      // Wire family + inherited aux on the full per-file set (done tasks included
+      // so lineage passes through them). This is allTodos; showChecked filtering
+      // to shownTasks happens at display time in groupItems.
+      wireFamilyAndInherited(todos)
       this.itemsByFile.set(file.path, todos)
     }
   }
@@ -537,6 +540,9 @@ export default class TodoListView extends ItemView {
       const combined = t.main && t.sub ? `#${t.main}/${t.sub}`.toLowerCase() : ''
       if (lowerMainTag.includes(term) || lowerSubTag.includes(term) || combined.includes(term)) return true
     }
+    // Auxiliary tags (inline + block + inherited from ancestors). All lowercased;
+    // `term` is already lowercased by the query parser. Short-circuits per array.
+    if (Object.values(item.auxTags).some(arr => arr.some(t => t.includes(term)))) return true
     return false
   }
 
@@ -548,12 +554,17 @@ export default class TodoListView extends ItemView {
   }
 
   private groupItems() {
-    const flattenedItems = Array.from(this.itemsByFile.values()).flat()
+    // itemsByFile holds allTodos (done included, family already wired). showChecked
+    // is the discernor: shownTasks is the display subset with done removed when off.
+    const allTodos = Array.from(this.itemsByFile.values()).flat()
+    const showChecked = this.plugin.getSettingValue('showChecked')
+    const shownTasks = showChecked ? allTodos : allTodos.filter(i => !i.checked)
+
     const viewOnlyOpen = this.plugin.getSettingValue('showOnlyActiveFile')
     const openFile = this.app.workspace.getActiveFile()
     const filteredItems = viewOnlyOpen
-      ? flattenedItems.filter(i => i.filePath === openFile.path)
-      : flattenedItems
+      ? shownTasks.filter(i => i.filePath === openFile.path)
+      : shownTasks
 
     const { textTerms, negatedTerms, dateFilters, priorityFilters, statusFilters } = this.parsedSearch
     // console.log('Parsed search - textTerms:', textTerms, 'dateFilters:', dateFilters, 'priorityFilters:', priorityFilters)
