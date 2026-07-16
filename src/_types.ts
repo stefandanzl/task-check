@@ -29,6 +29,7 @@ export type TodoItem = {
   taskTags: TagMeta[]
   auxTags: {inline: string[]; block: string[]; inherited: string[]}
   family?: Family | null
+  isFamilyContext?: boolean  // transient display flag: dimmed, non-interactive family-context row
   line: number
   spacesIndented: number
   originalText: string

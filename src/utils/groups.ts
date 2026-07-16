@@ -82,6 +82,7 @@ export const groupTodos = (
   subGroupSort: SortDirection,
   baseTagFirst: boolean = false,
   priorityTag: string = '',
+  preserveOrder: boolean = false,
 ): TodoGroup[] => {
   const groups: TodoGroup[] = []
 
@@ -159,7 +160,11 @@ export const groupTodos = (
 
   if (!subGroups) {
     for (const g of nonEmptyGroups) {
-      if (priorityTag) {
+      if (preserveOrder) {
+        // Keep families adjacent: order by document position rather than the
+        // user's sort setting (used when family-context rows are expanded).
+        g.todos.sort((a, b) => a.filePath === b.filePath ? a.line - b.line : a.filePath.localeCompare(b.filePath))
+      } else if (priorityTag) {
         sortTodosByPriority(g.todos, sortItems)
       } else {
         sortGenericItemsInplace(g.todos, sortItems, 'originalText', 'fileCreatedTs')
@@ -176,6 +181,7 @@ export const groupTodos = (
         null,
         baseTagFirst,
         priorityTag,
+        preserveOrder,
       )
   }
 

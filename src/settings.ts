@@ -28,6 +28,7 @@ export interface TodoSettings {
   prioGrouping: boolean
   dateTag: string
   dateGrouping: boolean
+  showFamilyInSearch: boolean
 }
 
 export const DEFAULT_SETTINGS: TodoSettings = {
@@ -54,6 +55,7 @@ export const DEFAULT_SETTINGS: TodoSettings = {
   prioGrouping: false,
   dateTag: 'date',
   dateGrouping: false,
+  showFamilyInSearch: true,
 }
 
 const SORT_OPTIONS: Record<string, string> = {
@@ -161,6 +163,11 @@ export class TodoSettingTab extends PluginSettingTab {
         name: 'Show only in active file',
         desc: 'Show only todos present in the currently active file.',
         control: {type: 'toggle', key: 'showOnlyActiveFile'},
+      },
+      {
+        name: 'Show family relations in search results',
+        desc: 'When a search matches a task, also show its family tree as dimmed, non-interactive context: all ancestors (including done ones) above, and open descendants below.',
+        control: {type: 'toggle', key: 'showFamilyInSearch'},
       },
       {
         type: 'group',

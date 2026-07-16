@@ -585,6 +585,38 @@ export default class TodoListView extends ItemView {
     })
 
     // console.log('Search results:', searchedItems.length, 'items from', filteredItems.length)
+
+    // Family-context expansion: when enabled and a search is active, pull in each
+    // matched task's whole family as dimmed, non-interactive context — ancestors
+    // (including done ones) and open (not-done) descendants. Marked via
+    // isFamilyContext; rendering dims them and disables interaction.
+    const searchActive = textTerms.length > 0 || negatedTerms.length > 0 || dateFilters.length > 0 || priorityFilters.length > 0 || statusFilters.length > 0
+    const familyExpansion = this.plugin.getSettingValue('showFamilyInSearch') && searchActive
+    const primarySet = new Set(searchedItems)
+    let displayItems: TodoItem[] = searchedItems
+    if (familyExpansion) {
+      const seen = new Set(searchedItems)
+      const contextItems: TodoItem[] = []
+      const addOpenDescendants = (node: TodoItem) => {
+        for (const child of node.family?.children ?? []) {
+          if (child.checked || seen.has(child)) continue
+          seen.add(child)
+          contextItems.push(child)
+          addOpenDescendants(child)
+        }
+      }
+      for (const item of searchedItems) {
+        let p = item.family?.parent
+        while (p) {
+          if (!seen.has(p)) { seen.add(p); contextItems.push(p) }
+          p = p.family?.parent
+        }
+        addOpenDescendants(item)
+      }
+      displayItems = [...searchedItems, ...contextItems]
+    }
+    for (const it of displayItems) it.isFamilyContext = familyExpansion && !primarySet.has(it)
+
     const prioGrouping = this.plugin.getSettingValue('prioGrouping')
     const priorityTag = this.plugin.getSettingValue('priorityTag')
     const dateGrouping = this.plugin.getSettingValue('dateGrouping')
@@ -592,17 +624,17 @@ export default class TodoListView extends ItemView {
 
     if (dateGrouping && dateTag) {
       this.groupedItems = groupTodosByDate(
-        searchedItems,
+        displayItems,
         this.plugin.getSettingValue('sortDirectionItems'),
       )
     } else if (prioGrouping && priorityTag) {
       this.groupedItems = groupTodosByPriority(
-        searchedItems,
+        displayItems,
         this.plugin.getSettingValue('sortDirectionItems'),
       )
     } else {
       this.groupedItems = groupTodos(
-        searchedItems,
+        displayItems,
         this.plugin.getSettingValue('groupBy'),
         this.plugin.getSettingValue('sortDirectionGroups'),
         this.plugin.getSettingValue('sortDirectionItems'),
@@ -610,6 +642,7 @@ export default class TodoListView extends ItemView {
         this.plugin.getSettingValue('sortDirectionSubGroups'),
         this.plugin.getSettingValue('baseTagFirst'),
         priorityTag,
+        familyExpansion,
       )
     }
   }

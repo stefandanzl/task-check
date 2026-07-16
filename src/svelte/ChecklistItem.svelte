@@ -71,7 +71,7 @@
 
 <!-- svelte-ignore a11y_click_events_have_key_events -->
 <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-<li class="checklist-item" onclick={handleClick} oncontextmenu={handleContextMenu}>
+<li class="checklist-item" class:family-context={item.isFamilyContext} onclick={handleClick} oncontextmenu={handleContextMenu}>
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <div
     class="cm-active HyperMD-list-line HyperMD-list-line-{level} cm-line task-list-item-line"
@@ -95,7 +95,8 @@
         data-task={item.taskStatus}
         checked={item.taskStatus !== ' '}
         onclick={ev => {
-          toggleTodoItem(item, app)
+          // Family-context rows are display-only — don't toggle them.
+          if (!item.isFamilyContext) toggleTodoItem(item, app)
           ev.stopPropagation()
         }} />
     </label>
@@ -128,6 +129,15 @@
 
   li.checklist-item:hover {
     background-color: var(--checklist-listItemBackground--hover);
+  }
+
+  /* Family-context rows: dimmed, non-interactive context shown alongside a
+     matched task. Opacity only for now (no font change) — tweak here. */
+  li.checklist-item.family-context {
+    opacity: 0.5;
+  }
+  li.checklist-item.family-context:hover {
+    background-color: var(--checklist-listItemBackground);
   }
 
   .prio-level {
