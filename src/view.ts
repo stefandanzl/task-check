@@ -14,6 +14,8 @@ import {
   enableLimitStore,
   showSettingsPanelStore,
   searchQueriesStore,
+  bookmarksStore,
+  activePanelTabStore,
   dateTagStore,
   groupModeStore,
 } from './svelte/viewStore'
@@ -95,6 +97,8 @@ export default class TodoListView extends ItemView {
     enableLimitStore.set(this.plugin.getSettingValue('enableLimit'))
     showSettingsPanelStore.set(this.plugin.getSettingValue('_showSettingsPanel'))
     searchQueriesStore.set(this.plugin.getSettingValue('_searchQueries'))
+    bookmarksStore.set(this.plugin.getSettingValue('_bookmarks'))
+    activePanelTabStore.set(this.plugin.getSettingValue('_activePanelTab'))
     dateTagStore.set(this.plugin.getSettingValue('dateTag'))
     groupModeStore.set(
       this.plugin.getSettingValue('dateGrouping')

@@ -25,6 +25,8 @@ export interface TodoSettings {
   _showSettingsPanel: boolean
   _searchQueries: string[]
   _restoreLastSearch: boolean
+  _bookmarks: string[]
+  _activePanelTab: 'tags' | 'bookmarks'
   prioGrouping: boolean
   dateTag: string
   dateGrouping: boolean
@@ -52,6 +54,8 @@ export const DEFAULT_SETTINGS: TodoSettings = {
   _showSettingsPanel: false,
   _searchQueries: [],
   _restoreLastSearch: false,
+  _bookmarks: [],
+  _activePanelTab: 'tags',
   prioGrouping: false,
   dateTag: 'date',
   dateGrouping: false,
@@ -166,7 +170,7 @@ export class TodoSettingTab extends PluginSettingTab {
       },
       {
         name: 'Show family relations in search results',
-        desc: 'When a search matches a task, also show its family tree as dimmed, non-interactive context: all ancestors (including done ones) above, and open descendants below.',
+        desc: '"Family" = a task\'s indentation hierarchy (the parent it\'s indented under, and the subtasks indented beneath it). When a search matches a task, also show its family as dimmed, non-interactive context — parents above (incl. done), open subtasks below.',
         control: {type: 'toggle', key: 'showFamilyInSearch'},
       },
       {

@@ -10,6 +10,8 @@
     collapsedSectionsStore,
     showSettingsPanelStore,
     searchQueriesStore,
+    bookmarksStore,
+    activePanelTabStore,
     priorityTagStore,
     dateTagStore,
     groupModeStore,
@@ -200,6 +202,29 @@
     await updateSetting({_showSettingsPanel: !$showSettingsPanelStore})
   }
 
+  async function switchTab(tab: 'tags' | 'bookmarks') {
+    await updateSetting({_activePanelTab: tab})
+  }
+
+  async function addBookmark() {
+    const q = search.trim()
+    if (!q) {
+      new Notice('Type a search query first')
+      return
+    }
+    if ($bookmarksStore.includes(q)) {
+      new Notice('Already bookmarked')
+      return
+    }
+    await updateSetting({_bookmarks: [...$bookmarksStore, q]})
+  }
+
+  async function deleteBookmark(index: number) {
+    const next = [...$bookmarksStore]
+    next.splice(index, 1)
+    await updateSetting({_bookmarks: next})
+  }
+
   $effect(() => {
     search
     scheduleSaveSearch()
@@ -298,7 +323,7 @@
     <div
       class="clickable-icon {$undoState.count ? '' : 'is-disabled'}"
       role="button"
-      tabindex="{$undoState.count ? 0 : -1}"
+      tabindex={$undoState.count ? 0 : -1}
       aria-label={`Undo${$undoState.label ? ' · ' + $undoState.label : ''}`}
       aria-disabled={!$undoState.count}
       onclick={() => $undoState.count && undoLast(app, true)}>
@@ -319,24 +344,78 @@
 
   <div class="settings-panel">
     {#if $showSettingsPanelStore}
-      <div class="settings-title">
-        <span class="settings-title-span">Show Tags</span>
+      <div class="settings-tabs">
+        <!-- svelte-ignore a11y_click_events_have_key_events -->
+        <div
+          class="settings-tab {$activePanelTabStore === 'tags' ? 'is-active' : ''}"
+          role="button"
+          tabindex="0"
+          onclick={() => switchTab('tags')}>Tags</div>
+        <!-- svelte-ignore a11y_click_events_have_key_events -->
+        <div
+          class="settings-tab {$activePanelTabStore === 'bookmarks' ? 'is-active' : ''}"
+          role="button"
+          tabindex="0"
+          onclick={() => switchTab('bookmarks')}>Bookmarks</div>
+        {#if $activePanelTabStore === 'bookmarks'}
+          <!-- svelte-ignore a11y_click_events_have_key_events -->
+          <div
+            class="clickable-icon bookmark-add {!search.trim() ? 'is-disabled' : ''}"
+            role="button"
+            tabindex="0"
+            aria-label="Bookmark current search"
+            onclick={() => search.trim() && addBookmark()}>
+            {@html getIcon('bookmark-plus')?.outerHTML}
+          </div>
+        {/if}
       </div>
-      {#each $todoTagsStore as tag}
-        <div class="tag-checkbox-item">
-          <label class="task-list-label">
-            <input
-              class="task-list-item-checkbox"
-              type="checkbox"
-              checked={!$hiddenTagsStore.includes(tag)}
-              onchange={() => toggleTag(tag)} />
-            <span><span class="hash">#</span>{tag}</span>
-          </label>
+      <div class="settings-list-scroll">
+        <div class="settings-pane" class:is-hidden={$activePanelTabStore !== 'tags'}>
+          {#each $todoTagsStore as tag}
+            <div class="tag-checkbox-item">
+              <label class="task-list-label">
+                <input
+                  class="task-list-item-checkbox"
+                  type="checkbox"
+                  checked={!$hiddenTagsStore.includes(tag)}
+                  onchange={() => toggleTag(tag)} />
+                <span><span class="hash">#</span>{tag}</span>
+              </label>
+            </div>
+          {/each}
+          {#if $todoTagsStore.length === 0}
+            <div class="empty">No tags specified</div>
+          {/if}
         </div>
-      {/each}
-      {#if $todoTagsStore.length === 0}
-        <div class="empty">No tags specified</div>
-      {/if}
+        <div class="settings-pane" class:is-hidden={$activePanelTabStore !== 'bookmarks'}>
+          {#each $bookmarksStore as query, i}
+            <div class="bookmark-item">
+              <!-- svelte-ignore a11y_click_events_have_key_events -->
+              <div
+                class="bookmark-query"
+                role="button"
+                tabindex="0"
+                title={query}
+                onclick={() => selectRecentQuery(query)}
+                onkeydown={e => e.key === 'Enter' && selectRecentQuery(query)}>
+                {query}
+              </div>
+              <!-- svelte-ignore a11y_click_events_have_key_events -->
+              <div
+                class="clickable-icon bookmark-delete"
+                role="button"
+                tabindex="0"
+                aria-label="Delete bookmark"
+                onclick={() => deleteBookmark(i)}>
+                {@html getIcon('x')?.outerHTML}
+              </div>
+            </div>
+          {/each}
+          {#if $bookmarksStore.length === 0}
+            <div class="empty">No bookmarks — run a search and tap +</div>
+          {/if}
+        </div>
+      </div>
     {/if}
     <div
       class="search-results-info settings-controls"
@@ -416,17 +495,91 @@
     border-radius: 6px;
     padding: 0 12px 12px 12px;
     max-height: 300px;
-    overflow-y: auto;
+    overflow-y: hidden;
+    display: flex;
+    flex-direction: column;
   }
 
-  .settings-title {
-    margin-bottom: 8px;
+  /* Tabbed header (Tags / Bookmarks). The panel itself doesn't scroll — only
+     the .settings-list-scroll area below does, so the tabs and bottom controls
+     stay pinned. Active tab uses a browser-style border (top/left/right, no
+     bottom) that overlaps the separator so it reads as connected to the list. */
+  .settings-tabs {
+    display: flex;
+    align-items: flex-end;
+    gap: 2px;
+    padding: 8px 4px 0 4px;
+    border-bottom: 1px solid var(--background-modifier-border);
   }
-
-  .settings-title-span {
+  .settings-tab {
+    padding: 4px 12px;
+    font-size: var(--font-ui-small);
+    color: var(--text-muted);
+    cursor: pointer;
+    border: 1px solid transparent;
+    border-bottom: none;
+    border-radius: 6px 6px 0 0;
+    position: relative;
+    margin-bottom: -1px;
+  }
+  .settings-tab:hover {
+    background: var(--background-modifier-hover);
+  }
+  .settings-tab.is-active {
+    color: var(--text-normal);
     font-weight: 600;
+    background: var(--background-secondary);
+    border-color: var(--background-modifier-border);
+  }
+  .bookmark-add {
+    margin-inline-start: auto;
+  }
+
+  /* Both panes render always and stack in the same grid cell, so the area
+     sizes to the TALLER pane's content (no fixed height, no flicker on switch).
+     The inactive pane is visibility:hidden so it still contributes its height
+     to the cell. Caps + scrolls via the flex panel's max-height + overflow. */
+  .settings-list-scroll {
+    overflow-y: auto;
+    min-height: 0;
+    flex: 0 1 auto;
+    display: grid;
+  }
+  .settings-pane {
+    grid-area: 1 / 1;
+    align-self: start;
+  }
+  .settings-pane.is-hidden {
+    visibility: hidden;
+  }
+
+  .bookmark-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 0;
+  }
+  .bookmark-query {
+    flex: 1;
+    min-width: 0;
+    cursor: pointer;
     font-size: var(--font-ui-small);
     color: var(--text-normal);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding: 2px 4px;
+    border-radius: 4px;
+  }
+  .bookmark-query:hover {
+    background: var(--background-modifier-hover);
+  }
+  .bookmark-delete {
+    opacity: 0.5;
+    flex-shrink: 0;
+  }
+  .bookmark-delete:hover {
+    opacity: 1;
   }
 
   .settings-controls {

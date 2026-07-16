@@ -182,6 +182,8 @@ export default class TodoPlugin extends Plugin {
       'autoRefresh',
       '_collapsedSections',
       '_showSettingsPanel',
+      '_bookmarks',
+      '_activePanelTab',
     ]
     const onlyReGroupWhenChanges = [
       'subGroups',
