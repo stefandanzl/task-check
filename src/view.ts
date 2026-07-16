@@ -273,7 +273,7 @@ export default class TodoListView extends ItemView {
     }
     const dateRegex = new RegExp(`(${dateOps.join('|')})\\s*(\\S+)`, 'gi')
 
-    console.log('Search query:', query)
+    // console.log('Search query:', query)
     remainingQuery = remainingQuery.replace(dateRegex, (match, operator, value) => {
       console.log('Date match:', match, 'Operator:', operator, 'Value:', value)
       const filter = this.parseDateOperator(operator, value, dateTag)
@@ -292,7 +292,7 @@ export default class TodoListView extends ItemView {
         return ''
       })
     }
-    console.log('Remaining query:', remainingQuery)
+    // console.log('Remaining query:', remainingQuery)
 
     // Process remaining text search normally. A leading "-" negates a term:
     // "-foo" and -"foo bar" exclude items that contain that term/phrase.

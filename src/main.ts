@@ -1,4 +1,4 @@
-import {MarkdownView, Plugin} from 'obsidian'
+import {MarkdownView, Plugin, type ObsidianProtocolData} from 'obsidian'
 
 import {TODO_VIEW_TYPE} from './constants'
 import {DEFAULT_SETTINGS, type TodoSettings, TodoSettingTab} from './settings'
@@ -138,6 +138,13 @@ export default class TodoPlugin extends Plugin {
       callback: async () => {
         await this.focusSearchInput()
       },
+    })
+
+    // obsidian://taskcheck?search=<query> — opens the pane and runs the query.
+    this.registerObsidianProtocolHandler('taskcheck', (data: ObsidianProtocolData) => {
+      const raw = data.search
+      const search = raw && raw !== 'true' ? raw : undefined
+      this.focusSearchInput(search)
     })
 
     this.registerView(TODO_VIEW_TYPE, leaf => {
