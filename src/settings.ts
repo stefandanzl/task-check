@@ -11,10 +11,8 @@ export interface TodoSettings {
   showOnlyActiveFile: boolean
   autoRefresh: boolean
   groupBy: GroupByType
-  subGroups: boolean
   sortDirectionItems: SortDirection
   sortDirectionGroups: SortDirection
-  sortDirectionSubGroups: SortDirection
   includeFiles: string
   _collapsedSections: string[]
   _hiddenTags: string[]
@@ -39,11 +37,9 @@ export const DEFAULT_SETTINGS: TodoSettings = {
   showAllTodos: false,
   showOnlyActiveFile: false,
   autoRefresh: true,
-  subGroups: false,
   groupBy: 'tag',
   sortDirectionItems: 'created: new->old',
   sortDirectionGroups: 'created: new->old',
-  sortDirectionSubGroups: 'created: new->old',
   includeFiles: '',
   _collapsedSections: [],
   _hiddenTags: [],

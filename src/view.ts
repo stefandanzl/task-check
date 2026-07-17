@@ -612,8 +612,6 @@ export default class TodoListView extends ItemView {
         this.plugin.getSettingValue('groupBy'),
         this.plugin.getSettingValue('sortDirectionGroups'),
         this.plugin.getSettingValue('sortDirectionItems'),
-        this.plugin.getSettingValue('subGroups'),
-        this.plugin.getSettingValue('sortDirectionSubGroups'),
         this.plugin.getSettingValue('baseTagFirst'),
         priorityTag,
       )

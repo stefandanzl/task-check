@@ -1,4 +1,4 @@
-import {Menu, Notice, Platform, TFile, type App} from 'obsidian'
+import {Menu, Notice, TFile, type App} from 'obsidian'
 
 import type {TodoItem} from 'src/_types'
 import {
@@ -41,7 +41,6 @@ export const openTaskContextMenu = (
   priorityTag: string,
   dateTag: string,
 ) => {
-  console.log('[taskcheck] context menu opened — Platform.isMobile =', Platform.isMobile)
   e.preventDefault()
   const menu = new Menu()
   const displayText = getTaskDisplayText(item, priorityTag, dateTag)

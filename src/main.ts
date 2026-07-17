@@ -229,10 +229,8 @@ export default class TodoPlugin extends Plugin {
       '_activePanelTab',
     ]
     const onlyReGroupWhenChanges = [
-      'subGroups',
       'groupBy',
       'sortDirectionGroups',
-      'sortDirectionSubGroups',
       'sortDirectionItems',
       'baseTagFirst',
       'prioGrouping',

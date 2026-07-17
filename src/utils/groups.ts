@@ -78,11 +78,8 @@ export const groupTodos = (
   groupBy: GroupByType,
   sortGroups: SortDirection,
   sortItems: SortDirection,
-  subGroups: boolean,
-  subGroupSort: SortDirection,
   baseTagFirst: boolean = false,
   priorityTag: string = '',
-  preserveOrder: boolean = false,
 ): TodoGroup[] => {
   const groups: TodoGroup[] = []
 
@@ -145,6 +142,20 @@ export const groupTodos = (
 
   const nonEmptyGroups = groups.filter(g => g.todos.length > 0)
 
+  // Sort items within each group BEFORE sorting the groups, so the group-sort
+  // tiebreaker (group.todos[0].line) reflects the actual top item shown.
+  // Previously (group sort first) the tiebreaker keyed off the first-INSERTED
+  // (lowest-line) item while the list displays the highest-line item on top —
+  // so groups sharing a file (equal newestCreatedItem) ordered inconsistently
+  // with what was displayed.
+  for (const g of nonEmptyGroups) {
+    if (priorityTag) {
+      sortTodosByPriority(g.todos, sortItems)
+    } else {
+      sortGenericItemsInplace(g.todos, sortItems, 'originalText', 'fileCreatedTs')
+    }
+  }
+
   if (baseTagFirst && groupBy === 'tag') {
     const baseTags = nonEmptyGroups.filter(g => !g.id.includes('/'))
     const subTags = nonEmptyGroups.filter(g => g.id.includes('/'))
@@ -156,33 +167,6 @@ export const groupTodos = (
     nonEmptyGroups.push(...baseTags, ...subTags)
   } else {
     sortGenericItemsInplace(nonEmptyGroups, sortGroups, 'sortName', 'newestCreatedItem')
-  }
-
-  if (!subGroups) {
-    for (const g of nonEmptyGroups) {
-      if (preserveOrder) {
-        // Keep families adjacent: order by document position rather than the
-        // user's sort setting (used when family-context rows are expanded).
-        g.todos.sort((a, b) => a.filePath === b.filePath ? a.line - b.line : a.filePath.localeCompare(b.filePath))
-      } else if (priorityTag) {
-        sortTodosByPriority(g.todos, sortItems)
-      } else {
-        sortGenericItemsInplace(g.todos, sortItems, 'originalText', 'fileCreatedTs')
-      }
-    }
-  } else {
-    for (const g of nonEmptyGroups)
-      g.groups = groupTodos(
-        g.todos,
-        groupBy === 'page' ? 'tag' : 'page',
-        subGroupSort,
-        sortItems,
-        false,
-        null,
-        baseTagFirst,
-        priorityTag,
-        preserveOrder,
-      )
   }
 
   return nonEmptyGroups
