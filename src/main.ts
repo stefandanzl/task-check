@@ -1,8 +1,10 @@
-import {MarkdownView, Plugin, type ObsidianProtocolData} from 'obsidian'
+import {Editor, MarkdownView, Notice, Plugin, type ObsidianProtocolData} from 'obsidian'
 
 import {TODO_VIEW_TYPE} from './constants'
 import {DEFAULT_SETTINGS, type TodoSettings, TodoSettingTab} from './settings'
+import {StatusSuggestModal} from './StatusSuggestModal'
 import TodoListView from './view'
+import {setTaskStatusChar} from './utils/helpers'
 import type {TodoGroup, TodoItem} from './_types'
 import {toggleTodoItem} from './utils'
 import {undoLast} from './undo'
@@ -137,6 +139,40 @@ export default class TodoPlugin extends Plugin {
       icon: 'list-todo',
       callback: async () => {
         await this.focusSearchInput()
+      },
+    })
+
+    this.addCommand({
+      id: 'set-status-current-line',
+      name: 'Set status for selected task line(s)',
+      icon: 'square-check-big',
+      editorCallback: (editor: Editor) => {
+        // Collect every checklist line covered by the current selection(s).
+        // Non-checklist lines are skipped silently; a plain cursor (no selection)
+        // collapses to the single line under it. Multi-cursor selections are
+        // merged and deduped.
+        const taskLines: number[] = []
+        const seen = new Set<number>()
+        for (const sel of editor.listSelections()) {
+          const from = Math.min(sel.anchor.line, sel.head.line)
+          const to = Math.max(sel.anchor.line, sel.head.line)
+          for (let l = from; l <= to; l++) {
+            if (seen.has(l)) continue
+            seen.add(l)
+            if (/^(\s|>)*([-*]|[0-9]+\.)\s\[([^\]]+)\]/.test(editor.getLine(l))) taskLines.push(l)
+          }
+        }
+        if (taskLines.length === 0) {
+          new Notice('Select a task line (- [ ]) first')
+          return
+        }
+        new StatusSuggestModal(this.app, (symbol) => {
+          // Re-read each line at apply time in case it changed while the modal
+          // was open; only the status char is swapped.
+          for (const l of taskLines) {
+            editor.setLine(l, setTaskStatusChar(editor.getLine(l), symbol))
+          }
+        }).open()
       },
     })
 

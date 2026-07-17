@@ -375,7 +375,7 @@
             <div class="tag-checkbox-item">
               <label class="task-list-label">
                 <input
-                  class="task-list-item-checkbox"
+                  class="task-list-item-checkbox task-show-tags-checkbox"
                   type="checkbox"
                   checked={!$hiddenTagsStore.includes(tag)}
                   onchange={() => toggleTag(tag)} />
@@ -530,6 +530,9 @@
     font-weight: 600;
     background: var(--background-secondary);
     border-color: var(--text-selection);
+  }
+  .settings-panel input.task-show-tags-checkbox.task-list-item-checkbox {
+      top: 0.1em;
   }
   .bookmark-add {
     margin-inline-start: auto;

@@ -77,10 +77,6 @@
   appearance: auto !important;
 }
 
-.markdown-source-view.mod-cm6 .task-list-label .task-list-item-checkbox {
-  top: 0.1em;
-}
-
 /*
 Obsidian styled checkboxes snippet (Oliver's version)
 See https://github.com/deathau/obsidian-snippets#checkboxes for a demo.
