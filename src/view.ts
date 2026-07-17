@@ -590,36 +590,13 @@ export default class TodoListView extends ItemView {
 
     // console.log('Search results:', searchedItems.length, 'items from', filteredItems.length)
 
-    // Family-context expansion: when enabled and a search is active, pull in each
-    // matched task's whole family as dimmed, non-interactive context — ancestors
-    // (including done ones) and open (not-done) descendants. Marked via
-    // isFamilyContext; rendering dims them and disables interaction.
+    // Family-context expansion runs AFTER grouping/sorting: the user's normal
+    // item sort is applied to matched tasks first; then each match's family
+    // (ancestors incl. done above, open descendants below) is attached next to
+    // it as dimmed, non-interactive context. The sort is never disturbed.
     const searchActive = textTerms.length > 0 || negatedTerms.length > 0 || dateFilters.length > 0 || priorityFilters.length > 0 || statusFilters.length > 0
     const familyExpansion = this.plugin.getSettingValue('showFamilyInSearch') && searchActive
-    const primarySet = new Set(searchedItems)
-    let displayItems: TodoItem[] = searchedItems
-    if (familyExpansion) {
-      const seen = new Set(searchedItems)
-      const contextItems: TodoItem[] = []
-      const addOpenDescendants = (node: TodoItem) => {
-        for (const child of node.family?.children ?? []) {
-          if (child.checked || seen.has(child)) continue
-          seen.add(child)
-          contextItems.push(child)
-          addOpenDescendants(child)
-        }
-      }
-      for (const item of searchedItems) {
-        let p = item.family?.parent
-        while (p) {
-          if (!seen.has(p)) { seen.add(p); contextItems.push(p) }
-          p = p.family?.parent
-        }
-        addOpenDescendants(item)
-      }
-      displayItems = [...searchedItems, ...contextItems]
-    }
-    for (const it of displayItems) it.isFamilyContext = familyExpansion && !primarySet.has(it)
+    for (const it of searchedItems) it.isFamilyContext = false
 
     const prioGrouping = this.plugin.getSettingValue('prioGrouping')
     const priorityTag = this.plugin.getSettingValue('priorityTag')
@@ -627,18 +604,12 @@ export default class TodoListView extends ItemView {
     const dateTag = this.plugin.getSettingValue('dateTag')
 
     if (dateGrouping && dateTag) {
-      this.groupedItems = groupTodosByDate(
-        displayItems,
-        this.plugin.getSettingValue('sortDirectionItems'),
-      )
+      this.groupedItems = groupTodosByDate(searchedItems, this.plugin.getSettingValue('sortDirectionItems'))
     } else if (prioGrouping && priorityTag) {
-      this.groupedItems = groupTodosByPriority(
-        displayItems,
-        this.plugin.getSettingValue('sortDirectionItems'),
-      )
+      this.groupedItems = groupTodosByPriority(searchedItems, this.plugin.getSettingValue('sortDirectionItems'))
     } else {
       this.groupedItems = groupTodos(
-        displayItems,
+        searchedItems,
         this.plugin.getSettingValue('groupBy'),
         this.plugin.getSettingValue('sortDirectionGroups'),
         this.plugin.getSettingValue('sortDirectionItems'),
@@ -646,8 +617,49 @@ export default class TodoListView extends ItemView {
         this.plugin.getSettingValue('sortDirectionSubGroups'),
         this.plugin.getSettingValue('baseTagFirst'),
         priorityTag,
-        familyExpansion,
       )
+    }
+
+    if (familyExpansion) this.injectFamilyContext()
+  }
+
+  /** Attach each matched task's family as dimmed context next to it, without
+   *  disturbing the already-sorted primary order. Ancestors (incl. done) go
+   *  above the match, open descendants below. Each relative appears once. */
+  private injectFamilyContext() {
+    const injected = new Set<TodoItem>()
+    for (const g of this.groupedItems) {
+      for (const t of g.todos) injected.add(t)
+      if (g.groups) for (const s of g.groups) for (const t of s.todos) injected.add(t)
+    }
+    const injectInto = (todos: TodoItem[]): TodoItem[] => {
+      const out: TodoItem[] = []
+      for (const primary of todos) {
+        const ancestors: TodoItem[] = []
+        let p = primary.family?.parent
+        while (p) {
+          if (!injected.has(p)) {injected.add(p); ancestors.unshift(p)}
+          p = p.family?.parent
+        }
+        for (const a of ancestors) {a.isFamilyContext = true; out.push(a)}
+        primary.isFamilyContext = false
+        out.push(primary)
+        const addDesc = (node: TodoItem) => {
+          for (const child of node.family?.children ?? []) {
+            if (child.checked || injected.has(child)) continue
+            injected.add(child)
+            child.isFamilyContext = true
+            out.push(child)
+            addDesc(child)
+          }
+        }
+        addDesc(primary)
+      }
+      return out
+    }
+    for (const g of this.groupedItems) {
+      if (g.todos.length) g.todos = injectInto(g.todos)
+      if (g.groups) for (const s of g.groups) if (s.todos.length) s.todos = injectInto(s.todos)
     }
   }
 }

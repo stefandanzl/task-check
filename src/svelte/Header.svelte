@@ -509,7 +509,7 @@
     align-items: flex-end;
     gap: 2px;
     padding: 8px 4px 0 4px;
-    border-bottom: 1px solid var(--background-modifier-border);
+    border-bottom: 1px solid var(--text-selection);
   }
   .settings-tab {
     padding: 4px 12px;
@@ -529,7 +529,7 @@
     color: var(--text-normal);
     font-weight: 600;
     background: var(--background-secondary);
-    border-color: var(--background-modifier-border);
+    border-color: var(--text-selection);
   }
   .bookmark-add {
     margin-inline-start: auto;
