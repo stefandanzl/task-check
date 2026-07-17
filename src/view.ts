@@ -591,11 +591,10 @@ export default class TodoListView extends ItemView {
     // console.log('Search results:', searchedItems.length, 'items from', filteredItems.length)
 
     // Family-context expansion runs AFTER grouping/sorting: the user's normal
-    // item sort is applied to matched tasks first; then each match's family
+    // item sort is applied to matched tasks first; then each task's family
     // (ancestors incl. done above, open descendants below) is attached next to
     // it as dimmed, non-interactive context. The sort is never disturbed.
-    const searchActive = textTerms.length > 0 || negatedTerms.length > 0 || dateFilters.length > 0 || priorityFilters.length > 0 || statusFilters.length > 0
-    const familyExpansion = this.plugin.getSettingValue('showFamilyInSearch') && searchActive
+    const familyExpansion = this.plugin.getSettingValue('showFamilyInSearch')
     for (const it of searchedItems) it.isFamilyContext = false
 
     const prioGrouping = this.plugin.getSettingValue('prioGrouping')

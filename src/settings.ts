@@ -169,8 +169,8 @@ export class TodoSettingTab extends PluginSettingTab {
         control: {type: 'toggle', key: 'showOnlyActiveFile'},
       },
       {
-        name: 'Show family relations in search results',
-        desc: '"Family" = a task\'s indentation hierarchy (the parent it\'s indented under, and the subtasks indented beneath it). When a search matches a task, also show its family as dimmed, non-interactive context — parents above (incl. done), open subtasks below.',
+        name: 'Show family relations',
+        desc: `For task Todos that are ordered hierachically by varying indentation levels parent and in some cases child relations will be expanded by showing those tasks dimmed - even if already marked completed or not actually relevant for current search query.`,
         control: {type: 'toggle', key: 'showFamilyInSearch'},
       },
       {
