@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { App } from "obsidian"
+  import {Platform, type App} from "obsidian"
 
   import type { TodoGroup, PriorityGroup, DateGroup, TodoItem, DateCategory } from "src/_types"
   import { navToFile, setTodoPrioritiesBatch } from "src/utils"
@@ -377,7 +377,7 @@
     {:else}
       <ul>
         {#each visibleTodos as item, i}
-          <ChecklistItem {item} {app} draggable={true} ondragstart={handleItemDragStart(item)} ondragend={handleItemDragEnd} />
+          <ChecklistItem {item} {app} draggable={!Platform.isMobile} ondragstart={handleItemDragStart(item)} ondragend={handleItemDragEnd} />
         {/each}
       </ul>
       {#if maxTasksPerGroup && enableLimit && group.todos.length > maxTasksPerGroup && !isGroupShowingAll}

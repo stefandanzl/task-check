@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { App } from 'obsidian'
+  import {Platform, type App} from 'obsidian'
   import type { TodoItem } from 'src/_types'
   import ChecklistItem from './ChecklistItem.svelte'
 
@@ -103,7 +103,7 @@
             <ChecklistItem
               {item}
               {app}
-              draggable={true}
+              draggable={!Platform.isMobile}
               ondragstart={forwardDragStart(item)}
               ondragend={forwardDragEnd}
             />
@@ -135,7 +135,7 @@
             <ChecklistItem
               {item}
               {app}
-              draggable={true}
+              draggable={!Platform.isMobile}
               ondragstart={forwardDragStart(item)}
               ondragend={forwardDragEnd}
               {targetPriority}
