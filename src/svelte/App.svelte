@@ -5,6 +5,7 @@
   import Header from "./Header.svelte"
   import ScrollToTop from "./ScrollToTop.svelte"
   import {
+    dragState,
     todoGroupsStore,
     todoTagsStore,
     collapsedSectionsStore,
@@ -33,6 +34,55 @@
   } = $props()
 
   let showAllMap = $state<Record<string, boolean>>({})
+  let rootEl: HTMLElement
+
+  /** Nearest ancestor that actually scrolls — the sidebar's content container. */
+  function findScrollContainer(el: HTMLElement | null): HTMLElement | null {
+    let node = el?.parentElement
+    while (node) {
+      const style = getComputedStyle(node)
+      if (/(auto|scroll)/.test(style.overflowY) && node.scrollHeight > node.clientHeight) return node
+      node = node.parentElement
+    }
+    return null
+  }
+
+  // While a task drag is in progress, auto-scroll the sidebar when the pointer
+  // is near the top/bottom edge so you can reach groups that are off-screen.
+  // dragState.inProgress can only go true on desktop (drag is disabled on
+  // mobile), so no platform gate is needed here.
+  $effect(() => {
+    if (!$dragState.inProgress) return
+    const scroller = findScrollContainer(rootEl)
+    if (!scroller) return
+    const edgeFraction = 0.15 // top/bottom fraction of the viewport that triggers scrolling
+    const speed = 12 // max px/frame (at the very edge; ramps down toward the zone's inner edge)
+    let clientY = 0
+    let raf = 0
+    const onDragOver = (e: DragEvent) => {clientY = e.clientY}
+    const tick = () => {
+      if (clientY > 0) {
+        const rect = scroller.getBoundingClientRect()
+        const margin = rect.height * edgeFraction
+        if (clientY < rect.top + margin) {
+          // Closer to the top edge → faster up-scroll (ratio 1 at edge → 0 at inner bound).
+          const ratio = 1 - (clientY - rect.top) / margin
+          scroller.scrollTop -= speed * Math.max(0, ratio)
+        } else if (clientY > rect.bottom - margin) {
+          // Closer to the bottom edge → faster down-scroll.
+          const ratio = (clientY - (rect.bottom - margin)) / margin
+          scroller.scrollTop += speed * Math.max(0, ratio)
+        }
+      }
+      raf = requestAnimationFrame(tick)
+    }
+    document.addEventListener('dragover', onDragOver)
+    raf = requestAnimationFrame(tick)
+    return () => {
+      document.removeEventListener('dragover', onDragOver)
+      cancelAnimationFrame(raf)
+    }
+  })
 
   function toggleGroup(id: string) {
     const collapsed = $collapsedSectionsStore
@@ -53,7 +103,7 @@
   }
 </script>
 
-<div class="checklist-plugin-main markdown-preview-view markdown-source-view is-live-preview mod-cm6 cm-s-obsidian">
+<div class="checklist-plugin-main markdown-preview-view markdown-source-view is-live-preview mod-cm6 cm-s-obsidian" bind:this={rootEl}>
   <Header
     {app}
     onTagStatusChange={updateTagStatus}
