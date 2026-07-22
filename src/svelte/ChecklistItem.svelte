@@ -95,8 +95,7 @@
         data-task={item.taskStatus}
         checked={item.taskStatus !== ' '}
         onclick={ev => {
-          // Family-context rows are display-only — don't toggle them.
-          if (!item.isFamilyContext) toggleTodoItem(item, app)
+          toggleTodoItem(item, app)
           ev.stopPropagation()
         }} />
     </label>
@@ -125,6 +124,8 @@
     width: 100%;
     box-sizing: border-box;
     padding: 6px 0 6px 4px;
+    user-select: none;
+    -webkit-user-select: none;
   }
 
   li.checklist-item:hover {
