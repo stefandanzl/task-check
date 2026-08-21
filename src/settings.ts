@@ -249,7 +249,7 @@ export class TodoSettingTab extends PluginSettingTab {
             name: 'Include files',
             desc: 'Include all files that match this glob pattern. Examples on the plugin page/github readme. Leave empty to check all files.',
             control: {
-              type: 'text',
+              type: 'textarea',
               key: 'includeFiles',
               placeholder: '**/*',
             },

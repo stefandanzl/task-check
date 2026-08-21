@@ -6,7 +6,7 @@ import type {
   CachedMetadata,
 } from 'node_modules/obsidian/obsidian'
 import type {TodoItem, FileInfo, TagMeta} from 'src/_types'
-import {globToRegex, isExcluded} from './glob'
+import {globsToRegex} from './helpers'
 import {
   retrieveTag,
   getTagMeta,
@@ -39,28 +39,33 @@ export const parseTodos = async (
   todoTags: string[],
   cache: MetadataCache,
   vault: Vault,
-  includeFiles: string,
+  includePattern: string,
   showAllTodos: boolean,
   lastRerender: number,
   priorityTag: string,
   dateTag: string,
 ): Promise<Map<TFile, TodoItem[]>> => {
-  const includePattern = includeFiles.trim()
-    ? includeFiles.trim().split('\n')
+  const includePatternArray = includePattern.trim()
+    ? includePattern.trim().split('\n')
     : ['**/*']
 
   const todosForUpdatedFiles = new Map<TFile, TodoItem[]>()
-  const includeRegex = globToRegex(includePattern)
+  const includeRegex = globsToRegex(includePatternArray)
   console.log(includeRegex)
 
+  let includedFiles = files.filter(file => includeRegex.test(file.path))
+  console.log("includedFiles: "+ includedFiles.length)
+  console.log({paths: includedFiles.map((file)=>file.path)})
+
+
   await Promise.all(
-    files
+    includedFiles
       .filter(file => {
         if (file.stat.mtime < lastRerender) return false
         // if (!includePattern.some(p => minimatch(file.path, p))) return false
         // console.log(file.path)
         // if (isExcluded(file.path, includeRegex)) return false
-        console.log(file.path)
+    //    console.log(file.path)
         return true
       })
       .map(async file => {

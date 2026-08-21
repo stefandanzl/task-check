@@ -258,3 +258,103 @@ export function buildIcons() {
     addIcon(icon, svgContent)
   }
 }
+
+
+export function haveTodosChanged(oldTodos: TodoItem[] | undefined, newTodos: TodoItem[]): boolean {
+  if (!oldTodos || oldTodos.length === 0) {
+    return newTodos.length > 0
+  }
+
+  if (oldTodos.length !== newTodos.length) return true
+
+  return newTodos.some((newItem, i) => {
+    const oldItem = oldTodos[i]
+
+    if (
+      newItem.checked !== oldItem.checked ||
+      newItem.taskStatus !== oldItem.taskStatus ||
+      newItem.originalText !== oldItem.originalText ||
+      newItem.line !== oldItem.line ||
+      newItem.spacesIndented !== oldItem.spacesIndented ||
+      newItem.priority !== oldItem.priority ||
+      newItem.blockPriority !== oldItem.blockPriority ||
+      newItem.dateTag !== oldItem.dateTag ||
+      newItem.dateCategory !== oldItem.dateCategory
+    ) {
+      return true
+    }
+
+    if (newItem.date?.getTime() !== oldItem.date?.getTime()) {
+      return true
+    }
+
+    if (newItem.taskTags.length !== oldItem.taskTags.length) return true
+    for (let j = 0; j < newItem.taskTags.length; j++) {
+      if (
+        newItem.taskTags[j].main !== oldItem.taskTags[j].main ||
+        newItem.taskTags[j].sub !== oldItem.taskTags[j].sub
+      ) {
+        return true
+      }
+    }
+    return false
+  })
+}
+
+
+// Übersetzt ein einzelnes Glob (ohne !-Präfix) in einen Regex-Source-String.
+// WICHTIG: Alle Glob-Tokens in EINEM replace-Durchlauf übersetzen.
+// String.replace rescanned eingefügten Replacement-Text nicht — bei
+// mehreren aufeinanderfolgenden replaces würde das später eingefügte `.*`
+// vom nächsten `\*`-replace wieder erfasst und kaputt gemacht.
+const globToPattern = (g: string): string => {
+  // Gitignore-Regel: Ein Pattern OHNE Slash matcht auf jede Tiefe
+  // (z.B. `*.md` = alle .md-Dateien überall, nicht nur im Root).
+  const anyDepth = !g.includes('/')
+  let s = g
+    .replace(/^\/+|\/+$/g, '')             // führende/abschließende Slashes strippen
+    .replace(/[.+^${}()|[\]\\]/g, '\\$&')  // Regex-Metachars escapen (* und ? sind Glob-Tokens)
+  // Ein Durchlauf, längste Token zuerst: **/ vor ** vor * vor ?
+  const body = s.replace(/\*\*\/|\*\*|\*|\?/g, tok => {
+    switch (tok) {
+      case '**/': return '(?:.+/)?'  // null+ Segmente (auch am Pattern-Anfang)
+      case '**':   return '.*'       // alles inkl. Slashes
+      case '*':    return '[^/]*'    // genau ein Segment
+      default:    return '[^/]'      // ? = ein Zeichen
+    }
+  })
+  return anyDepth ? `(?:.+/)?${body}` : body
+}
+
+/**
+ * Übersetzt eine Liste von Include-Globs in EINEN RegExp (one-step).
+ * Zeilen mit `!`-Präfix (mit oder ohne Leerzeichen, z.B. `! X/**` / `!X/**`)
+ * sind Negationen: Mengensubtraktion, Reihenfolge egal. Sie können nur
+ * subtrahieren — includiert wird nach wie vor nur über positive Zeilen.
+ * Nur Negationen (oder leer / reine Wildcards) → Basis "alles".
+ */
+export function globsToRegex(globs: string[]): RegExp {
+  const valid = globs.map(g => g.trim()).filter(Boolean)
+  const negatives = valid
+    .filter(g => g.startsWith('!'))
+    .map(g => g.slice(1).trim())
+    .filter(Boolean)
+  const positives = valid.filter(g => !g.startsWith('!'))
+
+  // Include-Basis: leer ODER reine Wildcards wie **/* → ALLES.
+  // (Früher Early-Return — jetzt nötig, damit Negationen nicht verloren gehen.)
+  const allIncluded =
+    !positives.length || positives.some(g => g === '*' || g === '**' || g === '**/*')
+  const positiveSrc = allIncluded
+    ? '.*'
+    : `((${positives.map(globToPattern).join(')|(')}))`
+
+  // Negationen als negativer Lookahead am Stringanfang: der Pfad darf KEIN
+  // Negation-Pattern vollständig matchen. Semantisch identisch zu
+  // include.test(p) && !exclude.test(p), nur in einem einzigen test().
+  const negationSrc = negatives.length
+    ? `(?!(?:(${negatives.map(globToPattern).join(')|(')}))$)`
+    : ''
+
+  return new RegExp(`^${negationSrc}${positiveSrc}$`, 'i')
+}
