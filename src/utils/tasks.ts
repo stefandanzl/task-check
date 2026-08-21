@@ -1,8 +1,4 @@
-import { marked } from 'marked'
 import minimatch from 'minimatch'
-
-// Configure marked to be synchronous
-marked.use({ async: false })
 
 import {
   addPriorityTagToText,
@@ -375,80 +371,6 @@ const findAllTodosFromTagBlock = (file: FileInfo, tag: TagCache, priorityTag: st
   return todos
 }
 
-const escapeHtml = (text: string): string => {
-  return String(text)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;')
-}
-
-const preprocessMarkdown = (text: string, metadataCache: MetadataCache, sourcePath: string): string => {
-  // Apply custom regex replacements in order
-  let processed = text
-
-  // %%comment%% → HTML comment
-  processed = processed.replace(/%%([^%]+)%%/g, (_, content) => 
-    `<span class="cm-comment cm-comment-start cm-formatting">%%</span>` +
-    `<span class="cm-comment">${escapeHtml(content)}</span>` + 
-    `<span class="cm-comment cm-comment-end cm-formatting">%%</span>`
-  )
-    
-  // [[link|label]] → internal link
-  processed = processed.replace(/\[\[([^\]]+)\]\]/g, (_, content) => {
-    const [link, label] = content.trim().split('|')
-    const targetFile = metadataCache.getFirstLinkpathDest(link, sourcePath)
-    if (!targetFile) return `[[${content}]]`
-    const displayText = label || link
-    return `<a data-href="${escapeHtml(link)}" data-type="link" data-filepath="${escapeHtml(targetFile.path)}" class="internal-link">${escapeHtml(displayText)}</a>`
-  })
-
-  // ==highlight== → Obsidian-style highlight span
-  processed = processed.replace(/==([^=]+)==/g, (_, content) => `<span class="cm-highlight">${escapeHtml(content)}</span>`)
-
-  // #tag → Obsidian hashtag spans (requires space before to avoid false matches)
-  processed = processed.replace(/(\s)#(\S+)/g, (_, space, tag) => {
-    const parts = tag.split('/')
-    const main = parts[0] || ''
-    const stringer = parts.join('')
-    const sub = parts.slice(1).join('/') || ''
-    // const escapedTag = sub ? main + '/' + sub : main
-    return `${space}<span class="cm-formatting cm-formatting-hashtag cm-hashtag cm-hashtag-begin cm-meta cm-tag-${stringer}" spellcheck="false">#</span><span class="cm-hashtag cm-hashtag-end cm-meta cm-tag-${stringer}" spellcheck="false">${escapeHtml(tag)}</span>`
-  })
-
-  // Finally, render any remaining markdown with marked
-  const markedHTML = marked(processed) as string
-
-  // Post-process to match Obsidian's native rendering
-  return postprocessHTML(markedHTML)
-}
-
-// Post-process HTML to match Obsidian's native rendering
-const postprocessHTML = (html: string): string => {
-  let processed = html
-
-  // <p> → Obsidian inline code span
-processed = processed.replace(/^\s*<p>([\s\S]*)<\/p>\s*$/, "$1")
-
-  // <code> → Obsidian inline code span
-  processed = processed.replace(/<code>(.*?)<\/code>/g, (_, content) =>
-    `<span class="cm-inline-code cm-list-1" spellcheck="false">${content}</span>`
-  )
-
-  // <strong> → Obsidian bold span
-  processed = processed.replace(/<strong>(.*?)<\/strong>/g, (_, content) =>
-    `<span class="cm-list-1 cm-strong">${content}</span>`
-  )
-
-  // <em> → Obsidian emphasis span
-  processed = processed.replace(/<em>(.*?)<\/em>/g, (_, content) =>
-    `<span class="cm-list-1 cm-em">${content}</span>`
-  )
-
-  return processed
-}
-
 /**
  * The task text as shown in the panel: the main todo tag, priority tag, date
  * tag and any trailing block reference stripped; other tags + markdown
@@ -468,10 +390,6 @@ export const getTaskDisplayText = (item: TodoItem, priorityTag: string, dateTag:
   return splitBlockRef(text).body
 }
 
-/** Full HTML rendering of a task's display text (runs preprocessMarkdown + marked). */
-export const renderTaskHTML = (item: TodoItem, app: App, priorityTag: string, dateTag: string): string => {
-  return preprocessMarkdown(getTaskDisplayText(item, priorityTag, dateTag), app.metadataCache, item.filePath)
-}
 
 /**
  * Extracts auxiliary tags from a line: every `#ns/value` token whose namespace

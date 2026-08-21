@@ -5,7 +5,6 @@ import {
   ensureTaskBlockRef,
   getTaskDisplayText,
   navToFile,
-  renderTaskHTML,
   setTodoDate,
   setTodoPriority,
   setTodoStatus,
@@ -18,16 +17,6 @@ const copyToClipboard = async (text: string, msg = 'Copied') => {
   new Notice(msg)
 }
 
-// Plain readable text for a wikilink alias: rendered text with tags and any
-// link-breaking symbols ([, ], |) stripped, whitespace collapsed.
-const cleanTaskAlias = (html: string): string => {
-  const text = new DOMParser().parseFromString(html, 'text/html').body.textContent ?? ''
-  return text
-    .replace(/#[^\s#]+/g, '')
-    .replace(/[\[\]|]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim()
-}
 
 /**
  * Builds and shows the native context menu for a task row. Priority/date
@@ -36,6 +25,7 @@ const cleanTaskAlias = (html: string): string => {
  */
 export const openTaskContextMenu = (
   item: TodoItem,
+  taskEl: HTMLElement,
   app: App,
   e: MouseEvent,
   priorityTag: string,
@@ -44,7 +34,8 @@ export const openTaskContextMenu = (
   e.preventDefault()
   const menu = new Menu()
   const displayText = getTaskDisplayText(item, priorityTag, dateTag)
-  const plainText = cleanTaskAlias(renderTaskHTML(item, app, priorityTag, dateTag)) || displayText
+  // const plainText = cleanTaskAlias(getTaskDisplayText(item, priorityTag, dateTag)) || displayText
+  const plainText = taskEl.textContent || displayText
 
   menu.addItem(i => {
     i.setTitle('Copy…').setIcon('copy-plus')

@@ -1,7 +1,7 @@
 <script lang="ts">
-  import type {App} from 'obsidian'
+  import {Component, MarkdownRenderer, type App} from 'obsidian'
   import type {TodoItem, DateCategory} from 'src/_types'
-  import {navToFile, renderTaskHTML, toggleTodoItem} from 'src/utils'
+  import {getTaskDisplayText, navToFile, toggleTodoItem} from 'src/utils'
   import {priorityTagStore, dateTagStore} from './viewStore'
   import {openTaskContextMenu} from './taskMenu'
 
@@ -22,12 +22,27 @@
   } = $props()
 
   const handleContextMenu = (e: MouseEvent) => {
-    openTaskContextMenu(item, app, e, $priorityTagStore, $dateTagStore)
+    openTaskContextMenu(item, containerEl, app, e, $priorityTagStore, $dateTagStore)
   }
 
-  // Render the task HTML lazily (only for mounted tasks), so the markdown
-  // pipeline doesn't run for filtered-out / collapsed / limit-hidden tasks.
-  const taskHTML = $derived(renderTaskHTML(item, app, $priorityTagStore, $dateTagStore))
+  let containerEl: HTMLElement
+
+  // Render the task markdown with Obsidian's own renderer (replaces the old
+  // custom marked pipeline). Runs as a mount effect, so only tasks that are
+  // actually displayed pay the rendering cost — filtered-out / collapsed /
+  // limit-hidden tasks never mount and never render.
+  $effect(() => {
+    if (!containerEl) return
+    const md = getTaskDisplayText(item, $priorityTagStore, $dateTagStore)
+    containerEl.innerHTML = ''
+    // Obsidian's renderer needs a Component to own the rendered children
+    // (internal-link handling, hover popovers). Fresh one per render; the
+    // teardown unloads it on re-render AND when the item unmounts.
+    const renderer = new Component()
+    renderer.load()
+    MarkdownRenderer.render(app, md, containerEl, item.filePath, renderer)
+    return () => renderer.unload()
+  })
 
   // 1 = top-level, 2 = once-indented, ...
   const level = $derived(item.spacesIndented + 1)
@@ -54,8 +69,9 @@
 
     if (anchor) {
       ev.stopPropagation()
-      if (anchor.dataset.type === 'link') {
-        navToFile(app, anchor.dataset.filepath!, ev, item.line)
+      if (anchor.classList.contains('internal-link') && anchor.dataset.href) {
+        const dest = app.metadataCache.getFirstLinkpathDest(anchor.dataset.href, item.filePath)
+        if (dest) navToFile(app, dest.path, ev, item.line)
       }
       return
     }
@@ -103,8 +119,8 @@
     <!-- <img class="cm-widgetBuffer" aria-hidden="true"> -->
     <!-- </div> -->
     <!-- svelte-ignore a11y_click_events_have_key_events -->
-    <span class="cm-list-{level} task-list-item-text"
-      >{@html taskHTML}</span>
+    <span bind:this={containerEl} class="cm-list-{level} task-list-item-text"
+      ></span>
   </div>
   {#if showDatePill}
     <span class="date-pill no-select" data-cat={item.dateCategory} aria-label={datePillAria}>{datePillLabel}</span>
