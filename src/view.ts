@@ -3,7 +3,7 @@ import {mount, unmount} from 'svelte'
 
 import {TODO_VIEW_TYPE} from './constants'
 import App from './svelte/App.svelte'
-import {groupTodos, groupTodosByPriority, groupTodosByDate, parseTodos, wireFamilyAndInherited} from './utils'
+import {groupTodos, groupTodosByPriority, groupTodosByDate, parseTodos, wireFamilyAndInherited, parseFile, haveTodosChanged} from './utils'
 import {
   todoGroupsStore,
   todoTagsStore,
@@ -23,6 +23,7 @@ import {
 import type {TodoSettings} from './settings'
 import type TodoPlugin from './main'
 import type {TodoGroup, TodoItem, DateFilter, PriorityFilter, StatusFilter} from './_types'
+import { setupEvents } from './setup'
 
 export default class TodoListView extends ItemView {
   private _app: ReturnType<typeof mount>
@@ -35,7 +36,7 @@ export default class TodoListView extends ItemView {
 
   constructor(
     leaf: WorkspaceLeaf,
-    private plugin: TodoPlugin,
+    public plugin: TodoPlugin,
   ) {
     super(leaf)
   }
@@ -71,20 +72,20 @@ export default class TodoListView extends ItemView {
   }
 
   async onOpen(): Promise<void> {
-    this.refresh()
-    this.registerEvent(
-      this.app.metadataCache.on('resolved', async () => {
-        if (!this.plugin.getSettingValue('autoRefresh')) return
-        await this.refresh()
-      }),
-    )
-    this.registerEvent(
-      this.app.workspace.on('active-leaf-change', async () => {
-        if (!this.plugin.getSettingValue('showOnlyActiveFile')) return
-        await this.refresh()
-      }),
-    )
-    this.registerEvent(this.app.vault.on('delete', file => this.deleteFile(file.path)))
+    this.renderView()
+
+    if (!this.app.workspace.layoutReady) {
+      this.app.workspace.onLayoutReady(() => {
+        console.log("nicht ready")
+        this.refresh(true)
+        setupEvents.call(this)
+      })
+    } else {
+        console.log(" ready")
+        await this.refresh(true)
+        setupEvents.call(this)
+      }
+
   }
 
   private updateStores() {
@@ -109,7 +110,7 @@ export default class TodoListView extends ItemView {
     )
   }
 
-  private renderView() {
+  public renderView() {
     this.updateStores()
     if (!this._app) {
       this._app = mount(App, {
@@ -135,18 +136,22 @@ export default class TodoListView extends ItemView {
 
   async refresh(all = false) {
     if (this.isRefreshing) return
-    
+    const startTime = Date.now()
+    if (startTime - this.lastRerender < 3_000) return
+    // this.lastRerender = startTime
     this.isRefreshing = true
     try {
-      const startTime = Date.now()
       if (all) {
         this.lastRerender = 0
         this.itemsByFile.clear()
       }
+      console.log("calculate "+startTime)
       await this.calculateAllItems()
       this.groupItems()
       this.renderView()
-      this.lastRerender = startTime
+      const endTime = Date.now()
+      this.lastRerender = endTime
+      console.log("duration: " + String(endTime - startTime))
     } finally {
       this.isRefreshing = false
     }
@@ -192,7 +197,7 @@ export default class TodoListView extends ItemView {
     }, 100)
   }
 
-  private deleteFile(path: string) {
+  public deleteFile(path: string) {
     this.itemsByFile.delete(path)
     this.groupItems()
     this.renderView()
@@ -557,7 +562,7 @@ export default class TodoListView extends ItemView {
     return textMatch && dateMatch
   }
 
-  private groupItems() {
+  public groupItems() {
     // itemsByFile holds allTodos (done included, family already wired). showChecked
     // is the discernor: shownTasks is the display subset with done removed when off.
     const allTodos = Array.from(this.itemsByFile.values()).flat()
