@@ -74,9 +74,13 @@ async function build() {
 
   if (prod) {
     const result = await context.rebuild()
+    // Save metafile as file
     if (result.metafile) {
-      // Visit https://esbuild.github.io/analyze/ to analyze metafile
-      fs.writeFileSync('meta.json', JSON.stringify(result.metafile))
+      fs.writeFileSync('meta.json', JSON.stringify(result.metafile, null, 2))
+      if (process.env.ANALYZE_META === '1') {
+        // Optional: Bundle size breakdown in terminal
+        console.log(await esbuild.analyzeMetafile(result.metafile))
+      }
     }
     context.dispose()
   }
