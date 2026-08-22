@@ -4,6 +4,7 @@ import type {GroupMode} from '../_types'
 import type {TodoItem} from '../_types'
 
 export const todoGroupsStore = writable<TodoGroup[]>([])
+export const isLoadingStore = writable<boolean>(false)
 export const todoTagsStore = writable<string[]>([])
 export const collapsedSectionsStore = writable<string[]>([])
 export const hiddenTagsStore = writable<string[]>([])

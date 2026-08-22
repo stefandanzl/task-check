@@ -113,13 +113,17 @@ export default class TodoPlugin extends Plugin {
       'sortDirectionItems',
       'baseTagFirst',
       'prioGrouping',
+      'dateGrouping',
     ]
-    if (onlyRepaintWhenChanges.includes(Object.keys(updates)[0]))
+
+    if (onlyRepaintWhenChanges.includes(Object.keys(updates)[0])){
       this.view.rerender()
-    else
+    } else {
       this.view.refresh(
         !onlyReGroupWhenChanges.includes(Object.keys(updates)[0]),
+        true
       )
+    }
   }
 
   getSettingValue<K extends keyof TodoSettings>(setting: K): TodoSettings[K] {

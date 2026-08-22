@@ -13,6 +13,7 @@
     priorityTagStore,
     maxTasksPerGroupStore,
     enableLimitStore,
+    isLoadingStore
   } from "./viewStore"
 
   let {
@@ -60,7 +61,7 @@
     let clientY = 0
     let raf = 0
     const onDragOver = (e: DragEvent) => {clientY = e.clientY}
-    const tick = () => {
+    const scrollTick = () => {
       if (clientY > 0) {
         const rect = scroller.getBoundingClientRect()
         const margin = rect.height * edgeFraction
@@ -74,10 +75,10 @@
           scroller.scrollTop += speed * Math.max(0, ratio)
         }
       }
-      raf = requestAnimationFrame(tick)
+      raf = requestAnimationFrame(scrollTick)
     }
     document.addEventListener('dragover', onDragOver)
-    raf = requestAnimationFrame(tick)
+    raf = requestAnimationFrame(scrollTick)
     return () => {
       document.removeEventListener('dragover', onDragOver)
       cancelAnimationFrame(raf)
@@ -114,32 +115,34 @@
     {restoreLastSearch}
     {lastSearchQuery}
   />
-  {#if $todoGroupsStore.length === 0}
-    <div class="empty">
-      {#if $hiddenTagsStore.length === $todoTagsStore.length && $todoTagsStore.length > 0}
-        All checklist set to hidden
-      {:else if $todoTagsStore.filter((t) => !$hiddenTagsStore.includes(t)).length}
-        No checklists found for tag{$todoTagsStore.filter((t) => !$hiddenTagsStore.includes(t)).length > 1 ? "s" : ""}: {$todoTagsStore.filter((t) => !$hiddenTagsStore.includes(t)).map((e) => `#${e}`).join(" ")}
-      {:else}
-        No checklists found in all files
-      {/if}
-    </div>
-  {:else}
-    {#each $todoGroupsStore as group (group.id)}
-      <ChecklistGroup
-        {group}
-        {app}
-        priorityTag={$priorityTagStore ?? ''}
-        maxTasksPerGroup={$maxTasksPerGroupStore ?? null}
-        enableLimit={$enableLimitStore ?? true}
-        {showAllMap}
-        onToggleShowAll={handleToggleShowAll}
-        isCollapsed={$collapsedSectionsStore.includes(group.id)}
-        onToggle={toggleGroup}
-      />
-    {/each}
-  {/if}
-
+  <!-- Loading bar on system start or when no task results with .is-loading  -->
+  <div class:is-loading={$isLoadingStore}>
+    {#if $todoGroupsStore.length === 0}
+      <div class="empty">
+        {#if $hiddenTagsStore.length === $todoTagsStore.length && $todoTagsStore.length > 0}
+          All checklist set to hidden
+        {:else if $todoTagsStore.filter((t) => !$hiddenTagsStore.includes(t)).length}
+          No checklists found for tag{$todoTagsStore.filter((t) => !$hiddenTagsStore.includes(t)).length > 1 ? "s" : ""}: {$todoTagsStore.filter((t) => !$hiddenTagsStore.includes(t)).map((e) => `#${e}`).join(" ")}
+        {:else}
+          No checklists found in all files
+        {/if}
+      </div>
+    {:else}
+      {#each $todoGroupsStore as group (group.id)}
+        <ChecklistGroup
+          {group}
+          {app}
+          priorityTag={$priorityTagStore ?? ''}
+          maxTasksPerGroup={$maxTasksPerGroupStore ?? null}
+          enableLimit={$enableLimitStore ?? true}
+          {showAllMap}
+          onToggleShowAll={handleToggleShowAll}
+          isCollapsed={$collapsedSectionsStore.includes(group.id)}
+          onToggle={toggleGroup}
+        />
+      {/each}
+    {/if}
+  </div>
   <ScrollToTop />
 </div>
 
