@@ -11,6 +11,7 @@ import {
 } from 'src/utils'
 import {DONE_TASK_SYMBOLS, TASK_STATES} from '../constants'
 import {InputModal} from '../InputModal'
+import {copyFamilyAsMarkdown} from './viewActions'
 
 const copyToClipboard = async (text: string, msg = 'Copied') => {
   await navigator.clipboard.writeText(text)
@@ -81,6 +82,16 @@ export const openTaskContextMenu = (
           await copyToClipboard(link, 'Task link copied')
         }),
     )
+    // Only meaningful when the task actually has family (parent or children) —
+    // standalone tasks would just copy themselves.
+    if (item.family !== null) {
+      sub.addItem(i =>
+        i
+          .setTitle('Copy family as markdown')
+          .setIcon('list-tree')
+          .onClick(() => copyFamilyAsMarkdown(item)),
+      )
+    }
   })
 
 

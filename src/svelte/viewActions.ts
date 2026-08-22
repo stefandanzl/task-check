@@ -1,4 +1,7 @@
+import { Notice } from "obsidian";
 import type { Action } from "svelte/action";
+
+import type { TodoItem } from "src/_types";
 
 /**
  * Svelte action: fires `onVisible` once the element comes within range of the
@@ -29,4 +32,28 @@ export const renderWhenVisible: Action<HTMLElement, () => void> = (node, onVisib
 			observer.disconnect();
 		},
 	};
+};
+
+export const collectFamilyTree = (item: TodoItem): TodoItem[] => {
+	let root = item;
+	while (root.family?.parent) root = root.family.parent;
+
+	const out: TodoItem[] = [];
+	const add = (node: TodoItem) => {
+		out.push(node);
+		for (const child of node.family?.children ?? []) add(child);
+	};
+	add(root);
+
+	out.sort((a, b) => (a.filePath === b.filePath ? a.line - b.line : a.filePath.localeCompare(b.filePath)));
+	return out;
+};
+
+export const familyToMarkdown = (family: TodoItem[]): string =>
+	family.map((t) => `${"    ".repeat(t.spacesIndented)}- [${t.taskStatus}] ${t.originalText}`).join("\n");
+
+export const copyFamilyAsMarkdown = async (item: TodoItem): Promise<void> => {
+	const family = collectFamilyTree(item);
+	await navigator.clipboard.writeText(familyToMarkdown(family));
+	new Notice(`Copied family as markdown (${family.length} task${family.length > 1 ? "s" : ""})`);
 };

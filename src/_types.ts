@@ -28,8 +28,8 @@ export type TodoItem = {
   fileModifiedTs: number
   taskTags: TagMeta[]
   auxTags: {inline: string[]; block: string[]; inherited: string[]}
-  family?: Family | null
-  isFamilyContext?: boolean  // transient display flag: dimmed, non-interactive family-context row
+  family: Family | null
+  isFamilyContext: boolean  // transient display flag: dimmed, non-interactive family-context row
   line: number
   spacesIndented: number
   originalText: string
