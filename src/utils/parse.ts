@@ -351,7 +351,10 @@ const formTodo = (
       block: [...auxBlock],
       inherited: [],
     },
-    family: undefined,
+    // Performance optimization: Pre-defining family and isFamilyContext avoids V8 hidden class 
+    // mutations later in injectFamilyContext().
+    family: null,           
+    isFamilyContext: false,  
     checked,
     taskStatus,
     filePath: file.file.path,

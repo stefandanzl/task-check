@@ -18,6 +18,7 @@ import {
   activePanelTabStore,
   dateTagStore,
   groupModeStore,
+  isLoadingStore,
 } from './svelte/viewStore'
 
 import type {TodoSettings} from './settings'
@@ -71,19 +72,24 @@ export default class TodoListView extends ItemView {
     }
   }
 
+  opener = async () => {
+    setupEvents.call(this)
+    await this.refresh(true)
+    isLoadingStore.set(false)    
+
+    this.renderView()
+  }
+
   async onOpen(): Promise<void> {
+    isLoadingStore.set(true)
     this.renderView()
 
     if (!this.app.workspace.layoutReady) {
       this.app.workspace.onLayoutReady(() => {
-        console.log("nicht ready")
-        this.refresh(true)
-        setupEvents.call(this)
+        this.opener()
       })
     } else {
-        console.log(" ready")
-        await this.refresh(true)
-        setupEvents.call(this)
+        this.opener()
       }
 
   }
@@ -134,10 +140,10 @@ export default class TodoListView extends ItemView {
     }
   }
 
-  async refresh(all = false) {
+  async refresh(all = false, force = false) {
     if (this.isRefreshing) return
     const startTime = Date.now()
-    if (startTime - this.lastRerender < 3_000) return
+    if (!force && startTime - this.lastRerender < 3_000) return
     // this.lastRerender = startTime
     this.isRefreshing = true
     try {
@@ -630,38 +636,74 @@ export default class TodoListView extends ItemView {
    *  above the match, open descendants below. Each relative appears once. */
   private injectFamilyContext() {
     const injected = new Set<TodoItem>()
+    // 1. Initially register all Todos in Set
     for (const g of this.groupedItems) {
       for (const t of g.todos) injected.add(t)
-      if (g.groups) for (const s of g.groups) for (const t of s.todos) injected.add(t)
+      if (g.groups) {
+        for (const s of g.groups) {
+          for (const t of s.todos) injected.add(t)
+        }
+      }
     }
+
     const injectInto = (todos: TodoItem[]): TodoItem[] => {
       const out: TodoItem[] = []
+
       for (const primary of todos) {
+        // --- A. Collect ancestors
         const ancestors: TodoItem[] = []
         let p = primary.family?.parent
+
         while (p) {
-          if (!injected.has(p)) {injected.add(p); ancestors.unshift(p)}
+          // If already available we can also abort higher parents
+          if (injected.has(p)) break
+          injected.add(p)
+          ancestors.push(p) // push is much faster than unshift
           p = p.family?.parent
         }
-        for (const a of ancestors) {a.isFamilyContext = true; out.push(a)}
+
+        // Invert order
+        ancestors.reverse();
+        for (let i = 0; i < ancestors.length; i++) {
+          const a = ancestors[i];
+          a.isFamilyContext = true;
+          out.push(a);
+        }
+
+        // Insert main task
         primary.isFamilyContext = false
         out.push(primary)
+
+        // --- B. Collect Descendants 
         const addDesc = (node: TodoItem) => {
-          for (const child of node.family?.children ?? []) {
+          const children = node.family?.children
+          if (!children || children.length === 0) return
+
+          for (let i = 0; i < children.length; i++) {
+            const child = children[i];
             if (child.checked || injected.has(child)) continue
+
             injected.add(child)
             child.isFamilyContext = true
             out.push(child)
             addDesc(child)
           }
-        }
+        };
+
         addDesc(primary)
       }
+
       return out
-    }
+    };
+
+    // 2.Perform replacement
     for (const g of this.groupedItems) {
       if (g.todos.length) g.todos = injectInto(g.todos)
-      if (g.groups) for (const s of g.groups) if (s.todos.length) s.todos = injectInto(s.todos)
+      if (g.groups) {
+        for (const s of g.groups) {
+          if (s.todos.length) s.todos = injectInto(s.todos)
+        }
+      }
     }
   }
 }
