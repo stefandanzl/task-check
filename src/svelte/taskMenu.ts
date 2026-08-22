@@ -25,7 +25,7 @@ const copyToClipboard = async (text: string, msg = 'Copied') => {
  */
 export const openTaskContextMenu = (
   item: TodoItem,
-  taskEl: HTMLElement,
+  taskEl: HTMLElement | undefined,
   app: App,
   e: MouseEvent,
   priorityTag: string,
@@ -35,7 +35,7 @@ export const openTaskContextMenu = (
   const menu = new Menu()
   const displayText = getTaskDisplayText(item, priorityTag, dateTag)
   // const plainText = cleanTaskAlias(getTaskDisplayText(item, priorityTag, dateTag)) || displayText
-  const plainText = taskEl.textContent || displayText
+  const plainText = taskEl?.textContent || displayText
 
   menu.addItem(i => {
     i.setTitle('Copy…').setIcon('copy-plus')

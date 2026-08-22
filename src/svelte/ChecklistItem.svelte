@@ -4,6 +4,7 @@
   import {getTaskDisplayText, navToFile, toggleTodoItem} from 'src/utils'
   import {priorityTagStore, dateTagStore} from './viewStore'
   import {openTaskContextMenu} from './taskMenu'
+  import {renderWhenVisible} from './viewActions'
 
   let {
     item,
@@ -25,12 +26,24 @@
     openTaskContextMenu(item, containerEl, app, e, $priorityTagStore, $dateTagStore)
   }
 
-  let containerEl: HTMLElement
+  // $state because the span (and thus the binding) only exists once the row is
+  // visible — the assignment when the {#if} renders must re-trigger the effect.
+  let containerEl = $state<HTMLElement | undefined>()
+
+  // Lazy row rendering: the <li> mounts as an empty skeleton (see .skeleton
+  // CSS below); its whole content — checkbox, indent guides, markdown, pills —
+  // is only constructed once the row nears the viewport (renderWhenVisible
+  // action on the <li>, 200px pre-render buffer). One-shot: once visible it
+  // stays materialized, so scrolling back doesn't thrash.
+  let isVisible = $state(false)
+  const markVisible = () => {
+    isVisible = true
+  }
 
   // Render the task markdown with Obsidian's own renderer (replaces the old
-  // custom marked pipeline). Runs as a mount effect, so only tasks that are
-  // actually displayed pay the rendering cost — filtered-out / collapsed /
-  // limit-hidden tasks never mount and never render.
+  // custom marked pipeline). containerEl only exists once the row content has
+  // been constructed ({#if isVisible} below), so this effect — and Obsidian's
+  // render pipeline — is naturally deferred until the row is near the viewport.
   $effect(() => {
     if (!containerEl) return
     const md = getTaskDisplayText(item, $priorityTagStore, $dateTagStore)
@@ -87,7 +100,11 @@
 
 <!-- svelte-ignore a11y_click_events_have_key_events -->
 <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-<li class="checklist-item" class:family-context={item.isFamilyContext} onclick={handleClick} oncontextmenu={handleContextMenu}>
+<li class="checklist-item" class:family-context={item.isFamilyContext} 
+  class:skeleton={!isVisible} use:renderWhenVisible={markVisible} 
+  onclick={handleClick} oncontextmenu={handleContextMenu}
+  >
+  {#if isVisible}
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <div
     class="cm-active HyperMD-list-line HyperMD-list-line-{level} cm-line task-list-item-line"
@@ -126,6 +143,7 @@
     <span class="date-pill no-select" data-cat={item.dateCategory} aria-label={datePillAria}>{datePillLabel}</span>
   {/if}
   <span class="prio-level no-select">{targetPriority ?? '\u2007'}</span>
+  {/if}
 </li>
 
 <style>
@@ -142,6 +160,18 @@
     padding: 6px 0 6px 4px;
     user-select: none;
     -webkit-user-select: none;
+
+    /* Performance Boost for Paint/Layout: */
+    content-visibility: auto;
+    contain-intrinsic-size: auto 34px; /* Estimated hight incl. padding */
+  }
+
+  /* Un-rendered skeleton rows: content-visibility only reserves the intrinsic
+     size while OFF-screen; an on-screen-yet-unrendered empty row would collapse
+     to its padding (visible as a flash at initial mount). Keep skeletons at
+     full height until their content is constructed. */
+  li.checklist-item.skeleton {
+    min-height: 34px;
   }
 
   li.checklist-item:hover {
