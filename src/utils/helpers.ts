@@ -153,8 +153,14 @@ export const lineIsValidTodo = (line: string) => {
 }
 export const extractTextFromTodoLine = (line: string) =>
   /^(\s|\>)*([\-\*]|[0-9]+\.)\s\[(.{1})\]\s{1,4}(\S{1}.*)$/.exec(line)?.[4]
-export const getIndentationSpacesFromTodoLine = (line: string) =>
-  /^(\s*)([\-\*]|[0-9]+\.)\s\[(.{1})\]\s{1,4}(\S+)/.exec(line)?.[1]?.length ?? 0
+
+export const getIndentationLevelsFromTodoLine = (line: string): number => {
+  const ws = /^(\s*)([\-\*]|[0-9]+\.)\s\[(.{1})\]\s{1,4}(\S+)/.exec(line)?.[1] ?? ''
+  let width = 0
+  for (const ch of ws) width += ch === '\t' ? 4 : 1
+  return Math.floor(width / 4)
+}
+
 export const todoLineIsChecked = (line: string) =>
   /^(\s|\>)*([\-\*]|[0-9]+\.)\s\[(\S{1})\]/.test(line)
 

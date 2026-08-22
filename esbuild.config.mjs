@@ -48,13 +48,6 @@ async function build() {
       '@lezer/lr',
       ...builtins,
     ],
-    format: 'cjs',
-    target: 'es2020',
-    logLevel: 'info',
-    sourcemap: prod ? false : 'inline',
-    treeShaking: true,
-    metafile: prod,
-    minify: prod,
     plugins: [
       sveltePlugin({
         compilerOptions: {
@@ -65,6 +58,14 @@ async function build() {
         //   !warning.message.toLowerCase().includes('a11y'),
       }),
     ],
+    format: 'cjs',
+    target: 'es2020',
+    logLevel: 'info',
+    sourcemap: process.env.SOURCEMAP !== '1' ? false : 'inline',
+    treeShaking: true,
+    metafile: prod,
+    minify: process.env.NO_MINIFY !== '1',
+    drop: process.env.DROP_LOGS === '1' ? ['console', 'debugger'] : [], // Removes logs and debuggers from build
     outfile: 'main.js',
   })
 

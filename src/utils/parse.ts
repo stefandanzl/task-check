@@ -14,7 +14,7 @@ import {
   extractTextFromTodoLine,
   getAllLinesFromFile,
   getDateCategory,
-  getIndentationSpacesFromTodoLine,
+  getIndentationLevelsFromTodoLine,
   parseDateTag,
   parsePriorityTag,
 } from './helpers'
@@ -333,7 +333,7 @@ const formTodo = (
   auxBlock: string[] = [],
 ): TodoItem => {
   const rawText = extractTextFromTodoLine(line)
-  const spacesIndented = getIndentationSpacesFromTodoLine(line)
+  const spacesIndented = getIndentationLevelsFromTodoLine(line)
   const linePriority = priorityTag
     ? parsePriorityTag(rawText, priorityTag)
     : undefined

@@ -25,11 +25,10 @@
     "esbuild-svelte": "^0.9.4",
     "minimatch": "^5.1.9",
     "obsidian": "latest",
+    "prettier": "^3.9.6",
+    "prettier-plugin-svelte": "^4.1.1",
     "svelte": "^5.0.0",
     "tslib": "^2.4.0",
     "typescript": "^6.0.3"
-  },
-  "dependencies": {
-    "marked": "^18.0.2"
   }
 }
