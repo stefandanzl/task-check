@@ -232,7 +232,7 @@ export class TodoSettingTab extends PluginSettingTab {
         items: [
           {
             name: 'Date tag name',
-            desc: 'Tag name for due dates. Tasks can use #tag/YYYY-MM-DD format (e.g., #date/2026-04-30). Leave empty to disable date features.',
+            desc: 'Tag name for due dates. Tasks use "#tag YYYY-MM-DD" format (e.g. "#date 2026-04-30" — a space, so each date does not become its own distinct vault tag). Leave empty to disable date features.',
             control: {
               type: 'text',
               key: 'dateTag',

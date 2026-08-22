@@ -1,7 +1,8 @@
 <script lang="ts">
   import {Component, MarkdownRenderer, type App} from 'obsidian'
-  import type {TodoItem, DateCategory} from 'src/_types'
+  import type {TodoItem} from 'src/_types'
   import {getTaskDisplayText, navToFile, toggleTodoItem} from 'src/utils'
+  import {formatRelativeDateDiff} from 'src/utils/helpers'
   import {priorityTagStore, dateTagStore} from './viewStore'
   import {openTaskContextMenu} from './taskMenu'
   import {renderWhenVisible} from './viewActions'
@@ -61,19 +62,8 @@
   const level = $derived(item.spacesIndented + 1)
   const indent = $derived(level === 1 ? 31 : 31 + (level - 1) * 36)
 
-  // Due-date pill: shows the urgency category (reused everywhere), colored by
-  // category. The literal date is exposed via aria-label for screen readers.
-  const DATE_CATEGORY_LABEL: Record<DateCategory, string> = {
-    today: 'Today',
-    tomorrow: 'Tomorrow',
-    thisWeek: 'This Week',
-    thisMonth: 'This Month',
-    future: 'Later',
-    overdue: 'Overdue',
-    noDate: '',
-  }
-  const showDatePill = $derived(!!item.date && !!item.dateCategory && item.dateCategory !== 'noDate')
-  const datePillLabel = $derived(item.dateCategory ? DATE_CATEGORY_LABEL[item.dateCategory] : '')
+  const showDatePill = $derived(!!item.date)
+  const datePillLabel = $derived(item.date ? formatRelativeDateDiff(item.date) : '')
   const datePillAria = $derived(item.dateTag ?? '')
 
   const handleClick = (ev: MouseEvent) => {
@@ -142,7 +132,9 @@
   {#if showDatePill}
     <span class="date-pill no-select" data-cat={item.dateCategory} aria-label={datePillAria}>{datePillLabel}</span>
   {/if}
-  <span class="prio-level no-select">{targetPriority ?? '\u2007'}</span>
+  {#if targetPriority != null}
+    <span class="prio-level no-select" aria-label={`Priority level ${targetPriority}`}>{targetPriority}</span>
+  {/if}
   {/if}
 </li>
 
@@ -152,12 +144,12 @@
     align-items: center;
     background-color: var(--checklist-listItemBackground);
     border-radius: var(--checklist-listItemBorderRadius);
-    margin: 2px 0;
+    margin: 2px 2px 2px 0;
     cursor: pointer;
     transition: background-color 100ms ease-in-out;
     width: 100%;
     box-sizing: border-box;
-    padding: 6px 0 6px 4px;
+    padding: 6px 4px 6px 4px;
     user-select: none;
     -webkit-user-select: none;
 
@@ -188,10 +180,12 @@
   }
 
   .prio-level {
-    padding: 1px 8px;
+    padding: 1px 6px;
     font-size: var(--font-smallest);
     color: var(--color-accent);
+    border: 1px solid currentColor;
     border-radius: 50%;
+    margin: 0 2px;
   }
 
   /* Due-date urgency pill. Background is driven by [data-cat] so the same
@@ -201,11 +195,12 @@
     margin-inline-end: 2px;
     font-size: var(--font-smallest);
     font-weight: 600;
-    line-height: 1.4;
+    /* line-height: 1.4; */
     color: #fff;
     border-radius: 999px;
     white-space: nowrap;
     background-color: var(--text-faint);
+    margin: 0 2px;
   }
   .date-pill[data-cat='overdue'] { background-color: var(--taskcheck-date-overdue); }
   .date-pill[data-cat='today'] { background-color: var(--taskcheck-date-today); }

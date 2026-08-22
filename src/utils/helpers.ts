@@ -59,7 +59,7 @@ export const addPriorityTagToText = (text: string, priorityTagName: string, prio
 // Date parsing functions
 export const parseDateTag = (text: string, dateTagName: string): Date | undefined => {
   if (!text || !dateTagName) return undefined
-  const dateRegex = new RegExp(`\\s#${dateTagName}/(\\d{4}-\\d{2}-\\d{2})`)
+  const dateRegex = new RegExp(`\\s#${dateTagName} (\\d{4}-\\d{2}-\\d{2})`)
   const match = text.match(dateRegex)
   if (match) {
     const dateStr = match[1]
@@ -72,7 +72,7 @@ export const parseDateTag = (text: string, dateTagName: string): Date | undefine
 export const removeDateTagFromText = (text: string, dateTagName: string): string => {
   if (!text || !dateTagName) return text
   const {body, ref} = splitBlockRef(text)
-  return `${body.replace(new RegExp(`\\s+#${dateTagName}/\\d{4}-\\d{2}-\\d{2}`), '').trim()}${ref}`
+  return `${body.replace(new RegExp(`\\s+#${dateTagName} \\d{4}-\\d{2}-\\d{2}`), '').trim()}${ref}`
 }
 
 export const addDateTagToText = (text: string, dateTagName: string, date: Date): string => {
@@ -80,7 +80,7 @@ export const addDateTagToText = (text: string, dateTagName: string, date: Date):
   const {body, ref} = splitBlockRef(text)
   const cleanedText = removeDateTagFromText(body, dateTagName)
   const dateStr = date.toISOString().split('T')[0] // YYYY-MM-DD format
-  return `${cleanedText} #${dateTagName}/${dateStr}${ref}`
+  return `${cleanedText} #${dateTagName} ${dateStr}${ref}`
 }
 
 export const getDateCategory = (date: Date): DateCategory => {
@@ -120,6 +120,20 @@ export const getRelativeDateString = (date: Date): string => {
     case 'future': return date.toLocaleDateString()
     default: return ''
   }
+}
+
+export const formatRelativeDateDiff = (date: Date): string => {
+  const abs = Math.abs(date.getTime() - Date.now())
+  const sign = date.getTime() < Date.now() ? '-' : ''
+  const hours = Math.floor(abs / 3_600_000)
+  const days = Math.floor(hours / 24)
+  let label: string
+  if (days >= 365) label = `${Math.floor(days / 365)} y`
+  else if (days >= 31) label = `${Math.floor(days / 31)} m`
+  else if (days >= 7) label = `${Math.floor(days / 7)} w`
+  else if (days >= 1) label = `${days} d`
+  else label = `${hours} h`
+  return `${sign}${label}`
 }
 
 export const getTagMeta = (tag: string): TagMeta => {

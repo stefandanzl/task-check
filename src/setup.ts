@@ -2,7 +2,7 @@ import { MarkdownView, Editor, Notice, type ObsidianProtocolData } from "obsidia
 import { TODO_VIEW_TYPE } from "./constants";
 import { StatusSuggestModal } from "./StatusSuggestModal";
 import { undoLast } from "./undo";
-import { haveTodosChanged, parseFile, setTaskStatusChar, wireFamilyAndInherited } from "./utils";
+import { haveTodosChanged, parseFile, wireFamilyAndInherited } from "./utils";
 import type TodoPlugin from "./main";
 import type TodoListView from "./view";
 
@@ -117,9 +117,16 @@ export async function setupCommands(this: TodoPlugin) {
 			}
 			new StatusSuggestModal(this.app, (symbol) => {
 				// Re-read each line at apply time in case it changed while the modal
-				// was open; only the status char is swapped.
+				// was open. Replace ONLY the status char via replaceRange — unlike
+				// setLine, this preserves cursor position and selection (setLine
+				// resets the cursor to column 0 of the line).
 				for (const l of taskLines) {
-					editor.setLine(l, setTaskStatusChar(editor.getLine(l), symbol));
+					const line = editor.getLine(l);
+					const m = /^((\s|>)*([-*]|[0-9]+\.)\s\[)([^\]]+)(\].*$)/.exec(line);
+					if (!m) continue; // line changed shape while the modal was open
+					const from = { line: l, ch: m[1].length };
+					const to = { line: l, ch: m[1].length + m[4].length };
+					editor.replaceRange(symbol, from, to);
 				}
 			}).open();
 		},

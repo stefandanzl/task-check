@@ -340,6 +340,7 @@ const formTodo = (
   const priority = linePriority !== undefined ? linePriority : blockPriority
   const lineDate = dateTag ? parseDateTag(rawText, dateTag) : undefined
   const dateCategory = lineDate ? getDateCategory(lineDate) : undefined
+  const dateString = lineDate ? rawText.match(new RegExp(`#${dateTag} ([\\d-]+)`))?.[1] : undefined
 
   // Use the task status from cache - no fallback needed since we only call this for actual tasks
   const checked = DONE_TASK_SYMBOLS.has(taskStatus)
@@ -370,9 +371,7 @@ const formTodo = (
     blockTagLine,
     date: lineDate,
     dateCategory,
-    dateTag: lineDate
-      ? rawText.match(new RegExp(`#${dateTag}/([\\d-]+)`))?.[1]
-      : undefined,
+    dateTag: dateString,
   }
 }
 
