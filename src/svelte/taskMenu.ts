@@ -1,6 +1,6 @@
 import {Menu, Notice, TFile, type App} from 'obsidian'
 
-import type {TodoItem} from 'src/_types'
+import type {TodoGroup, TodoItem} from 'src/_types'
 import {
   ensureTaskBlockRef,
   getTaskDisplayText,
@@ -11,7 +11,7 @@ import {
 } from 'src/utils'
 import {DONE_TASK_SYMBOLS, TASK_STATES} from '../constants'
 import {InputModal} from '../InputModal'
-import {copyFamilyAsMarkdown} from './viewActions'
+import {copyFamilyAsMarkdown, filterListToTag, filterListToTask} from './viewActions'
 
 const copyToClipboard = async (text: string, msg = 'Copied') => {
   await navigator.clipboard.writeText(text)
@@ -202,6 +202,12 @@ export const openTaskContextMenu = (
   menu.addSeparator()
   menu.addItem(i =>
     i
+      .setTitle('Filter list to this task')
+      .setIcon('filter')
+      .onClick(() => filterListToTask(item, app)),
+  )
+  menu.addItem(i =>
+    i
       .setTitle('Open in file')
       .setIcon('file-text')
       .onClick(() => navToFile(app, item.filePath, e, item.line)),
@@ -209,3 +215,20 @@ export const openTaskContextMenu = (
 
   menu.showAtMouseEvent(e)
 }
+
+
+
+  // Tag-group headers only: right-click → filter the list to this tag.
+  export const handleHeaderContextMenu = (group: TodoGroup, app: App, e: MouseEvent ) => {
+    if (group.type !== 'tag' || !group.mainTag) return
+    e.preventDefault()
+    const fullTag = group.subTags ? `#${group.mainTag}/${group.subTags}` : `#${group.mainTag}`
+    const menu = new Menu()
+    menu.addItem(i =>
+      i
+        .setTitle('Filter list to this tag')
+        .setIcon('filter')
+        .onClick(() => filterListToTag(fullTag, app)),
+    )
+    menu.showAtMouseEvent(e)
+  }

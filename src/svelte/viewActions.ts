@@ -1,7 +1,9 @@
-import { Notice } from "obsidian";
+import { Notice, type App } from "obsidian";
 import type { Action } from "svelte/action";
 
 import type { TodoItem } from "src/_types";
+import { TODO_VIEW_TYPE } from "../constants";
+import type TodoListView from "../view";
 
 /**
  * Svelte action: fires `onVisible` once the element comes within range of the
@@ -57,3 +59,18 @@ export const copyFamilyAsMarkdown = async (item: TodoItem): Promise<void> => {
 	await navigator.clipboard.writeText(familyToMarkdown(family));
 	new Notice(`Copied family as markdown (${family.length} task${family.length > 1 ? "s" : ""})`);
 };
+
+export const filterListToTask = async (item: TodoItem, app: App): Promise<void> => {
+	// Quoted so the whole text is a single AND-term. Embedded quotes would break
+	// the phrase parser, so strip them from the query.
+	const phrase = item.originalText.replace(/"/g, "");
+	await filterListToQuery(`"${phrase}"`, app);
+};
+
+const filterListToQuery = async (query: string, app: App): Promise<void> => {
+	const view = app.workspace.getLeavesOfType(TODO_VIEW_TYPE)[0]?.view as TodoListView | undefined;
+	await view?.focusSearchInput(query);
+};
+
+export const filterListToTag = (fullTag: string, app: App): Promise<void> =>
+	filterListToQuery(fullTag, app);

@@ -7,13 +7,7 @@ import type TodoPlugin from "./main";
 import type TodoListView from "./view";
 
 export async function setupCommands(this: TodoPlugin) {
-
-    this.initLeaf()
-
-
-
-
-
+	this.initLeaf();
 
 	this.addCommand({
 		id: "show-checklist-view",
@@ -151,11 +145,13 @@ export function setupEvents(this: TodoListView) {
 		}),
 	);
 
+	/**
+	*  @todo    
+    * Add one global RegExp constant and use it to make this actually not mess up file
+    * inclusion rules
+
 	this.registerEvent(
 		this.app.metadataCache.on("changed", async (file, data, cache) => {
-			/**
-			 *  @todo Add one global RegExp constant
-			 */
 			// console.log(file.path)
 			// if (isExcluded(file.path, this.includeRegex)) return
 			const oldTodos = this.itemsByFile.get(file.path);
@@ -186,6 +182,7 @@ export function setupEvents(this: TodoListView) {
 			this.renderView();
 		}),
 	);
+    */
 
 	this.registerEvent(
 		this.app.workspace.on("active-leaf-change", async () => {

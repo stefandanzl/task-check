@@ -8,6 +8,7 @@
   import PriorityDropZone from "./PriorityDropZone.svelte"
   import { dragState, todoGroupsStore } from "./viewStore"
   import { slide } from "svelte/transition"
+  import { handleHeaderContextMenu } from "./taskMenu"
 
   let {
     group,
@@ -254,7 +255,8 @@
   <!-- svelte-ignore a11y_click_events_have_key_events -->
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   {#if !(group.type === "priority" && group.todos.length === 0)}
-  <header class={`group-header ${group.type}`} data-cat={group.type === 'date' ? (group as DateGroup).dateCategory : undefined} onclick={() => onToggle(group.id)} title="Toggle Group">
+  <header class={`group-header ${group.type}`} data-cat={group.type === 'date' ? (group as DateGroup).dateCategory : undefined} 
+    onclick={() => onToggle(group.id)} oncontextmenu={e => handleHeaderContextMenu(group, app, e)} title="Toggle Group">
     <div class="title no-select" onclick={clickTitle}>
       {#if group.type === "priority"}
         <span class="priority-label">Priority {(group as PriorityGroup).priorityValue}</span>
