@@ -3,6 +3,7 @@ import {mount, unmount} from 'svelte'
 
 import {TODO_VIEW_TYPE} from './constants'
 import App from './svelte/App.svelte'
+import {setUiRefresh, clearUiRefresh} from './undo'
 import {groupTodos, groupTodosByPriority, groupTodosByDate, parseTodos, wireFamilyAndInherited, parseFile, haveTodosChanged} from './utils'
 import {
   todoGroupsStore,
@@ -66,6 +67,7 @@ export default class TodoListView extends ItemView {
   }
 
   async onClose() {
+    clearUiRefresh()
     if (this._app) {
       unmount(this._app)
       this._app = null
@@ -84,6 +86,15 @@ export default class TodoListView extends ItemView {
     isLoadingStore.set(true)
     this.renderView()
 
+    setUiRefresh(mode => {
+      if (mode === 'write') {
+        this.groupItems()
+        this.actionRefresh()
+      } else {
+        void this.refresh(true, true)
+      }
+    })
+
     if (!this.app.workspace.layoutReady) {
       this.app.workspace.onLayoutReady(() => {
         this.opener()
@@ -92,6 +103,13 @@ export default class TodoListView extends ItemView {
         this.opener()
       }
 
+  }
+
+  /**
+   * Minimal repaint after a UI-initiated write
+   */
+  public actionRefresh() {
+    todoGroupsStore.set(this.groupedItems)
   }
 
   private updateStores() {
@@ -143,7 +161,7 @@ export default class TodoListView extends ItemView {
   async refresh(all = false, force = false) {
     if (this.isRefreshing) return
     const startTime = Date.now()
-    if (!force && startTime - this.lastRerender < 3_000) return
+    if (!force && startTime - this.lastRerender < 2_000) return
     // this.lastRerender = startTime
     this.isRefreshing = true
     try {
@@ -152,7 +170,8 @@ export default class TodoListView extends ItemView {
         this.itemsByFile.clear()
       }
       console.log("calculate "+startTime)
-      await this.calculateAllItems()
+      const changed = await this.calculateAllItems()
+      if (!force && !changed) return
       this.groupItems()
       this.renderView()
       const endTime = Date.now()
@@ -233,6 +252,10 @@ export default class TodoListView extends ItemView {
     return lines.join('\n')
   }
 
+  /**
+   * 
+   * @returns only returns true if actual changes to tasks were found
+   */
   private async calculateAllItems() {
     const todosForUpdatedFiles = await parseTodos(
       this.app.vault.getMarkdownFiles(),
@@ -245,13 +268,16 @@ export default class TodoListView extends ItemView {
       this.plugin.getSettingValue('priorityTag'),
       this.plugin.getSettingValue('dateTag'),
     )
+    let changed = false
     for (const [file, todos] of todosForUpdatedFiles) {
-      // Wire family + inherited aux on the full per-file set (done tasks included
-      // so lineage passes through them). This is allTodos; showChecked filtering
-      // to shownTasks happens at display time in groupItems.
+      // Compare BEFORE overwriting — and skip keeps the OLD objects, so
+      // unchanged files keep their item identity (nice for Svelte bail-outs).
+      if (!haveTodosChanged(this.itemsByFile.get(file.path), todos)) continue
       wireFamilyAndInherited(todos)
       this.itemsByFile.set(file.path, todos)
+      changed = true
     }
+    return changed
   }
 
   private parseSearchQuery(query: string): { textTerms: string[][], negatedTerms: string[], dateFilters: DateFilter[], priorityFilters: PriorityFilter[], statusFilters: StatusFilter[] } {

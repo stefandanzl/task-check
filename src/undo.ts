@@ -23,6 +23,7 @@ export const pushUndo = (entry: UndoEntry) => {
   entries.push(entry)
   if (entries.length > MAX_UNDO) entries.shift()
   sync()
+  triggerUiRefresh('write')
 }
 
 export const clearUndo = () => {
@@ -71,4 +72,29 @@ export const undoLast = async (app: App, navigate = true) => {
   }
 
   new Notice(`Undid: ${entry.label}`)
+  // Items in memory are now stale (files reverted underneath them) — force a
+  // full reparse instead of the light 'write' refresh.
+  triggerUiRefresh('reparse')
+}
+
+
+//'write' mode just regroups + pushes the store (instant,
+// no metadataCache debounce).
+// 'reparse' mode forces a full refresh so the view rebuilds
+// from truth instead of the now-stale items.
+type RefreshFn = (mode: 'write' | 'reparse') => void
+let uiRefresh: RefreshFn | null = null
+
+/** The view registers its refresh handler here (in onOpen). */
+export function setUiRefresh(fn: RefreshFn) {
+  uiRefresh = fn
+}
+
+/** The view unregisters in onClose so a dead instance is never called. */
+export function clearUiRefresh() {
+  uiRefresh = null
+}
+
+export function triggerUiRefresh(mode: 'write' | 'reparse' = 'write') {
+  uiRefresh?.(mode)
 }

@@ -6,12 +6,13 @@ import {
   getTaskDisplayText,
   navToFile,
   setTodoDate,
+  setTodoPrioritiesBatch,
   setTodoPriority,
   setTodoStatus,
 } from 'src/utils'
 import {DONE_TASK_SYMBOLS, TASK_STATES} from '../constants'
 import {InputModal} from '../InputModal'
-import {copyFamilyAsMarkdown, filterListToTag, filterListToTask} from './viewActions'
+import {collectFamilyTree, copyFamilyAsMarkdown, filterListToTag, filterListToTask} from './viewActions'
 
 const copyToClipboard = async (text: string, msg = 'Copied') => {
   await navigator.clipboard.writeText(text)
@@ -160,6 +161,20 @@ export const openTaskContextMenu = (
               const n = parseInt(v, 10)
               await setTodoPriority(item, n, priorityTag, app)
             },
+            // Overwrites the priority of EVERY family member (incl. done ones).
+            ...(item.family !== null && {
+              altButton: {
+                label: 'All family members',
+                onSubmit: async v => {
+                  const n = parseInt(v, 10)
+                  await setTodoPrioritiesBatch(
+                    collectFamilyTree(item).map(t => ({item: t, newPriority: n})),
+                    priorityTag,
+                    app,
+                  )
+                },
+              },
+            }),
           }).open()
         }),
     )

@@ -9,6 +9,11 @@ export interface InputModalOptions {
   initialValue?: string
   placeholder?: string
   onSubmit: (value: string) => void | Promise<void>
+  /** Optional secondary action button; receives the same validated value. */
+  altButton?: {
+    label: string
+    onSubmit: (value: string) => void | Promise<void>
+  }
 }
 
 /**
@@ -41,14 +46,22 @@ export class InputModal extends Modal {
       this.inputEl = text.inputEl
     })
 
-    new Setting(this.contentEl)
-      .addButton(btn => btn.setButtonText('Cancel').onClick(() => this.close()))
-      .addButton(btn =>
+    const buttonRow = new Setting(this.contentEl).addButton(btn =>
+      btn.setButtonText('Cancel').onClick(() => this.close()),
+    )
+    if (this.opts.altButton) {
+      buttonRow.addButton(btn =>
         btn
-          .setButtonText(this.opts.ctaLabel)
-          .setCta()
-          .onClick(() => this.submit()),
+          .setButtonText(this.opts.altButton.label)
+          .onClick(() => this.commit(this.opts.altButton!.onSubmit)),
       )
+    }
+    buttonRow.addButton(btn =>
+      btn
+        .setButtonText(this.opts.ctaLabel)
+        .setCta()
+        .onClick(() => this.submit()),
+    )
 
     this.inputEl.addEventListener('keydown', (e: KeyboardEvent) => {
       if (e.key === 'Enter') {
@@ -69,15 +82,20 @@ export class InputModal extends Modal {
     this.contentEl.empty()
   }
 
-  private async submit(): Promise<void> {
+  private submit(): Promise<void> {
+    return this.commit(this.opts.onSubmit)
+  }
+
+  /** Validates the current value, runs the given handler, closes the modal. */
+  private async commit(handler: (value: string) => void | Promise<void>): Promise<void> {
     const raw = this.value.trim()
     const type = this.opts.type ?? 'text'
     if (type === 'number') {
       if (!raw || Number.isNaN(Number(raw))) return
-      await this.opts.onSubmit(String(parseInt(raw, 10)))
+      await handler(String(parseInt(raw, 10)))
     } else {
       if (!raw) return
-      await this.opts.onSubmit(raw)
+      await handler(raw)
     }
     this.close()
   }
