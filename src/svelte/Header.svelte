@@ -12,6 +12,8 @@
     searchQueriesStore,
     bookmarksStore,
     activePanelTabStore,
+    hideNegativePrioritiesStore,
+    showCheckedStore,
     priorityTagStore,
     dateTagStore,
     groupModeStore,
@@ -202,7 +204,7 @@
     await updateSetting({_showSettingsPanel: !$showSettingsPanelStore})
   }
 
-  async function switchTab(tab: 'tags' | 'bookmarks') {
+  async function switchTab(tab: 'tags' | 'bookmarks' | 'preferences') {
     await updateSetting({_activePanelTab: tab})
   }
 
@@ -357,6 +359,12 @@
           role="button"
           tabindex="0"
           onclick={() => switchTab('bookmarks')}>Bookmarks</div>
+        <!-- svelte-ignore a11y_click_events_have_key_events -->
+        <div
+          class="settings-tab {$activePanelTabStore === 'preferences' ? 'is-active' : ''}"
+          role="button"
+          tabindex="0"
+          onclick={() => switchTab('preferences')}>Preferences</div>
         {#if $activePanelTabStore === 'bookmarks'}
           <!-- svelte-ignore a11y_click_events_have_key_events -->
           <div
@@ -414,6 +422,56 @@
           {#if $bookmarksStore.length === 0}
             <div class="empty">No bookmarks — run a search and tap +</div>
           {/if}
+        </div>
+        <div class="settings-pane preferences-pane search-params" class:is-hidden={$activePanelTabStore !== 'preferences'}>
+          <!-- svelte-ignore a11y_click_events_have_key_events -->
+          <div class="setting-item mod-toggle">
+            <div class="setting-item-info">
+              <div class="setting-item-name">Hide negative priorities</div>
+              <div class="setting-item-description"></div>
+            </div>
+            <div class="setting-item-control">
+              <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+              <label
+                class="checkbox-container mod-small"
+                class:is-enabled={$hideNegativePrioritiesStore}
+                onclick={() => updateSetting({_hideNegativePriorities: !$hideNegativePrioritiesStore})}>
+                <input type="checkbox" tabindex="-1" />
+              </label>
+            </div>
+          </div>
+          <!-- svelte-ignore a11y_click_events_have_key_events -->
+          <div class="setting-item mod-toggle">
+            <div class="setting-item-info">
+              <div class="setting-item-name">Show done tasks</div>
+              <div class="setting-item-description"></div>
+            </div>
+            <div class="setting-item-control">
+              <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+              <label
+                class="checkbox-container mod-small"
+                class:is-enabled={$showCheckedStore}
+                onclick={() => updateSetting({showChecked: !$showCheckedStore})}>
+                <input type="checkbox" tabindex="-1" />
+              </label>
+            </div>
+          </div>
+          <!-- svelte-ignore a11y_click_events_have_key_events -->
+          <div class="setting-item mod-toggle">
+            <div class="setting-item-info">
+              <div class="setting-item-name">Group list limits</div>
+              <div class="setting-item-description"></div>
+            </div>
+            <div class="setting-item-control">
+              <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+              <label
+                class="checkbox-container mod-small"
+                class:is-enabled={$enableLimitStore}
+                onclick={() => updateSetting({enableLimit: !$enableLimitStore})}>
+                <input type="checkbox" tabindex="-1" />
+              </label>
+            </div>
+          </div>
         </div>
       </div>
     {/if}

@@ -24,7 +24,8 @@ export interface TodoSettings {
   _searchQueries: string[]
   _restoreLastSearch: boolean
   _bookmarks: string[]
-  _activePanelTab: 'tags' | 'bookmarks'
+  _activePanelTab: 'tags' | 'bookmarks' | 'preferences'
+  _hideNegativePriorities: boolean
   prioGrouping: boolean
   dateTag: string
   dateGrouping: boolean
@@ -52,6 +53,7 @@ export const DEFAULT_SETTINGS: TodoSettings = {
   _restoreLastSearch: false,
   _bookmarks: [],
   _activePanelTab: 'tags',
+  _hideNegativePriorities: false,
   prioGrouping: false,
   dateTag: 'date',
   dateGrouping: false,

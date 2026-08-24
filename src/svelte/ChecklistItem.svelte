@@ -10,6 +10,7 @@
   let {
     item,
     app,
+    status,
     draggable = false,
     targetPriority = null,
     ondragstart = () => {},
@@ -17,6 +18,7 @@
   }: {
     item: TodoItem
     app: App
+    status?: string
     draggable?: boolean
     targetPriority?: number | null
     ondragstart?: (e: DragEvent) => void
@@ -30,6 +32,9 @@
   // $state because the span (and thus the binding) only exists once the row is
   // visible — the assignment when the {#if} renders must re-trigger the effect.
   let containerEl = $state<HTMLElement | undefined>()
+    
+  const taskStatus = $derived(status ?? item.taskStatus)
+  const isChecked = $derived(taskStatus !== ' ')
 
   // Lazy row rendering: the <li> mounts as an empty skeleton (see .skeleton
   // CSS below); its whole content — checkbox, indent guides, markdown, pills —
@@ -98,7 +103,7 @@
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <div
     class="cm-active HyperMD-list-line HyperMD-list-line-{level} cm-line task-list-item-line"
-    data-task={item.taskStatus}
+    data-task={taskStatus}
     dir="ltr"
     // style="text-indent: -{indent}px; padding-inline-start: {indent}px;"
     {draggable}
@@ -115,8 +120,8 @@
       <input
         type="checkbox"
         class="task-list-item-checkbox"
-        data-task={item.taskStatus}
-        checked={item.taskStatus !== ' '}
+        data-task={taskStatus}
+        checked={isChecked}
         onclick={ev => {
           toggleTodoItem(item, app)
           ev.stopPropagation()

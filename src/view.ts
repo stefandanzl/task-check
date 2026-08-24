@@ -17,6 +17,8 @@ import {
   searchQueriesStore,
   bookmarksStore,
   activePanelTabStore,
+  hideNegativePrioritiesStore,
+  showCheckedStore,
   dateTagStore,
   groupModeStore,
   isLoadingStore,
@@ -124,6 +126,8 @@ export default class TodoListView extends ItemView {
     searchQueriesStore.set(this.plugin.getSettingValue('_searchQueries'))
     bookmarksStore.set(this.plugin.getSettingValue('_bookmarks'))
     activePanelTabStore.set(this.plugin.getSettingValue('_activePanelTab'))
+    hideNegativePrioritiesStore.set(this.plugin.getSettingValue('_hideNegativePriorities'))
+    showCheckedStore.set(this.plugin.getSettingValue('showChecked'))
     dateTagStore.set(this.plugin.getSettingValue('dateTag'))
     groupModeStore.set(
       this.plugin.getSettingValue('dateGrouping')
@@ -599,7 +603,16 @@ export default class TodoListView extends ItemView {
     // is the discernor: shownTasks is the display subset with done removed when off.
     const allTodos = Array.from(this.itemsByFile.values()).flat()
     const showChecked = this.plugin.getSettingValue('showChecked')
-    const shownTasks = showChecked ? allTodos : allTodos.filter(i => !i.checked)
+    let shownTasks = showChecked ? allTodos : allTodos.filter(i => !i.checked)
+
+    const hideNegative = this.plugin.getSettingValue('_hideNegativePriorities')
+    if (hideNegative) {
+      const prioGroupingMode =
+        this.plugin.getSettingValue('prioGrouping') && !!this.plugin.getSettingValue('priorityTag')
+      if (!prioGroupingMode) {
+        shownTasks = shownTasks.filter(t => (t.priority ?? 0) >= 0)
+      }
+    }
 
     const viewOnlyOpen = this.plugin.getSettingValue('showOnlyActiveFile')
     const openFile = this.app.workspace.getActiveFile()

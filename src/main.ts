@@ -106,6 +106,7 @@ export default class TodoPlugin extends Plugin {
       '_showSettingsPanel',
       '_bookmarks',
       '_activePanelTab',
+      'enableLimit', // purely display-side (limit applied during render)
     ]
     const onlyReGroupWhenChanges = [
       'groupBy',
@@ -114,6 +115,8 @@ export default class TodoPlugin extends Plugin {
       'baseTagFirst',
       'prioGrouping',
       'dateGrouping',
+      'showChecked', // shownTasks filter — regroup, no reparse needed
+      '_hideNegativePriorities', // shownTasks filter — regroup, no reparse
     ]
 
     if (onlyRepaintWhenChanges.includes(Object.keys(updates)[0])){

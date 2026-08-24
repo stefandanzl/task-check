@@ -103,6 +103,7 @@
             <ChecklistItem
               {item}
               {app}
+              status={item.taskStatus}
               draggable={!Platform.isMobile}
               ondragstart={forwardDragStart(item)}
               ondragend={forwardDragEnd}
@@ -135,6 +136,7 @@
             <ChecklistItem
               {item}
               {app}
+              status={item.taskStatus}
               draggable={!Platform.isMobile}
               ondragstart={forwardDragStart(item)}
               ondragend={forwardDragEnd}

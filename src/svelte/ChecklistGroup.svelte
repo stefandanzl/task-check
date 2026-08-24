@@ -379,7 +379,7 @@
     {:else}
       <ul>
         {#each visibleTodos as item, i}
-          <ChecklistItem {item} {app} draggable={!Platform.isMobile} ondragstart={handleItemDragStart(item)} ondragend={handleItemDragEnd} />
+          <ChecklistItem {item} {app} status={item.taskStatus} draggable={!Platform.isMobile} ondragstart={handleItemDragStart(item)} ondragend={handleItemDragEnd} />
         {/each}
       </ul>
       {#if maxTasksPerGroup && enableLimit && group.todos.length > maxTasksPerGroup && !isGroupShowingAll}

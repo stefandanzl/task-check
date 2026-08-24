@@ -51,7 +51,7 @@ export const setTodoStatus = async (item: TodoItem, status: string, app: App) =>
   lines[item.line] = setTaskStatusChar(currentLine, status)
   item.taskStatus = status
   item.checked = DONE_TASK_SYMBOLS.has(status)
-  await app.vault.modify(file, combineFileLines(lines))
+  app.vault.modify(file, combineFileLines(lines)) 
   pushUndo({label: 'set state', changes: [{filePath: file.path, line: item.line, before, after: lines[item.line]}]})
 }
 

@@ -104,7 +104,7 @@
   }
 </script>
 
-<div class="checklist-plugin-main markdown-preview-view markdown-source-view is-live-preview mod-cm6 cm-s-obsidian" bind:this={rootEl}>
+<div class="checklist-plugin-main markdown-source-view is-live-preview mod-cm6 cm-s-obsidian" bind:this={rootEl}>
   <Header
     {app}
     onTagStatusChange={updateTagStatus}
