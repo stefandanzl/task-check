@@ -90,6 +90,12 @@ export type TagMeta = {main: string; sub: string}
 export type Family = {parent?: TodoItem; children?: TodoItem[]}
 export type LinkMeta = {filePath: string; linkName: string}
 
+export type TaskPatch = {
+  taskStatus?: string
+  priority?: number | null
+  date?: Date | null
+}
+
 export type GroupByType = 'page' | 'tag'
 export type GroupMode = GroupByType | 'priority' | 'date'
 export type SortDirection =

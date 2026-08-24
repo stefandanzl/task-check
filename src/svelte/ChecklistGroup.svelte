@@ -378,7 +378,7 @@
       {/if}
     {:else}
       <ul>
-        {#each visibleTodos as item, i}
+        {#each visibleTodos as item, i (item.filePath+":"+item.line+":"+item.originalText+":"+item.taskStatus+":"+item.priority)}
           <ChecklistItem {item} {app} status={item.taskStatus} draggable={!Platform.isMobile} ondragstart={handleItemDragStart(item)} ondragend={handleItemDragEnd} />
         {/each}
       </ul>

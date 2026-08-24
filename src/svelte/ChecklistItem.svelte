@@ -1,9 +1,9 @@
 <script lang="ts">
   import {Component, MarkdownRenderer, type App} from 'obsidian'
-  import type {TodoItem} from 'src/_types'
+  import type {TodoItem, TaskPatch} from 'src/_types'
   import {getTaskDisplayText, navToFile, toggleTodoItem} from 'src/utils'
-  import {formatRelativeDateDiff} from 'src/utils/helpers'
-  import {priorityTagStore, dateTagStore} from './viewStore'
+  import {formatRelativeDateDiff, getDateCategory} from 'src/utils/helpers'
+  import {priorityTagStore, dateTagStore, isDirtyStore} from './viewStore'
   import {openTaskContextMenu} from './taskMenu'
   import {renderWhenVisible} from './viewActions'
 
@@ -26,15 +26,37 @@
   } = $props()
 
   const handleContextMenu = (e: MouseEvent) => {
-    openTaskContextMenu(item, containerEl, app, e, $priorityTagStore, $dateTagStore)
+    openTaskContextMenu(item, containerEl, app, e, $priorityTagStore, $dateTagStore, applyPatch)
   }
 
   // $state because the span (and thus the binding) only exists once the row is
   // visible — the assignment when the {#if} renders must re-trigger the effect.
   let containerEl = $state<HTMLElement | undefined>()
-    
-  const taskStatus = $derived(status ?? item.taskStatus)
+
+  // this does immediately update the rendered element
+  // data is then updated in the regular file parse
+  let patch = $state<{current?: TaskPatch}>({})
+
+  const applyPatch = (p: TaskPatch) => {
+    patch.current = {...patch.current, ...p}
+    isDirtyStore.set(true)
+  }
+
+  $effect(() => {
+    if (item) patch.current = undefined
+  })
+
+  const taskStatus = $derived(patch.current?.taskStatus ?? status ?? item.taskStatus)
   const isChecked = $derived(taskStatus !== ' ')
+  const pillDate = $derived(
+    patch.current?.date !== undefined ? patch.current.date : item.date,
+  )
+  const pillCategory = $derived(pillDate ? getDateCategory(pillDate) : undefined)
+  const datePillLabel = $derived(pillDate ? formatRelativeDateDiff(pillDate) : '')
+  const datePillAria = $derived(item.dateTag ?? '')
+  const prioDisplay = $derived(
+    patch.current?.priority !== undefined ? patch.current.priority : targetPriority,
+  )
 
   // Lazy row rendering: the <li> mounts as an empty skeleton (see .skeleton
   // CSS below); its whole content — checkbox, indent guides, markdown, pills —
@@ -66,10 +88,6 @@
   // 1 = top-level, 2 = once-indented, ...
   const level = $derived(item.spacesIndented + 1)
   const indent = $derived(level === 1 ? 31 : 31 + (level - 1) * 36)
-
-  const showDatePill = $derived(!!item.date)
-  const datePillLabel = $derived(item.date ? formatRelativeDateDiff(item.date) : '')
-  const datePillAria = $derived(item.dateTag ?? '')
 
   const handleClick = (ev: MouseEvent) => {
     const t = ev.target as HTMLElement
@@ -123,6 +141,8 @@
         data-task={taskStatus}
         checked={isChecked}
         onclick={ev => {
+          // Optimistic: reflect the toggle instantly, real data lands via reparse.
+          applyPatch({taskStatus: taskStatus === ' ' ? 'x' : ' '})
           toggleTodoItem(item, app)
           ev.stopPropagation()
         }} />
@@ -134,11 +154,11 @@
     <span bind:this={containerEl} class="cm-list-{level} task-list-item-text"
       ></span>
   </div>
-  {#if showDatePill}
-    <span class="date-pill no-select" data-cat={item.dateCategory} aria-label={datePillAria}>{datePillLabel}</span>
+  {#if pillDate}
+    <span class="date-pill no-select" data-cat={pillCategory} aria-label={datePillAria}>{datePillLabel}</span>
   {/if}
-  {#if targetPriority != null}
-    <span class="prio-level no-select" aria-label={`Priority level ${targetPriority}`}>{targetPriority}</span>
+  {#if prioDisplay != null}
+    <span class="prio-level no-select" aria-label={`Priority level ${prioDisplay}`}>{prioDisplay}</span>
   {/if}
   {/if}
 </li>

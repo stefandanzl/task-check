@@ -1,5 +1,6 @@
 import {ItemView, WorkspaceLeaf} from 'obsidian'
 import {mount, unmount} from 'svelte'
+import { get } from 'svelte/store'
 
 import {TODO_VIEW_TYPE} from './constants'
 import App from './svelte/App.svelte'
@@ -22,6 +23,7 @@ import {
   dateTagStore,
   groupModeStore,
   isLoadingStore,
+  isDirtyStore,
 } from './svelte/viewStore'
 
 import type {TodoSettings} from './settings'
@@ -165,7 +167,7 @@ export default class TodoListView extends ItemView {
   async refresh(all = false, force = false) {
     if (this.isRefreshing) return
     const startTime = Date.now()
-    if (!force && startTime - this.lastRerender < 2_000) return
+    if (!get(isDirtyStore) &&!force && startTime - this.lastRerender < 2_000) return
     // this.lastRerender = startTime
     this.isRefreshing = true
     try {
@@ -173,7 +175,7 @@ export default class TodoListView extends ItemView {
         this.lastRerender = 0
         this.itemsByFile.clear()
       }
-      console.log("calculate "+startTime)
+      console.log({calculate: startTime, isDirtyStore: get(isDirtyStore)})
       const changed = await this.calculateAllItems()
       if (!force && !changed) return
       this.groupItems()
@@ -183,6 +185,7 @@ export default class TodoListView extends ItemView {
       console.log("duration: " + String(endTime - startTime))
     } finally {
       this.isRefreshing = false
+      isDirtyStore.set(false)
     }
   }
 

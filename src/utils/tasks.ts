@@ -12,7 +12,6 @@ import {
   removeDateTagFromText,
   addDateTagToText,
 } from './helpers'
-import { DONE_TASK_SYMBOLS } from '../constants'
 import { pushUndo, type UndoChange } from '../undo'
 
 import type {
@@ -36,7 +35,6 @@ export const toggleTodoItem = async (item: TodoItem, app: App) => {
     item.taskStatus === " ",
   )
   app.vault.modify(file, newData)
-  item.checked = !item.checked
   pushUndo({label: 'toggle complete', changes: [{filePath: file.path, line: item.line, before, after: currentFileLines[item.line]}]})
 }
 
@@ -49,9 +47,7 @@ export const setTodoStatus = async (item: TodoItem, status: string, app: App) =>
   if (!currentLine || !currentLine.includes(item.originalText)) return
   const before = currentLine
   lines[item.line] = setTaskStatusChar(currentLine, status)
-  item.taskStatus = status
-  item.checked = DONE_TASK_SYMBOLS.has(status)
-  app.vault.modify(file, combineFileLines(lines)) 
+  app.vault.modify(file, combineFileLines(lines))
   pushUndo({label: 'set state', changes: [{filePath: file.path, line: item.line, before, after: lines[item.line]}]})
 }
 
@@ -91,8 +87,6 @@ export const setTodoPrioritiesBatch = async (
       const before = currentLine
       lines[item.line] = currentLine.replace(rawText, newText)
       changes.push({filePath: file.path, line: item.line, before, after: lines[item.line]})
-      item.priority = newPriority ?? undefined
-      item.originalText = newText
 
       if (newPriority === null && item.blockPriority !== undefined) {
         new Notice(`This task still has a block-level priority tag.\nAdd #${priorityTag}/0 manually.`)
@@ -121,7 +115,6 @@ export const setTodoDate = async (
     newDate === null ? removeDateTagFromText(rawText, dateTag) : addDateTagToText(rawText, dateTag, newDate)
   const before = currentLine
   lines[item.line] = currentLine.replace(rawText, newText)
-  item.date = newDate ?? undefined
   await app.vault.modify(file, combineFileLines(lines))
   pushUndo({label: 'set due date', changes: [{filePath: file.path, line: item.line, before, after: lines[item.line]}]})
 }

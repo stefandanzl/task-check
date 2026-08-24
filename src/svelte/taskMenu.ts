@@ -1,6 +1,6 @@
 import {Menu, Notice, TFile, type App} from 'obsidian'
 
-import type {TodoGroup, TodoItem} from 'src/_types'
+import type {TodoGroup, TodoItem, TaskPatch} from 'src/_types'
 import {
   ensureTaskBlockRef,
   getTaskDisplayText,
@@ -32,6 +32,7 @@ export const openTaskContextMenu = (
   e: MouseEvent,
   priorityTag: string,
   dateTag: string,
+  onPatch: (patch: TaskPatch) => void,
 ) => {
   e.preventDefault()
   const menu = new Menu()
@@ -112,7 +113,10 @@ export const openTaskContextMenu = (
             .setTitle(`${state.label}`)
             .setIcon(state.icon)
             .setChecked(item.taskStatus.toLowerCase() === state.symbol.toLowerCase())
-            .onClick(() => setTodoStatus(item, state.symbol, app)),
+            .onClick(() => {
+              setTodoStatus(item, state.symbol, app)
+              onPatch({taskStatus: state.symbol})
+            }),
         )
       }
     }
@@ -125,7 +129,10 @@ export const openTaskContextMenu = (
             .setTitle(`${state.label}`)
             .setIcon(state.icon)
             .setChecked(item.taskStatus.toLowerCase() === state.symbol.toLowerCase())
-            .onClick(() => setTodoStatus(item, state.symbol, app)),
+            .onClick(() => {
+              setTodoStatus(item, state.symbol, app)
+              onPatch({taskStatus: state.symbol})
+            }),
         )
       }
     }
@@ -135,13 +142,19 @@ export const openTaskContextMenu = (
     i
       .setTitle('Clear state')
       .setIcon('square') // alternative: task-open
-      .onClick(() => setTodoStatus(item, ' ' , app)),
+      .onClick(() => {
+        setTodoStatus(item, ' ' , app)
+        onPatch({taskStatus: ' '})
+      }),
   )
   menu.addItem(i =>
     i
       .setTitle('Set done')
       .setIcon('check')
-      .onClick(() => setTodoStatus(item, 'x', app)),
+      .onClick(() => {
+        setTodoStatus(item, 'x', app)
+        onPatch({taskStatus: 'x'})
+      }),
   )
 
   if (priorityTag) {
@@ -160,6 +173,7 @@ export const openTaskContextMenu = (
             onSubmit: async v => {
               const n = parseInt(v, 10)
               await setTodoPriority(item, n, priorityTag, app)
+              onPatch({priority: n})
             },
             // Overwrites the priority of EVERY family member (incl. done ones).
             ...(item.family !== null && {
@@ -172,6 +186,7 @@ export const openTaskContextMenu = (
                     priorityTag,
                     app,
                   )
+                  onPatch({priority: n})
                 },
               },
             }),
@@ -199,7 +214,9 @@ export const openTaskContextMenu = (
             type: 'date',
             initialValue: item.dateTag ?? '',
             onSubmit: async v => {
-              await setTodoDate(item, new Date(v), dateTag, app)
+              const d = new Date(v)
+              await setTodoDate(item, d, dateTag, app)
+              onPatch({date: d})
             },
           }).open()
         }),
