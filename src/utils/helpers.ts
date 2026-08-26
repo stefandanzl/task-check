@@ -1,4 +1,4 @@
-import {addIcon, type CachedMetadata, parseFrontMatterTags, TFile, Vault} from 'obsidian'
+import {addIcon, type CachedMetadata, parseFrontMatterTags, TFile, Vault, moment} from 'obsidian'
 
 import {ICON_FRAGMENTS, LOCAL_SORT_OPT, TASK_STATES} from '../constants'
 
@@ -57,50 +57,51 @@ export const addPriorityTagToText = (text: string, priorityTagName: string, prio
 }
 
 // Date parsing functions
+// Formats: `#date 2020-02-20` and `#date 2020-02-20 13:56`.
+const DATE_TIME_FORMAT = 'YYYY-MM-DD HH:mm'
+const DATE_FORMAT = 'YYYY-MM-DD'
+
 export const parseDateTag = (text: string, dateTagName: string): Date | undefined => {
   if (!text || !dateTagName) return undefined
-  const dateRegex = new RegExp(`\\s#${dateTagName} (\\d{4}-\\d{2}-\\d{2})`)
+  const dateRegex = new RegExp(`\\s#${dateTagName} (\\d{4}-\\d{2}-\\d{2})(?: (\\d{1,2}:\\d{2}))?`)
   const match = text.match(dateRegex)
   if (match) {
-    const dateStr = match[1]
-    const date = new Date(dateStr)
-    if (!isNaN(date.getTime())) return date
+    const withTime = match[2] ? `${match[1]} ${match[2]}` : match[1]
+    const m = moment(withTime, match[2] ? DATE_TIME_FORMAT : DATE_FORMAT, true)
+    if (!m.isValid()) return undefined
+    // Date-only tags default to noon (all-day semantics) instead of midnight.
+    if (!match[2]) m.hour(12)
+    return m.toDate()
   }
   return undefined
 }
 
+export const dateTagHasTime = (rawDateTag: string | undefined): boolean =>
+  /\d{1,2}:\d{2}/.test(rawDateTag ?? '')
+
 export const removeDateTagFromText = (text: string, dateTagName: string): string => {
   if (!text || !dateTagName) return text
   const {body, ref} = splitBlockRef(text)
-  return `${body.replace(new RegExp(`\\s+#${dateTagName} \\d{4}-\\d{2}-\\d{2}`), '').trim()}${ref}`
+  return `${body.replace(new RegExp(`\\s+#${dateTagName} \\d{4}-\\d{2}-\\d{2}( \\d{1,2}:\\d{2})?`), '').trim()}${ref}`
 }
 
-export const addDateTagToText = (text: string, dateTagName: string, date: Date): string => {
+export const addDateTagToText = (text: string, dateTagName: string, date: Date, hasTime = false): string => {
   if (!text || !dateTagName) return text
   const {body, ref} = splitBlockRef(text)
   const cleanedText = removeDateTagFromText(body, dateTagName)
-  const dateStr = date.toISOString().split('T')[0] // YYYY-MM-DD format
+  const dateStr = moment(date).format(hasTime ? DATE_TIME_FORMAT : DATE_FORMAT)
   return `${cleanedText} #${dateTagName} ${dateStr}${ref}`
 }
 
 export const getDateCategory = (date: Date): DateCategory => {
-  const now = new Date()
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  const tomorrow = new Date(today)
-  tomorrow.setDate(tomorrow.getDate() + 1)
-  const endOfWeek = new Date(today)
-  endOfWeek.setDate(endOfWeek.getDate() + 7)
-  const endOfMonth = new Date(today)
-  endOfMonth.setMonth(endOfMonth.getMonth() + 1)
+  const now = moment()
+  const d = moment(date)
 
-  // Reset time to midnight for comparison
-  const compareDate = new Date(date.getFullYear(), date.getMonth(), date.getDate())
-
-  if (compareDate < today) return 'overdue'
-  if (compareDate.getTime() === today.getTime()) return 'today'
-  if (compareDate.getTime() === tomorrow.getTime()) return 'tomorrow'
-  if (compareDate < endOfWeek) return 'thisWeek'
-  if (compareDate < endOfMonth) return 'thisMonth'
+  if (d.isBefore(now, 'day')) return 'overdue'
+  if (d.isSame(now, 'day')) return 'today'
+  if (d.isSame(now.clone().add(1, 'day'), 'day')) return 'tomorrow'
+  if (d.isBefore(now.clone().add(7, 'day'), 'day')) return 'thisWeek'
+  if (d.isBefore(now.clone().add(1, 'month'), 'day')) return 'thisMonth'
   return 'future'
 }
 
@@ -122,7 +123,18 @@ export const getRelativeDateString = (date: Date): string => {
   }
 }
 
-export const formatRelativeDateDiff = (date: Date): string => {
+export const formatRelativeDateDiff = (date: Date, hasTime = false): string => {
+  if (!hasTime) {
+    const days = moment(date).startOf('day').diff(moment().startOf('day'), 'days')
+    const abs = Math.abs(days)
+    let label: string
+    if (abs >= 365) label = `${Math.floor(abs / 365)} y`
+    else if (abs >= 31) label = `${Math.floor(abs / 31)} m`
+    else if (abs >= 7) label = `${Math.floor(abs / 7)} w`
+    else label = `${abs} d`
+    return `${days < 0 ? '-' : ''}${label}`
+  }
+
   const abs = Math.abs(date.getTime() - Date.now())
   const sign = date.getTime() < Date.now() ? '-' : ''
   const hours = Math.floor(abs / 3_600_000)

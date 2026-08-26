@@ -63,6 +63,17 @@
   pointer-events: none;
 }
 
+input[type='time'] {
+  background: var(--background-modifier-form-field);
+  border: var(--input-border-width) solid var(--background-modifier-border);
+  color: var(--text-normal);
+  font-family: inherit;
+  padding: var(--input-padding);
+  font-size: var(--font-ui-small);
+  border-radius: var(--input-radius);
+  outline: none;
+}
+
 /* Show spinner arrows on the priority modal's number input */
 .taskcheck-number-input::-webkit-outer-spin-button,
 .taskcheck-number-input::-webkit-inner-spin-button {

@@ -1,4 +1,4 @@
-import {Menu, Notice, TFile, type App} from 'obsidian'
+import {Menu, moment, Notice, TFile, type App} from 'obsidian'
 
 import type {TodoGroup, TodoItem, TaskPatch} from 'src/_types'
 import {
@@ -170,17 +170,43 @@ export const openTaskContextMenu = (
             type: 'number',
             initialValue: item.priority != null ? String(item.priority) : '',
             placeholder: 'e.g. 2',
+            quickButtons: [
+              {
+                label: '-1',
+                onClick: async () => {
+                  const n = (item.priority ?? 0) - 1
+                  await setTodoPriority(item, n, priorityTag, app)
+                  onPatch({priority: n})
+                },
+              },
+              {
+                label: 'Clear',
+                onClick: async () => {
+                  await setTodoPriority(item, null, priorityTag, app)
+                  onPatch({priority: null})
+                },
+              },
+              {
+                label: '+1',
+                onClick: async () => {
+                  const n = (item.priority ?? 0) + 1
+                  await setTodoPriority(item, n, priorityTag, app)
+                  onPatch({priority: n})
+                },
+              },
+            ],
             onSubmit: async v => {
-              const n = parseInt(v, 10)
+              const n = v === '' ? null : parseInt(v, 10)
               await setTodoPriority(item, n, priorityTag, app)
               onPatch({priority: n})
             },
             // Overwrites the priority of EVERY family member (incl. done ones).
+            // Empty input = remove the priority from all members.
             ...(item.family !== null && {
               altButton: {
                 label: 'All family members',
                 onSubmit: async v => {
-                  const n = parseInt(v, 10)
+                  const n = v === '' ? null : parseInt(v, 10)
                   await setTodoPrioritiesBatch(
                     collectFamilyTree(item).map(t => ({item: t, newPriority: n})),
                     priorityTag,
@@ -211,11 +237,16 @@ export const openTaskContextMenu = (
           new InputModal(app, {
             title: 'Set due date',
             ctaLabel: 'Save',
-            type: 'date',
-            initialValue: item.dateTag ?? '',
+            type: 'datetime',
+            initialValue: item.dateTag?.split(' ')[0] ?? '',
+            initialTime: item.dateTag?.split(' ')[1] ?? '',
             onSubmit: async v => {
-              const d = new Date(v)
-              await setTodoDate(item, d, dateTag, app)
+              const m = moment(v, ['YYYY-MM-DD HH:mm', 'YYYY-MM-DD'], true)
+              if (!m.isValid()) return
+              const hasTime = v.includes(':')
+              if (!hasTime) m.hour(12) // date-only default
+              const d = m.toDate()
+              await setTodoDate(item, d, dateTag, app, hasTime)
               onPatch({date: d})
             },
           }).open()

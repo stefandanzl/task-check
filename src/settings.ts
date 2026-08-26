@@ -6,6 +6,7 @@ import type {GroupByType, SortDirection} from './_types'
 
 export interface TodoSettings {
   todoPageName: string[]
+  taskHelperTag: string
   showChecked: boolean
   showAllTodos: boolean
   showOnlyActiveFile: boolean
@@ -34,6 +35,7 @@ export interface TodoSettings {
 
 export const DEFAULT_SETTINGS: TodoSettings = {
   todoPageName: ['todo'],
+  taskHelperTag: '',
   showChecked: false,
   showAllTodos: false,
   showOnlyActiveFile: false,
@@ -150,6 +152,11 @@ export class TodoSettingTab extends PluginSettingTab {
           action: (_el: HTMLElement, index: number) =>
             this.openEditTagModal(index),
         })),
+      },
+      {
+        name: 'Task helper tag',
+        desc: 'Enter which tag to insert when using the "Task helper" command without the hashtag symbol. Leave empty to use the first listed todo tag.',
+        control: {type: 'text', key: 'taskHelperTag', placeholder: 'todo/inbox'},
       },
       {
         name: 'Show completed',

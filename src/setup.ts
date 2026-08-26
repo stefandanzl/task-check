@@ -63,9 +63,8 @@ export async function setupCommands(this: TodoPlugin) {
 
 			if (!editor) return;
 
-			// Get the first tag only
-			const firstTag = this.settings.todoPageName[0]?.trim() ?? "";
-			editor.replaceSelection(`#${firstTag}/`);
+			const helperTag = this.settings.taskHelperTag.trim() || this.settings.todoPageName[0]?.trim()+"/" || "";
+			editor.replaceSelection(`#${helperTag}`);
 
 			const handleEnter = (event: KeyboardEvent) => {
 				if (event.key === "Enter") {

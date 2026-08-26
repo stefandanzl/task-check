@@ -2,7 +2,7 @@
   import {Component, MarkdownRenderer, type App} from 'obsidian'
   import type {TodoItem, TaskPatch} from 'src/_types'
   import {getTaskDisplayText, navToFile, toggleTodoItem} from 'src/utils'
-  import {formatRelativeDateDiff, getDateCategory} from 'src/utils/helpers'
+  import {formatRelativeDateDiff, getDateCategory, dateTagHasTime} from 'src/utils/helpers'
   import {priorityTagStore, dateTagStore, isDirtyStore} from './viewStore'
   import {openTaskContextMenu} from './taskMenu'
   import {renderWhenVisible} from './viewActions'
@@ -52,7 +52,9 @@
     patch.current?.date !== undefined ? patch.current.date : item.date,
   )
   const pillCategory = $derived(pillDate ? getDateCategory(pillDate) : undefined)
-  const datePillLabel = $derived(pillDate ? formatRelativeDateDiff(pillDate) : '')
+  const datePillLabel = $derived(
+    pillDate ? formatRelativeDateDiff(pillDate, dateTagHasTime(item.dateTag)) : '',
+  )
   const datePillAria = $derived(item.dateTag ?? '')
   const prioDisplay = $derived(
     patch.current?.priority !== undefined ? patch.current.priority : targetPriority,

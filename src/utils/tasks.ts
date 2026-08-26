@@ -81,14 +81,16 @@ export const setTodoPrioritiesBatch = async (
       const currentLine = lines[item.line]
       if (!currentLine.includes(item.originalText)) continue
       const rawText = extractTextFromTodoLine(currentLine)
-      const newText = newPriority === null
+      
+      const priority = newPriority === 0 ? null : newPriority
+      const newText = priority === null
         ? removePriorityTagFromText(rawText, priorityTag)
-        : addPriorityTagToText(rawText, priorityTag, newPriority)
+        : addPriorityTagToText(rawText, priorityTag, priority)
       const before = currentLine
       lines[item.line] = currentLine.replace(rawText, newText)
       changes.push({filePath: file.path, line: item.line, before, after: lines[item.line]})
 
-      if (newPriority === null && item.blockPriority !== undefined) {
+      if (priority === null && item.blockPriority !== undefined) {
         new Notice(`This task still has a block-level priority tag.\nAdd #${priorityTag}/0 manually.`)
       }
     }
@@ -104,6 +106,7 @@ export const setTodoDate = async (
   newDate: Date | null,
   dateTag: string,
   app: App,
+  hasTime = false,
 ) => {
   const file = getFileFromPath(app.vault, item.filePath)
   if (!file) return
@@ -112,7 +115,9 @@ export const setTodoDate = async (
   if (!currentLine || !currentLine.includes(item.originalText)) return
   const rawText = extractTextFromTodoLine(currentLine)
   const newText =
-    newDate === null ? removeDateTagFromText(rawText, dateTag) : addDateTagToText(rawText, dateTag, newDate)
+    newDate === null
+      ? removeDateTagFromText(rawText, dateTag)
+      : addDateTagToText(rawText, dateTag, newDate, hasTime)
   const before = currentLine
   lines[item.line] = currentLine.replace(rawText, newText)
   await app.vault.modify(file, combineFileLines(lines))
