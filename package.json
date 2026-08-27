@@ -14,6 +14,7 @@
   "author": "delashum",
   "license": "MIT",
   "devDependencies": {
+    "@obsidian-typings/obsidian-public-1.13.7": "^1.7.0",
     "@tsconfig/svelte": "^5.0.8",
     "@types/markdown-it": "^12.0.1",
     "@types/marked": "^5.0.2",

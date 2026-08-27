@@ -273,6 +273,23 @@ export const getAllTagsFromMetadata = (cache: CachedMetadata): string[] => {
   return [...frontmatterTags, ...blockTags]
 }
 
+export const getLineContent = async (vault: Vault, filePath: string, line: number) => {
+  let file = vault.getFileByPath(filePath)
+  if (!file) throw new Error("file not found")
+  const lines = (await vault.read(file)).split("\n")
+  const lineContent = lines[line]
+  return lineContent
+}
+
+export const modifyLineContent = async ( path: string,  lineNumber: number, lineContent: string, vault: Vault ) => {
+  let file = vault.getFileByPath(path)
+  if (!file) throw new Error("file not found")
+  const lines = (await vault.read(file)).split("\n")
+  lines[lineNumber] = lineContent
+  const newContent = lines.join("\n")
+  await vault.modify(file, newContent)
+}
+
 export const getFileFromPath = (vault: Vault, path: string) => {
   let file = vault.getAbstractFileByPath(path)
   if (file instanceof TFile) return file

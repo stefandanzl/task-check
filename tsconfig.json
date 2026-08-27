@@ -3,7 +3,7 @@
   "compilerOptions": {
     "moduleResolution": "bundler",
     "importHelpers": true,
-    "types": ["svelte", "node"],
+    "types": ["svelte", "node", "@obsidian-typings/obsidian-public-1.13.7"],
     "lib": ["ESNext", "DOM"],
     "paths": {"*": ["./*"]}
   },

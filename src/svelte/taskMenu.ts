@@ -14,7 +14,7 @@ import {DONE_TASK_SYMBOLS, TASK_STATES} from '../constants'
 import {InputModal} from '../InputModal'
 import {collectFamilyTree, copyFamilyAsMarkdown, filterListToTag, filterListToTask} from './viewActions'
 
-const copyToClipboard = async (text: string, msg = 'Copied') => {
+export const copyToClipboard = async (text: string, msg = 'Copied') => {
   await navigator.clipboard.writeText(text)
   new Notice(msg)
 }
@@ -78,8 +78,8 @@ export const openTaskContextMenu = (
           // don't know the destination, so use the active note when it differs
           // from the target (correct relative links), else the vault root. Never
           // the target's own path — that would collapse to [[#^id]].
-          const activePath = app.workspace.getActiveFile()?.path
-          const sourcePath = activePath && activePath !== item.filePath ? activePath : ''
+          const sourcePath = app.workspace.getActiveFile()?.path
+          // const sourcePath = activePath && activePath !== item.filePath ? activePath : ''
           const link = app.fileManager.generateMarkdownLink(file, sourcePath, `#^${id}`, plainText)
           await copyToClipboard(link, 'Task link copied')
         }),

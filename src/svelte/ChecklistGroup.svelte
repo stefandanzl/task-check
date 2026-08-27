@@ -2,13 +2,14 @@
   import {Platform, type App} from "obsidian"
 
   import type { TodoGroup, PriorityGroup, DateGroup, TodoItem, DateCategory } from "src/_types"
-  import { navToFile, setTodoPrioritiesBatch } from "src/utils"
+  import { ensureTaskBlockRef, generateBlockId, getTaskDisplayText, navToFile, setTodoPrioritiesBatch } from "src/utils"
   import ChecklistItem from "./ChecklistItem.svelte"
   import Icon from "./Icon.svelte"
   import PriorityDropZone from "./PriorityDropZone.svelte"
   import { dragState, todoGroupsStore } from "./viewStore"
   import { slide } from "svelte/transition"
   import { handleHeaderContextMenu } from "./taskMenu"
+	import { LINK_TEXT_MAX_CHARS } from "src/constants";
 
   let {
     group,
@@ -172,8 +173,45 @@
   }
 
   function handleDragStart(e: CustomEvent) {
-    const item = e.detail.item as TodoItem
+    const item = e.detail?.item as TodoItem;
+    const dragEvent = e.detail?.dragEvent as DragEvent;
+    if (!item || !dragEvent?.dataTransfer) return;
+    e.preventDefault()
+    e.stopPropagation()
+
+    const todoFile = app.vault.getFileByPath(item.filePath);
+    if (!todoFile) return;
+    const targetFilePath = app.workspace.getActiveFile()?.path
+
+    const blockRefRegex = /\^([a-zA-Z0-9_-]+)$/;
+    const blockIdMatches = item.originalText.trim().match(blockRefRegex);
+    let blockId = blockIdMatches ? blockIdMatches[blockIdMatches?.length - 1]: "";
+    blockId = blockId ? blockId.trim() : generateBlockId();
+
+    const displayText = getTaskDisplayText(item, "prio", "date")
+    // Constant: Length limit for displayed text in resulting link
+    const aliasText = displayText.slice(0, LINK_TEXT_MAX_CHARS)
+    
+    const wikilink = app.fileManager.generateMarkdownLink(todoFile, targetFilePath, `#^${blockId}`, aliasText)
+    // const linkpath = app.metadataCache.fileToLinktext(sourceFile, targetFilePath);
+    // const wikilink = `[[${linkpath}#^${blockId}|${text}]]`;
+
+    // Prepare DataTransfer for standard Obsidian drop event listener
+    dragEvent.dataTransfer.effectAllowed = "copyMove";
+    dragEvent.dataTransfer.setData("text/plain", wikilink ?? "");
+    dragEvent.dataTransfer.setData("text/x-obsidian-drag-type", "task-sidebar");
+
+    // This is still needed for prio sorting and doesn't interfere here
     dragState.update(s => ({ ...s, inProgress: true, sourcePriority: item.priority ?? 0, dragGroupId: group.id, draggedItem: item }))
+    
+    // Add Listener to detect if we dropped inside of Markdown Editor to only in that case modify original file
+    document.addEventListener("dragend", (evt: DragEvent) => {
+      const dropTarget = document.elementFromPoint(evt.clientX, evt.clientY);
+      if (!dropTarget.matches('[class*="cm-"]')) return
+
+      // Now add the reference mark to original checkbox line
+      ensureTaskBlockRef(item, app, blockId)
+    }, {once: true})
   }
 
   function handleDragEnd() {

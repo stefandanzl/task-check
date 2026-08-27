@@ -56,3 +56,5 @@ export const LOCAL_SORT_OPT = {
   numeric: true,
   ignorePunctuation: true,
 }
+
+export const LINK_TEXT_MAX_CHARS = 25

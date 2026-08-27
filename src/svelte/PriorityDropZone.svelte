@@ -60,8 +60,8 @@
   }
 
   function forwardDragStart(item: TodoItem) {
-    return (_e: DragEvent) => {
-      ondragstart(new CustomEvent('dragStart', { detail: { item } }))
+    return (e: DragEvent) => {
+      ondragstart(new CustomEvent('dragStart', { detail: { item, dragEvent: e } }))
     }
   }
 

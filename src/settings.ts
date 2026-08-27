@@ -74,7 +74,7 @@ const SORT_OPTIONS: Record<string, string> = {
 export class TodoSettingTab extends PluginSettingTab {
   constructor(
     app: App,
-    private plugin: TodoPlugin,
+    public plugin: TodoPlugin,
   ) {
     super(app, plugin)
   }

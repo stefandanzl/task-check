@@ -93,7 +93,7 @@ export default class TodoPlugin extends Plugin {
   }
 
   async loadSettings() {
-    const loadedData = await this.loadData()
+    const loadedData = await this.loadData() as TodoSettings
     this.settings = {...DEFAULT_SETTINGS, ...loadedData}
   }
 

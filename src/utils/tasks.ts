@@ -11,6 +11,7 @@ import {
   splitBlockRef,
   removeDateTagFromText,
   addDateTagToText,
+  modifyLineContent,
 } from './helpers'
 import { pushUndo, type UndoChange } from '../undo'
 
@@ -125,7 +126,8 @@ export const setTodoDate = async (
 }
 
 const BLOCK_ID_CHARS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
-const generateBlockId = (len = 6): string => {
+
+export const generateBlockId = (len = 6): string => {
   let s = ''
   for (let i = 0; i < len; i++) s += BLOCK_ID_CHARS[Math.floor(Math.random() * BLOCK_ID_CHARS.length)]
   return s
@@ -133,20 +135,28 @@ const generateBlockId = (len = 6): string => {
 
 // Ensures the task's line has a trailing ^blockId (generating one if missing,
 // which writes to the file) and returns the id, for building block-reference links.
-export const ensureTaskBlockRef = async (item: TodoItem, app: App): Promise<string | null> => {
-  const file = getFileFromPath(app.vault, item.filePath)
-  if (!file) return null
-  const lines = getAllLinesFromFile(await app.vault.read(file))
-  const line = lines[item.line]
-  if (!line) return null
-  const existing = line.match(/\s\^([A-Za-z0-9_-]+)\s*$/)
-  if (existing) return existing[1]
-  const id = generateBlockId()
-  const before = line
-  lines[item.line] = `${line.replace(/\s+$/, '')} ^${id}`
-  await app.vault.modify(file, combineFileLines(lines))
-  pushUndo({label: 'copy link (add block id)', changes: [{filePath: file.path, line: item.line, before, after: lines[item.line]}]})
-  return id
+export const ensureTaskBlockRef = async (item: TodoItem, app: App, blockId?: string) => {
+  const file = app.vault.getFileByPath(item.filePath)
+  if (!file) throw new Error("no file")
+  const lines = (await app.vault.read(file)).split("\n")
+  let lineContent = lines[item.line]
+  if (!lineContent.trim()) throw new Error("emtpy task line")
+  const existingArray = lineContent.match(/\^([A-Za-z0-9_-]+)\s*$/)
+  const existing = existingArray ? existingArray[1] : ""
+  let newLineContent = lineContent
+  if (existing)
+  {
+    if(!/\s+$/.test(lineContent)) return blockId
+    newLineContent = lineContent.trimEnd()
+  } else {
+    blockId = blockId ? blockId : generateBlockId()
+    newLineContent = `${lineContent.replace(/\s+$/, '')} ^${blockId}`
+  }
+  // lines[item.line]
+
+  modifyLineContent( item.filePath, item.line, newLineContent, app.vault)
+  pushUndo({label: 'copy link (add block id)', changes: [{filePath: file.path, line: item.line, before: lineContent, after: newLineContent}]})
+  return blockId
 }
 
 
