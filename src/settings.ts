@@ -114,7 +114,13 @@ export class TodoSettingTab extends PluginSettingTab {
       initialValue: this.tags[index],
       onSubmit: async value => {
         const tags = [...this.tags]
-        tags[index] = value
+        const cleaned = value
+          .trim()
+          .replace(/^#/, '')
+          .toLowerCase()
+          .split('/')[0]
+        if (cleaned.length === 0) return
+        tags[index] = cleaned
         await this.plugin.updateSettings({todoPageName: tags})
         this.update()
       },

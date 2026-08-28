@@ -1,4 +1,4 @@
-import type {CachedMetadata, TagCache, TFile} from 'obsidian'
+import type {CachedMetadata, ListItemCache, TagCache, TFile} from 'obsidian'
 
 export type DateCategory = 'overdue' | 'today' | 'tomorrow' | 'thisWeek' | 'thisMonth' | 'future' | 'noDate'
 
@@ -80,8 +80,7 @@ export type TodoGroup = PageGroup | TagGroup | PriorityGroup | DateGroup
 export type FileInfo = {
   content: string
   cache: CachedMetadata
-  parseEntireFile: boolean
-  frontmatterTag: string
+  taskItemsByLine?: Map<number, ListItemCache>
   file: TFile
   validTags: TagCache[]
 }
@@ -110,3 +109,30 @@ export type Icon = 'chevron' | 'settings'
 export type KeysOfType<T, V> = {
   [K in keyof T]: T[K] extends V ? K : never
 }[keyof T]
+
+export type ParseContext = {
+    includeRegex?: RegExp;
+    priorityTag?: string;
+    priorityRegex?: RegExp;
+    dateTag?: string;
+    dateStringRegex?: RegExp;
+    dateParseRegex?: RegExp;
+    excludeMains: Set<string>;
+    anyCheckbox: boolean;
+    enabledTodoTags: string[];
+    enabledTagSet: Set<string>;
+}
+
+export type BlockInfo = {
+  priority?: number
+  tagLine?: number
+  aux: string[]
+}
+
+export interface TodoLineInfo {
+  valid: boolean;
+  text: string;
+  checked: boolean;
+  status: string;
+  indentLevel: number;
+}

@@ -5,12 +5,11 @@ import type {
   TagCache,
   CachedMetadata,
 } from 'node_modules/obsidian/obsidian'
-import type {TodoItem, FileInfo, TagMeta} from 'src/_types'
-import {globsToRegex} from './helpers'
+import type {TodoItem, FileInfo, TagMeta, BlockInfo, ParseContext, TodoLineInfo} from 'src/_types'
+import {getTodoFrontmatterTags, globsToRegex} from './helpers'
 import {
-  retrieveTag,
+  // retrieveTag,
   getTagMeta,
-  getFrontmatterTags,
   extractTextFromTodoLine,
   getAllLinesFromFile,
   getDateCategory,
@@ -36,36 +35,19 @@ import {DONE_TASK_SYMBOLS} from 'src/constants'
  */
 export const parseTodos = async (
   files: TFile[],
-  todoTags: string[],
   cache: MetadataCache,
   vault: Vault,
-  includePattern: string,
-  showAllTodos: boolean,
   lastRerender: number,
-  priorityTag: string,
-  dateTag: string,
+  ctx: ParseContext
 ): Promise<Map<TFile, TodoItem[]>> => {
-  const includePatternArray = includePattern.trim()
-    ? includePattern.trim().split('\n')
-    : ['**/*']
-
+  
   const todosForUpdatedFiles = new Map<TFile, TodoItem[]>()
-  const includeRegex = globsToRegex(includePatternArray)
-  console.log(includeRegex)
-
-  let includedFiles = files.filter(file => includeRegex.test(file.path))
-  console.log("includedFiles: "+ includedFiles.length)
-  console.log({paths: includedFiles.map((file)=>file.path)})
-
+  const includedFiles = files.filter(file => ctx.includeRegex.test(file.path))
 
   await Promise.all(
     includedFiles
       .filter(file => {
         if (file.stat.mtime < lastRerender) return false
-        // if (!includePattern.some(p => minimatch(file.path, p))) return false
-        // console.log(file.path)
-        // if (isExcluded(file.path, includeRegex)) return false
-    //    console.log(file.path)
         return true
       })
       .map(async file => {
@@ -75,10 +57,7 @@ export const parseTodos = async (
           file,
           fileCache,
           vault,
-          todoTags,
-          showAllTodos,
-          priorityTag,
-          dateTag,
+          ctx
         )
 
         if (todos !== null) {
@@ -86,77 +65,120 @@ export const parseTodos = async (
         }
       }),
   )
-
   return todosForUpdatedFiles
 }
+
+export function buildParseContext(includePattern: string, todoTags: string[], hiddenTags: string[], showAllTodos: boolean, priorityTag: string, dateTag: string) {
+
+  const includePatternArray = includePattern.trim()
+    ? includePattern.trim().split('\n')
+    : ['**/*']
+
+  const includeRegex = globsToRegex(includePatternArray)
+  let enabledTodoTags = todoTags.filter(e => e).filter(tag => !hiddenTags.includes(tag))
+  
+  /** 
+   * @description
+   * To get any checklist item in the vault from ANY TAG ASSOCIATION. 
+   * This will still require tags to be present, only not discriminating which one is present.
+   * Simply delete all todo tags, or enable one that is called `*` - an actual wildcard
+   */
+  if (todoTags.length === 0 || enabledTodoTags.find((t)=> t === "*") !== undefined){
+    enabledTodoTags = ["*"]
+  }
+
+  const enabledTagSet = new Set(enabledTodoTags)
+  /**
+   * @todo Whats the right choice for wildcard case?
+   */
+  const excludeMains = new Set<string>()
+  for (const t of todoTags) if (t !== '*') excludeMains.add(t)
+  if (priorityTag) excludeMains.add(priorityTag)
+  if (dateTag) excludeMains.add(dateTag)
+
+  const dateStringRegex = dateTag
+    ? new RegExp(`#${dateTag} (\\d{4}-\\d{2}-\\d{2}(?: \\d{1,2}:\\d{2})?)`)
+    : undefined
+  
+  const dateParseRegex = dateTag 
+    ? new RegExp(`\\s#${dateTag} (\\d{4}-\\d{2}-\\d{2})(?: (\\d{1,2}:\\d{2}))?`) 
+    : undefined
+
+  const anyCheckbox = showAllTodos
+
+  const priorityRegex = new RegExp(`\\s#${priorityTag}/(-?\\d+)`)
+
+  const ctx: ParseContext = {
+    includeRegex,
+    priorityTag,
+    priorityRegex,
+    dateTag,
+    dateStringRegex,
+    dateParseRegex,
+    excludeMains,
+    anyCheckbox,
+    enabledTodoTags,
+    enabledTagSet
+  }
+  return ctx
+}
+
 
 export async function parseFile(
   file: TFile,
   fileCache: CachedMetadata,
   vault: Vault,
-  todoTags: string[],
-  showAllTodos: boolean,
-  priorityTag?: string,
-  dateTag?: string,
+  ctx: ParseContext,
 ): Promise<TodoItem[] | null> {
-  const tagsOnPage =
-    fileCache?.tags?.filter(e =>
-      todoTags.includes(retrieveTag(getTagMeta(e.tag)).toLowerCase()),
-    ) ?? []
-  const frontMatterTags = getFrontmatterTags(fileCache, todoTags)
-  const hasFrontMatterTag = frontMatterTags.length > 0
-  const qualifies =
-    todoTags[0] === '*' || tagsOnPage.length > 0 || hasFrontMatterTag
 
-  if (!qualifies) return []
 
-  const parseEntireFile =
-    todoTags[0] === '*' || hasFrontMatterTag || showAllTodos
+
+  
+  const todoFrontMatterTags = getTodoFrontmatterTags(fileCache, ctx.enabledTagSet) ?? []
+  const hasFrontMatterTag = todoFrontMatterTags.length > 0
+
+  let tagsOnPage = fileCache?.tags?.filter(
+      e => ctx.enabledTagSet.has(getTagMeta(e.tag).main) ||
+      todoFrontMatterTags.contains(getTagMeta(e.tag).main)
+    ) ?? []  
+
+  const fileQualifies =  tagsOnPage.length > 0 || ctx.enabledTodoTags[0] === "*" || hasFrontMatterTag
+
+  if (!fileQualifies) return []
+
+  const parseEntireFile = ctx.enabledTodoTags[0] === "*" || ctx.anyCheckbox || todoFrontMatterTags.contains("any")
+  //const content = await vault.cachedRead(file)
+
+  if (!fileCache?.listItems?.length) return []
+  const taskItemsByLine = new Map(fileCache?.listItems?.
+    filter((i)=>i.task !== undefined).
+    map(i => [i.position.start.line, i]))
+  if (!taskItemsByLine.size) return []
+
   const content = await vault.cachedRead(file)
+  const validTags = tagsOnPage.map(e => ({...e, tag: e.tag.toLowerCase()}))
 
   const fileInfo: FileInfo = {
     content,
     cache: fileCache,
-    validTags: tagsOnPage.map(e => ({...e, tag: e.tag.toLowerCase()})),
+    validTags,
     file,
-    parseEntireFile,
-    frontmatterTag: todoTags.length ? frontMatterTags[0] : undefined,
+    taskItemsByLine
   }
 
-  const excludeMains = new Set<string>()
-  for (const t of todoTags) if (t !== '*') excludeMains.add(getTagMeta(t).main)
-  if (priorityTag) excludeMains.add(priorityTag)
-  if (dateTag) excludeMains.add(dateTag)
 
-  return findAllTodosInFile(fileInfo, priorityTag, dateTag, excludeMains)
-}
-
-const findAllTodosInFile = (
-  fileInfo: FileInfo,
-  priorityTag: string,
-  dateTag: string,
-  excludeMains: Set<string>,
-): TodoItem[] => {
-  let todos: TodoItem[]
-  if (!fileInfo.parseEntireFile) {
+  let todos: TodoItem[] = []
+  if (!parseEntireFile) {
     // A task within reach of several registered tag-blocks is emitted once per
     // tag; dedupeByLine below merges those into one item carrying all its tags.
     todos = fileInfo.validTags.flatMap(tag =>
-      findAllTodosFromTagBlock(
-        fileInfo,
-        tag,
-        priorityTag,
-        dateTag,
-        excludeMains,
-      ),
+      findAllTodosFromTagBlock(fileInfo, tag, ctx),
     )
-  } else {
-    todos = []
-    if (!fileInfo.content) return todos
-    const fileLines = getAllLinesFromFile(fileInfo.content)
-    const tagMeta = fileInfo.frontmatterTag
-      ? getTagMeta(fileInfo.frontmatterTag)
-      : undefined
+    return dedupeByLine(todos)
+  }
+
+  if (!fileInfo.content) return todos
+  const fileLines = getAllLinesFromFile(fileInfo.content)
 
     // Use cached listItems instead of parsing all lines
     const listItems = fileInfo.cache.listItems ?? []
@@ -169,22 +191,9 @@ const findAllTodosInFile = (
       const line = fileLines[lineNum]
       if (!line) continue
 
-      todos.push(
-        formTodo(
-          line,
-          fileInfo,
-          lineNum,
-          listItem.task,
-          tagMeta,
-          priorityTag,
-          dateTag,
-          undefined,
-          undefined,
-          excludeMains,
-        ),
-      )
+      const todo = formTodo(line, fileInfo, lineNum, listItem.task, ctx, undefined)
+      if (todo) todos.push(todo)
     }
-  }
 
   return dedupeByLine(todos)
 }
@@ -230,9 +239,7 @@ const dedupeByLine = (items: TodoItem[]): TodoItem[] => {
 const findAllTodosFromTagBlock = (
   file: FileInfo,
   tag: TagCache,
-  priorityTag: string,
-  dateTag: string,
-  excludeMains: Set<string>,
+  ctx: ParseContext,
 ) => {
   if (!file.content) return []
   const fileLines = getAllLinesFromFile(file.content)
@@ -243,37 +250,28 @@ const findAllTodosFromTagBlock = (
   const todos: TodoItem[] = []
 
   // Step 1: Check if tag and task are on same line (inline tag - single task mode)
-  const sameLineItem = listItems.find(
-    item => item.position.start.line === tagLineNum && item.task !== undefined,
-  )
+  // (task check included: a tag line with a non-task list item → block mode)
+  const sameLineItem = file.taskItemsByLine.get(tagLineNum)
   const tagLine = fileLines[tagLineNum]
   if (!tagLine) return []
 
-  if (sameLineItem) {
+  if (sameLineItem?.task !== undefined) {
     // Tag sits on the task line itself — its tags are captured as auxTags.inline,
     // there is no separate block line, so auxBlock stays empty.
-    return [
-      formTodo(
-        tagLine,
-        file,
-        tagLineNum,
-        sameLineItem.task,
-        tagMeta,
-        priorityTag,
-        dateTag,
-        undefined,
-        undefined,
-        excludeMains,
-      ),
-    ]
+    const todo = formTodo(
+      tagLine, file, tagLineNum, sameLineItem.task, ctx, tagMeta,
+    )
+    return todo ? [todo] : []
   }
 
-  const blockPriority = priorityTag
-    ? parsePriorityTag(tagLine, priorityTag)
-    : undefined
-  const blockTagLine = tagLineNum
-  // Non-task/prio/date tags on the block's tag line apply to every task in the block.
-  const auxBlock = extractAuxTags(tagLine, excludeMains)
+  const block: BlockInfo = {
+    priority: ctx.priorityTag
+      ? parsePriorityTag(tagLine, ctx.priorityRegex)
+      : undefined,
+    tagLine: tagLineNum,
+    // Non-task/prio/date tags on the block's tag line apply to every task in the block.
+    aux: extractAuxTags(tagLine, ctx.excludeMains),
+  }
 
   // Step 2: Walk line by line from tagLineNum + 1 (block mode)
   let currentLine = tagLineNum + 1
@@ -281,81 +279,81 @@ const findAllTodosFromTagBlock = (
     const line = fileLines[currentLine]
 
     // Check if there's a task on this line
-    const taskOnLine = listItems.find(
-      item =>
-        item.position.start.line === currentLine && item.task !== undefined,
-    )
+    const taskOnLine = file.taskItemsByLine.get(currentLine)
 
-    if (taskOnLine) {
-      // Empty task check
-      const content = line.match(/- \[.\]\s(.*)/)?.[1]
-      if (content.trim().length !== 0) {
-        // Found a task - add it and continue
-        todos.push(
-          formTodo(
-            line,
-            file,
-            currentLine,
-            taskOnLine.task,
-            tagMeta,
-            priorityTag,
-            dateTag,
-            blockPriority,
-            blockTagLine,
-            excludeMains,
-            auxBlock,
-          ),
-        )
-      }
-    } else if (line.trim().length === 0) {
+    if (taskOnLine?.task !== undefined) {
+      // Single parse inside formTodo doubles as the valid/non-empty check:
+      // null for desynced, bare "- [ ]" or otherwise unparseable lines.
+      const todo = formTodo(
+        line, file, currentLine, taskOnLine.task, ctx, tagMeta, block,
+      )
+      // (taskOnLine narrowed to task-bearing by the check above)
+      if (todo) todos.push(todo)
+    } else if (!line || line.trim().length === 0) {
       // Empty line - stop processing (end of block)
       break
     }
     // If line has content but no task, just continue (description text between tasks)
-
     currentLine++
   }
-
   return todos
 }
 
+const TODO_LINE_RE = /^(?<prefix>(?:\s|>)*)(?<marker>[-*]|[0-9]+\.)\s\[(?<status>.)\]\s{1,4}(?<text>\S.*)$/;
+
+export function parseTodoLine(line: string): TodoLineInfo | null {
+  const match = TODO_LINE_RE.exec(line);
+  if (!match?.groups) return null;
+
+  const { prefix, status, text } = match.groups;
+
+  let width = 0;
+  for (const ch of prefix) width += ch === "\t" ? 4 : 1;
+
+  return {
+    valid: true,
+    text,
+    status,
+    checked: status !== " ",
+    indentLevel: Math.floor(width / 4),
+  };
+}
+
+
+
+
+/**
+ * Parses one task line into a TodoItem. 
+ */
 const formTodo = (
   line: string,
   file: FileInfo,
   lineNum: number,
   taskStatus: string,
+  ctx: ParseContext,
   tagMeta?: TagMeta,
-  priorityTag?: string,
-  dateTag?: string,
-  blockPriority: number | undefined = undefined,
-  blockTagLine: number | undefined = undefined,
-  excludeMains: Set<string> = new Set(),
-  auxBlock: string[] = [],
-): TodoItem => {
-  const rawText = extractTextFromTodoLine(line)
-  const spacesIndented = getIndentationLevelsFromTodoLine(line)
-  const linePriority = priorityTag
-    ? parsePriorityTag(rawText, priorityTag)
-    : undefined
-  const priority = linePriority !== undefined ? linePriority : blockPriority
-  const lineDate = dateTag ? parseDateTag(rawText, dateTag) : undefined
-  const dateCategory = lineDate ? getDateCategory(lineDate) : undefined
-  const dateString = lineDate ? rawText.match(new RegExp(`#${dateTag} (\\d{4}-\\d{2}-\\d{2}(?: \\d{1,2}:\\d{2})?)`))?.[1] : undefined
+  block?: BlockInfo,
+): TodoItem | null => {
+  const parsed = parseTodoLine(line)
+  if (!parsed) return null
+  const rawText = parsed.text
+  const spacesIndented = parsed.indentLevel
 
-  // Use the task status from cache - no fallback needed since we only call this for actual tasks
+  const linePriority = ctx.priorityTag
+    ? parsePriorityTag(rawText, ctx.priorityRegex)
+    : undefined
+  const priority = linePriority !== undefined ? linePriority : block?.priority
+  const dateString = ctx.dateTag ? rawText.match(ctx.dateStringRegex)?.[1] : undefined
+  const lineDate = dateString ? parseDateTag(rawText, ctx.dateParseRegex) : undefined
+  const dateCategory = lineDate ? getDateCategory(lineDate) : undefined
+  
+
   const checked = DONE_TASK_SYMBOLS.has(taskStatus)
 
   return {
     taskTags: tagMeta ? [tagMeta] : [],
-    auxTags: {
-      inline: extractAuxTags(rawText, excludeMains),
-      block: [...auxBlock],
-      inherited: [],
-    },
-    // Performance optimization: Pre-defining family and isFamilyContext avoids V8 hidden class 
-    // mutations later in injectFamilyContext().
-    family: null,           
-    isFamilyContext: false,  
+    family: null,
+    isFamilyContext: false,
     checked,
     taskStatus,
     filePath: file.file.path,
@@ -367,11 +365,16 @@ const formTodo = (
     spacesIndented,
     originalText: rawText,
     priority,
-    blockPriority,
-    blockTagLine,
+    blockPriority: block?.priority,
+    blockTagLine: block?.tagLine,
     date: lineDate,
     dateCategory,
     dateTag: dateString,
+    auxTags: {
+      inline: extractAuxTags(rawText, ctx.excludeMains),
+      block: [...(block?.aux ?? [])],
+      inherited: [],
+    },
   }
 }
 

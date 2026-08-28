@@ -5,7 +5,7 @@ import { get } from 'svelte/store'
 import {TODO_VIEW_TYPE} from './constants'
 import App from './svelte/App.svelte'
 import {setUiRefresh, clearUiRefresh} from './undo'
-import {groupTodos, groupTodosByPriority, groupTodosByDate, parseTodos, wireFamilyAndInherited, parseFile, haveTodosChanged} from './utils'
+import {groupTodos, groupTodosByPriority, groupTodosByDate, parseTodos, wireFamilyAndInherited, haveTodosChanged, buildParseContext} from './utils'
 import {
   todoGroupsStore,
   todoTagsStore,
@@ -264,16 +264,21 @@ export default class TodoListView extends ItemView {
    * @returns only returns true if actual changes to tasks were found
    */
   private async calculateAllItems() {
-    const todosForUpdatedFiles = await parseTodos(
-      this.app.vault.getMarkdownFiles(),
-      this.todoTagArray.length === 0 ? ['*'] : this.visibleTodoTagArray,
-      this.app.metadataCache,
-      this.app.vault,
+    const ctx = buildParseContext(
       this.plugin.getSettingValue('includeFiles'),
+      this.plugin.getSettingValue('todoPageName'),
+      this.plugin.getSettingValue("_hiddenTags"),
       this.plugin.getSettingValue('showAllTodos'),
-      this.lastRerender,
       this.plugin.getSettingValue('priorityTag'),
       this.plugin.getSettingValue('dateTag'),
+    )
+
+    const todosForUpdatedFiles = await parseTodos(
+      this.app.vault.getMarkdownFiles(),
+      this.app.metadataCache,
+      this.app.vault,
+      this.lastRerender,
+      ctx,
     )
     let changed = false
     for (const [file, todos] of todosForUpdatedFiles) {

@@ -31,9 +31,9 @@ export const splitBlockRef = (text: string): {body: string; ref: string} => {
   return m ? {body: m[1], ref: m[2]} : {body: text, ref: ''}
 }
 
-export const parsePriorityTag = (text: string, priorityTagName: string): number | undefined => {
-  if (!text || !priorityTagName) return undefined
-  const priorityRegex = new RegExp(`\\s#${priorityTagName}/(-?\\d+)`)
+export const parsePriorityTag = (text: string, priorityRegex: RegExp): number | undefined => {
+  if (!text || !priorityRegex) return undefined
+  // const priorityRegex = new RegExp(`\\s#${priorityTagName}/(-?\\d+)`)
   const match = text.match(priorityRegex)
   if (match) {
     const value = parseInt(match[1], 10)
@@ -61,10 +61,10 @@ export const addPriorityTagToText = (text: string, priorityTagName: string, prio
 const DATE_TIME_FORMAT = 'YYYY-MM-DD HH:mm'
 const DATE_FORMAT = 'YYYY-MM-DD'
 
-export const parseDateTag = (text: string, dateTagName: string): Date | undefined => {
-  if (!text || !dateTagName) return undefined
-  const dateRegex = new RegExp(`\\s#${dateTagName} (\\d{4}-\\d{2}-\\d{2})(?: (\\d{1,2}:\\d{2}))?`)
-  const match = text.match(dateRegex)
+export const parseDateTag = (text: string, dateParseRegex: RegExp): Date | undefined => {
+  if (!text || !dateParseRegex) return undefined
+  // const dateRegex = new RegExp(`\\s#${dateTagName} (\\d{4}-\\d{2}-\\d{2})(?: (\\d{1,2}:\\d{2}))?`)
+  const match = text.match(dateParseRegex)
   if (match) {
     const withTime = match[2] ? `${match[1]} ${match[2]}` : match[1]
     const m = moment(withTime, match[2] ? DATE_TIME_FORMAT : DATE_FORMAT, true)
@@ -149,14 +149,10 @@ export const formatRelativeDateDiff = (date: Date, hasTime = false): string => {
 }
 
 export const getTagMeta = (tag: string): TagMeta => {
-  const tagMatch = /^\#([^\/]+)\/?(.*)?$/.exec(tag)
+  const tagMatch = /^\#([^\/]+)\/?(.*)?$/.exec(tag.toLowerCase())
   if (!tagMatch) return {main: null, sub: null}
   const [full, main, sub] = tagMatch
   return {main, sub}
-}
-
-export const retrieveTag = (tagMeta: TagMeta): string => {
-  return tagMeta.main ? tagMeta.main : tagMeta.sub ? tagMeta.sub : ''
 }
 
 export const setLineTo = (line: string, setTo: boolean) =>
@@ -253,24 +249,16 @@ export const ensureMdExtension = (path: string) => {
   return path
 }
 
-export const getFrontmatterTags = (
+export const getTodoFrontmatterTags = (
   cache: CachedMetadata,
-  todoTags: string[] = [],
+  todoTagSet: Set<string>,
 ) => {
-  const frontMatterTags: string[] =
-    parseFrontMatterTags(cache?.frontmatter) ?? []
-  if (todoTags.length > 0)
-    return frontMatterTags.filter((tag: string) =>
-      todoTags.includes(getTagMeta(tag).main),
-    )
-  return frontMatterTags
-}
+  let frontMatterTags: string[] = parseFrontMatterTags(cache?.frontmatter) ?? []
+  if (todoTagSet.has("*")) return frontMatterTags
 
-export const getAllTagsFromMetadata = (cache: CachedMetadata): string[] => {
-  if (!cache) return []
-  const frontmatterTags = getFrontmatterTags(cache)
-  const blockTags = (cache.tags ?? []).map(e => e.tag)
-  return [...frontmatterTags, ...blockTags]
+  return frontMatterTags.filter(
+    (tag) => todoTagSet.has(getTagMeta(tag).main)
+  )
 }
 
 export const getLineContent = async (vault: Vault, filePath: string, line: number) => {

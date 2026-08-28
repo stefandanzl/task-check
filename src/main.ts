@@ -12,7 +12,7 @@ import { buildIcons } from './utils/helpers'
 import { setupCommands } from './setup'
 
 export default class TodoPlugin extends Plugin {
-  settings!: TodoSettings
+  declare settings: TodoSettings
 
   get view() {
     return this.app.workspace.getLeavesOfType(TODO_VIEW_TYPE)[0]
