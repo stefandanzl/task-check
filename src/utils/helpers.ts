@@ -256,9 +256,9 @@ export const getTodoFrontmatterTags = (
   let frontMatterTags: string[] = parseFrontMatterTags(cache?.frontmatter) ?? []
   if (todoTagSet.has("*")) return frontMatterTags
 
-  return frontMatterTags.filter(
-    (tag) => todoTagSet.has(getTagMeta(tag).main)
-  )
+  return frontMatterTags
+    .map((tag) => tag.toLowerCase())
+    .filter((tag) => todoTagSet.has(getTagMeta(tag).main))
 }
 
 export const getLineContent = async (vault: Vault, filePath: string, line: number) => {

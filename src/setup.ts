@@ -146,11 +146,11 @@ export function setupEvents(this: TodoListView) {
 	this.registerEvent(
 		this.app.metadataCache.on("resolved", async () => {
 			if (!this.plugin.getSettingValue("autoRefresh")) return;
-			console.log("listener: resolved");
 			await this.refresh();
 		}),
 	);
 
+	(globalThis as any).refreshTodos = () => this.refresh(true, true);
 	/**
 	*  @todo    
     * Add one global RegExp constant and use it to make this actually not mess up file

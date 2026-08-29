@@ -175,7 +175,6 @@ export default class TodoListView extends ItemView {
         this.lastRerender = 0
         this.itemsByFile.clear()
       }
-      console.log({calculate: startTime, isDirtyStore: get(isDirtyStore)})
       const changed = await this.calculateAllItems()
       if (!force && !changed) return
       this.groupItems()
@@ -271,6 +270,7 @@ export default class TodoListView extends ItemView {
       this.plugin.getSettingValue('showAllTodos'),
       this.plugin.getSettingValue('priorityTag'),
       this.plugin.getSettingValue('dateTag'),
+      this.plugin.getSettingValue('showChecked'),
     )
 
     const todosForUpdatedFiles = await parseTodos(

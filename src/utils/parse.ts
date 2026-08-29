@@ -68,7 +68,7 @@ export const parseTodos = async (
   return todosForUpdatedFiles
 }
 
-export function buildParseContext(includePattern: string, todoTags: string[], hiddenTags: string[], showAllTodos: boolean, priorityTag: string, dateTag: string) {
+export function buildParseContext(includePattern: string, todoTags: string[], hiddenTags: string[], showAllTodos: boolean, priorityTag: string, dateTag: string, showChecked: boolean) {
 
   const includePatternArray = includePattern.trim()
     ? includePattern.trim().split('\n')
@@ -105,8 +105,8 @@ export function buildParseContext(includePattern: string, todoTags: string[], hi
     : undefined
 
   const anyCheckbox = showAllTodos
-
   const priorityRegex = new RegExp(`\\s#${priorityTag}/(-?\\d+)`)
+  const showDoneTasks = showChecked
 
   const ctx: ParseContext = {
     includeRegex,
@@ -118,7 +118,8 @@ export function buildParseContext(includePattern: string, todoTags: string[], hi
     excludeMains,
     anyCheckbox,
     enabledTodoTags,
-    enabledTagSet
+    enabledTagSet,
+    showDoneTasks
   }
   return ctx
 }
@@ -138,25 +139,35 @@ export async function parseFile(
   const hasFrontMatterTag = todoFrontMatterTags.length > 0
 
   let tagsOnPage = fileCache?.tags?.filter(
-      e => ctx.enabledTagSet.has(getTagMeta(e.tag).main) ||
-      todoFrontMatterTags.contains(getTagMeta(e.tag).main)
+      e => ctx.enabledTagSet.has(getTagMeta(e.tag).main)
     ) ?? []  
 
-  const fileQualifies =  tagsOnPage.length > 0 || ctx.enabledTodoTags[0] === "*" || hasFrontMatterTag
+  const isWildcard = ctx.enabledTodoTags[0] === "*" 
+  const fileQualifies =  tagsOnPage.length > 0 || isWildcard || hasFrontMatterTag
 
   if (!fileQualifies) return []
 
-  const parseEntireFile = ctx.enabledTodoTags[0] === "*" || ctx.anyCheckbox || todoFrontMatterTags.contains("any")
+  const parseEntireFile = isWildcard || ctx.anyCheckbox || hasFrontMatterTag
   //const content = await vault.cachedRead(file)
+  
+  const fileTasks = fileCache?.listItems?.filter((i)=>i.task !== undefined)
 
   if (!fileCache?.listItems?.length) return []
-  const taskItemsByLine = new Map(fileCache?.listItems?.
-    filter((i)=>i.task !== undefined).
-    map(i => [i.position.start.line, i]))
+  const taskItemsByLine = new Map(fileTasks.map(i => [i.position.start.line, i]))
   if (!taskItemsByLine.size) return []
 
-  const content = await vault.cachedRead(file)
   const validTags = tagsOnPage.map(e => ({...e, tag: e.tag.toLowerCase()}))
+
+  // if (!validTags.length && !hasFrontMatterTag && !isWildcard ) return
+  /**
+   * @todo does this actually help performance?
+   */
+  if (!ctx.showDoneTasks){
+    const hasOpenTasks = fileTasks.some((t)=>!DONE_TASK_SYMBOLS.has(t.task))
+    if (!hasOpenTasks) return []
+  }
+
+  const content = await vault.cachedRead(file)
 
   const fileInfo: FileInfo = {
     content,
@@ -176,6 +187,7 @@ export async function parseFile(
     )
     return dedupeByLine(todos)
   }
+  const tagMeta = hasFrontMatterTag ? getTagMeta(todoFrontMatterTags[0]) : undefined
 
   if (!fileInfo.content) return todos
   const fileLines = getAllLinesFromFile(fileInfo.content)
@@ -191,7 +203,7 @@ export async function parseFile(
       const line = fileLines[lineNum]
       if (!line) continue
 
-      const todo = formTodo(line, fileInfo, lineNum, listItem.task, ctx, undefined)
+      const todo = formTodo(line, fileInfo, lineNum, listItem.task, ctx, tagMeta)
       if (todo) todos.push(todo)
     }
 

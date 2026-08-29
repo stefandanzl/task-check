@@ -121,6 +121,7 @@ export type ParseContext = {
     anyCheckbox: boolean;
     enabledTodoTags: string[];
     enabledTagSet: Set<string>;
+    showDoneTasks: boolean;
 }
 
 export type BlockInfo = {
